@@ -38,8 +38,25 @@ public partial class App : Application
         }
 
         _servizi = servizi;
+        AvviaIndicizzazione(servizi);
         MainWindow = servizi.GetRequiredService<MainWindow>();
         MainWindow.Show();
+    }
+
+    /// <summary>
+    /// Fa partire la lettura dei documenti in background e riprende quelli rimasti in sospeso dall'ultima volta
+    /// (non ancora letti, andati in errore o in attesa del riconoscimento del testo).
+    /// </summary>
+    private static void AvviaIndicizzazione(ServiceProvider servizi)
+    {
+        var indicizzazione = servizi.GetRequiredService<IndicizzazioneService>();
+        indicizzazione.Avvia();
+
+        _ = Task.Run(async () =>
+        {
+            try { await indicizzazione.AccodaPendentiAsync(); }
+            catch (Exception) { /* si riproverà al prossimo avvio: i documenti restano da leggere */ }
+        });
     }
 
     protected override void OnExit(ExitEventArgs e)
@@ -81,17 +98,7 @@ public partial class App : Application
             return null;
         }
 
-        var collezione = new ServiceCollection();
-        collezione.AddSingleton(impostazioni);
-        collezione.AddSingleton(new AlertService(impostazioni));
-        collezione.AddSingleton<IArchivioFileService>(new ArchivioFileService(impostazioni.PercorsoRadice));
-        collezione.AddSingleton<IDbContextFactory<AppDbContext>>(new AppDbContextFactory(ArchivioDatabase.CreaOpzioni(percorsoDatabase)));
-        collezione.AddSingleton<IArchivioService, ArchivioService>();
-        collezione.AddSingleton<IDialogService, DialogService>();
-        collezione.AddSingleton<IShellService, ShellService>();
-        collezione.AddSingleton<MainViewModel>();
-        collezione.AddSingleton<MainWindow>();
-        return collezione.BuildServiceProvider();
+        return Composizione.Crea(impostazioni, percorsoDatabase);
     }
 
     private static void OnErroreNonGestito(object sender, DispatcherUnhandledExceptionEventArgs e)

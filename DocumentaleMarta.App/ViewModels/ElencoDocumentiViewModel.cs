@@ -9,7 +9,7 @@ namespace DocumentaleMarta.App.ViewModels;
 
 /// <summary>Una riga della griglia di radice o area: un documento con la cartella e l'area a cui appartiene.</summary>
 public partial class DocumentoElencoViewModel(
-    DocumentoElenco dati, bool fileMancante, StatoAvviso avviso, ElencoDocumentiViewModel elenco) : ObservableObject
+    DocumentoElenco dati, bool fileMancante, StatoAvviso avviso, ElencoDocumentiViewModel elenco, string? trovato = null) : ObservableObject
 {
     public int Id { get; } = dati.Id;
     public int CartellaId { get; } = dati.CartellaId;
@@ -31,6 +31,12 @@ public partial class DocumentoElencoViewModel(
     /// <summary>Urgenza della scadenza della cartella del documento (la riga si colora di conseguenza).</summary>
     public StatoAvviso Avviso { get; } = avviso;
 
+    /// <summary>
+    /// Solo nei risultati di una ricerca: l'estratto del testo con le parole trovate tra i segnaposto
+    /// <see cref="RisultatoRicerca.InizioEvidenza"/> e <see cref="RisultatoRicerca.FineEvidenza"/>, oppure il nome del campo in cui sono state trovate.
+    /// </summary>
+    public string Trovato { get; } = trovato ?? "";
+
     [ObservableProperty]
     private bool _fileMancante = fileMancante;
 
@@ -48,7 +54,7 @@ public partial class DocumentoElencoViewModel(
     private void VaiAllaCartella() => elenco.VaiAllaCartella(this);
 }
 
-/// <summary>La griglia dei documenti di tutta l'archivio (radice) o di una sola area.</summary>
+/// <summary>La griglia dei documenti di tutta l'archivio (radice), di una sola area o i risultati di una ricerca.</summary>
 public class ElencoDocumentiViewModel
 {
     private readonly IArchivioService _archivio;
@@ -56,26 +62,45 @@ public class ElencoDocumentiViewModel
     private readonly AzioniDocumenti _azioni;
     private readonly int? _areaId;
     private readonly AlertService? _avvisi;
+    private readonly IRicercaService? _ricerca;
+    private readonly string? _testoRicerca;
 
     /// <param name="areaId">L'area da mostrare; null per tutti i documenti dell'archivio.</param>
     /// <param name="avvisi">Per colorare le righe secondo la scadenza della cartella; senza, le righe restano senza colore.</param>
+    /// <param name="ricerca">Insieme a <paramref name="testoRicerca"/>: invece dei documenti di un'area mostra i risultati della ricerca.</param>
     public ElencoDocumentiViewModel(
         IArchivioService archivio, IArchivioFileService files, IDialogService dialog, IShellService shell, int? areaId,
-        AlertService? avvisi = null)
+        AlertService? avvisi = null, IRicercaService? ricerca = null, string? testoRicerca = null)
     {
         _archivio = archivio;
         _files = files;
         _azioni = new AzioniDocumenti(archivio, files, dialog, shell);
         _areaId = areaId;
         _avvisi = avvisi;
+        _ricerca = ricerca;
+        _testoRicerca = testoRicerca;
     }
+
+    /// <summary>Questa griglia mostra i risultati di una ricerca.</summary>
+    public bool IsRicerca => _ricerca is not null && _testoRicerca is not null;
+
+    /// <summary>Il testo cercato (solo per i risultati di una ricerca).</summary>
+    public string TestoRicerca => _testoRicerca ?? "";
+
+    /// <summary>Ci sono più risultati di quelli mostrati: conviene restringere la ricerca.</summary>
+    public bool Troncato { get; private set; }
 
     /// <summary>La colonna "Area" serve solo quando si vedono i documenti di più aree.</summary>
     public bool MostraArea => _areaId is null;
 
-    public string TestoVuoto => _areaId is null
-        ? "Nessun documento nell'archivio."
-        : "Nessun documento in quest'area.";
+    /// <summary>La colonna "Trovato" serve solo nei risultati di una ricerca.</summary>
+    public bool MostraTrovato => IsRicerca;
+
+    public string TestoVuoto => IsRicerca
+        ? $"Nessun documento trovato per «{_testoRicerca}»."
+        : _areaId is null
+            ? "Nessun documento nell'archivio."
+            : "Nessun documento in quest'area.";
 
     public ObservableCollection<DocumentoElencoViewModel> Documenti { get; } = [];
 
@@ -90,16 +115,27 @@ public class ElencoDocumentiViewModel
 
     public async Task CaricaAsync()
     {
-        var elenco = await _archivio.CaricaDocumentiAsync(_areaId);
+        List<(DocumentoElenco Documento, string? Trovato)> righe;
+        if (IsRicerca)
+        {
+            var esito = await _ricerca!.CercaAsync(_testoRicerca!);
+            Troncato = esito.Troncato;
+            righe = esito.Risultati.Select(r => (r.Documento, (string?)r.Trovato)).ToList();
+        }
+        else
+        {
+            righe = (await _archivio.CaricaDocumentiAsync(_areaId)).Select(d => (d, (string?)null)).ToList();
+        }
 
         // Un controllo su disco per ogni documento: fuori dal thread dell'interfaccia, con migliaia di file non deve bloccarla.
-        var mancanti = await Task.Run(() => elenco.Select(d => !_files.Esiste(d.PercorsoRelativo)).ToList());
+        var mancanti = await Task.Run(() => righe.Select(r => !_files.Esiste(r.Documento.PercorsoRelativo)).ToList());
 
         Documenti.Clear();
-        for (var i = 0; i < elenco.Count; i++)
+        for (var i = 0; i < righe.Count; i++)
         {
-            var avviso = _avvisi?.Valuta(elenco[i].ScadenzaCartella, elenco[i].CartellaCompletata) ?? StatoAvviso.Nessuno;
-            Documenti.Add(new DocumentoElencoViewModel(elenco[i], mancanti[i], avviso, this));
+            var (documento, trovato) = righe[i];
+            var avviso = _avvisi?.Valuta(documento.ScadenzaCartella, documento.CartellaCompletata) ?? StatoAvviso.Nessuno;
+            Documenti.Add(new DocumentoElencoViewModel(documento, mancanti[i], avviso, this, trovato));
         }
     }
 

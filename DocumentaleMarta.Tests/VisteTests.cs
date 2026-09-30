@@ -27,7 +27,7 @@ public class VisteTests
     }
 
     /// <summary>Esegue su un thread STA (richiesto da WPF) raccogliendo gli errori di binding.</summary>
-    private static List<string> InSta(Action azione)
+    internal static List<string> InSta(Action azione)
     {
         var raccolta = new RaccoltaErroriBinding();
         Exception? errore = null;
@@ -50,7 +50,7 @@ public class VisteTests
         return raccolta.Messaggi;
     }
 
-    private static void Disegna(FrameworkElement elemento, double larghezza, double altezza, string nome)
+    internal static void Disegna(FrameworkElement elemento, double larghezza, double altezza, string nome)
     {
         // Come in una finestra vera: si lascia finire il lavoro in coda (es. il calcolo delle larghezze delle colonne)
         // e poi si ripete il layout.
@@ -287,7 +287,7 @@ public class VisteTests
         return evento;
     }
 
-    private static T? FindFirst<T>(DependencyObject radice) where T : DependencyObject
+    internal static T? FindFirst<T>(DependencyObject radice) where T : DependencyObject
     {
         for (var i = 0; i < VisualTreeHelper.GetChildrenCount(radice); i++)
         {
@@ -415,7 +415,7 @@ public class VisteTests
     }
 
     /// <summary>La prima griglia nell'albero visuale; con <paramref name="intestazione"/> quella che ha una colonna con quel titolo.</summary>
-    private static DataGrid? FindDataGrid(DependencyObject radice, string? intestazione = null)
+    internal static DataGrid? FindDataGrid(DependencyObject radice, string? intestazione = null)
     {
         for (var i = 0; i < VisualTreeHelper.GetChildrenCount(radice); i++)
         {

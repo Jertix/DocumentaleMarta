@@ -4,6 +4,7 @@
              xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
              xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
              xmlns:vm="clr-namespace:DocumentaleMarta.App.ViewModels"
+             xmlns:viste="clr-namespace:DocumentaleMarta.App.Viste"
              mc:Ignorable="d"
              d:DataContext="{d:DesignInstance Type=vm:ElencoDocumentiViewModel}"
              d:DesignWidth="780" d:DesignHeight="420">
@@ -66,17 +67,30 @@
                         </DataTemplate>
                     </DataGridTemplateColumn.CellTemplate>
                 </DataGridTemplateColumn>
-                <DataGridTextColumn Header="Nome file" Binding="{Binding NomeFile}" Width="*" MinWidth="140"
+                <DataGridTextColumn Header="Nome file" Binding="{Binding NomeFile}" Width="*" MinWidth="120"
                                     ElementStyle="{StaticResource CellaTesto}"/>
                 <DataGridTextColumn Header="Tipo" Binding="{Binding Tipo}" Width="55"
                                     ElementStyle="{StaticResource CellaTesto}"/>
-                <DataGridTextColumn Header="Cartella" Binding="{Binding TitoloCartella}" Width="140" MinWidth="80"
+                <DataGridTextColumn Header="Cartella" Binding="{Binding TitoloCartella}" Width="0.8*" MinWidth="70"
                                     ElementStyle="{StaticResource CellaTesto}"/>
-                <DataGridTextColumn x:Name="ColonnaArea" Header="Area" Binding="{Binding NomeArea}" Width="110" MinWidth="70"
+                <DataGridTextColumn x:Name="ColonnaArea" Header="Area" Binding="{Binding NomeArea}" Width="0.6*" MinWidth="60"
                                     ElementStyle="{StaticResource CellaTesto}"/>
-                <DataGridTextColumn Header="Scadenza" Binding="{Binding Scadenza, StringFormat='dd/MM/yyyy'}" Width="85"
+
+                <!-- Solo nei risultati di una ricerca: dove e cosa è stato trovato, con le parole evidenziate -->
+                <DataGridTemplateColumn x:Name="ColonnaTrovato" Header="Trovato" Width="2.6*" MinWidth="180" SortMemberPath="Trovato">
+                    <DataGridTemplateColumn.CellTemplate>
+                        <DataTemplate>
+                            <!-- Due righe: l'estratto è lungo e la parola trovata non deve restare fuori vista -->
+                            <TextBlock viste:TestoEvidenziato.Testo="{Binding Trovato}" ToolTip="{Binding Trovato}"
+                                       VerticalAlignment="Center" Padding="4,0" FontSize="12"
+                                       TextWrapping="Wrap" TextTrimming="CharacterEllipsis" MaxHeight="34"/>
+                        </DataTemplate>
+                    </DataGridTemplateColumn.CellTemplate>
+                </DataGridTemplateColumn>
+
+                <DataGridTextColumn x:Name="ColonnaScadenza" Header="Scadenza" Binding="{Binding Scadenza, StringFormat='dd/MM/yyyy'}" Width="85"
                                     ElementStyle="{StaticResource CellaTesto}"/>
-                <DataGridTextColumn Header="Caricato il" Binding="{Binding DataCaricamento, StringFormat='dd/MM/yyyy'}" Width="85"
+                <DataGridTextColumn x:Name="ColonnaCaricato" Header="Caricato il" Binding="{Binding DataCaricamento, StringFormat='dd/MM/yyyy'}" Width="85"
                                     ElementStyle="{StaticResource CellaTesto}"/>
                 <DataGridTemplateColumn Header="Azioni" Width="Auto" MinWidth="110" CanUserSort="False">
                     <DataGridTemplateColumn.CellTemplate>

@@ -2,6 +2,7 @@ using System.Windows;
 using System.Windows.Controls;
 using System.Windows.Input;
 using System.Windows.Media;
+using CommunityToolkit.Mvvm.Input;
 using DocumentaleMarta.App.ViewModels;
 
 namespace DocumentaleMarta.App.Viste;
@@ -13,6 +14,15 @@ public partial class MainWindow : Window
         InitializeComponent();
         DataContext = viewModel;
         Loaded += async (_, _) => await viewModel.InizializzaAsync();
+
+        // Ctrl+F porta il cursore nel campo di ricerca, come in tutti i programmi.
+        InputBindings.Add(new KeyBinding(
+            new RelayCommand(() =>
+            {
+                CasellaRicerca.Focus();
+                CasellaRicerca.SelectAll();
+            }),
+            Key.F, ModifierKeys.Control));
 
         // Se il PC è rimasto acceso durante la notte, al ritorno nella finestra gli avvisi vanno rifatti per la nuova data.
         Activated += (_, _) => viewModel.ControllaCambioData();

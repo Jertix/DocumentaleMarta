@@ -56,17 +56,57 @@
 
     <DockPanel>
         <!-- Piè di pagina: dati della ditta, letti dal file delle impostazioni -->
-        <Border DockPanel.Dock="Bottom" Background="#F3F3F3" BorderBrush="#D0D0D0" BorderThickness="0,1,0,0"
-                Padding="12,6" ToolTip="{Binding DescrizioneAzienda}">
-            <TextBlock Text="{Binding TestoAzienda}" Foreground="#555" FontSize="12" TextTrimming="CharacterEllipsis"/>
+        <Border DockPanel.Dock="Bottom" Background="#F3F3F3" BorderBrush="#D0D0D0" BorderThickness="0,1,0,0" Padding="12,6">
+            <DockPanel>
+                <!-- Stato della lettura dei documenti in background (vuoto quando non c'è nulla da dire) -->
+                <TextBlock DockPanel.Dock="Right" Text="{Binding TestoIndicizzazione}" ToolTip="{Binding DettaglioIndicizzazione}"
+                           Foreground="#555" FontSize="12" Margin="16,0,0,0" TextTrimming="CharacterEllipsis"/>
+                <TextBlock Text="{Binding TestoAzienda}" ToolTip="{Binding DescrizioneAzienda}"
+                           Foreground="#555" FontSize="12" TextTrimming="CharacterEllipsis"/>
+            </DockPanel>
         </Border>
 
         <!-- Barra degli strumenti -->
         <Border DockPanel.Dock="Top" Padding="8,6" BorderBrush="#D0D0D0" BorderThickness="0,0,0,1">
-            <StackPanel Orientation="Horizontal">
-                <Button Content="Nuova area" Command="{Binding NuovaAreaCommand}" Padding="12,4"/>
-                <Button Content="Nuova cartella" Command="{Binding NuovaCartellaCommand}" Padding="12,4" Margin="8,0,0,0"/>
-            </StackPanel>
+            <DockPanel>
+                <!-- Ricerca: cerca in nome file, titolo e descrizione della cartella, area e testo dei documenti -->
+                <StackPanel DockPanel.Dock="Right" Orientation="Horizontal"
+                            Visibility="{Binding RicercaDisponibile, Converter={StaticResource BoolToVis}}">
+                    <Grid Width="320">
+                        <TextBox x:Name="CasellaRicerca" Text="{Binding TestoRicerca, UpdateSourceTrigger=PropertyChanged}"
+                                 Padding="6,4,28,4" VerticalContentAlignment="Center"
+                                 AutomationProperties.Name="Cerca nei documenti">
+                            <TextBox.InputBindings>
+                                <KeyBinding Key="Enter" Command="{Binding CercaCommand}"/>
+                                <KeyBinding Key="Escape" Command="{Binding PulisciRicercaCommand}"/>
+                            </TextBox.InputBindings>
+                        </TextBox>
+                        <TextBlock Text="Cerca nei documenti…" Foreground="#999" Margin="9,0,0,0"
+                                   VerticalAlignment="Center" IsHitTestVisible="False">
+                            <TextBlock.Style>
+                                <Style TargetType="TextBlock">
+                                    <Setter Property="Visibility" Value="Collapsed"/>
+                                    <Style.Triggers>
+                                        <DataTrigger Binding="{Binding Text, ElementName=CasellaRicerca}" Value="">
+                                            <Setter Property="Visibility" Value="Visible"/>
+                                        </DataTrigger>
+                                    </Style.Triggers>
+                                </Style>
+                            </TextBlock.Style>
+                        </TextBlock>
+                        <Button Content="&#x2715;" Command="{Binding PulisciRicercaCommand}" ToolTip="Svuota la ricerca"
+                                Width="22" Height="22" Margin="0,0,3,0" HorizontalAlignment="Right" VerticalAlignment="Center"
+                                Background="Transparent" BorderThickness="0"
+                                Visibility="{Binding TestoRicercaAttivo, Converter={StaticResource BoolToVis}}"/>
+                    </Grid>
+                    <Button Content="Cerca" Command="{Binding CercaCommand}" Padding="14,4" Margin="6,0,0,0"/>
+                </StackPanel>
+
+                <StackPanel Orientation="Horizontal">
+                    <Button Content="Nuova area" Command="{Binding NuovaAreaCommand}" Padding="12,4"/>
+                    <Button Content="Nuova cartella" Command="{Binding NuovaCartellaCommand}" Padding="12,4" Margin="8,0,0,0"/>
+                </StackPanel>
+            </DockPanel>
         </Border>
 
         <Grid>

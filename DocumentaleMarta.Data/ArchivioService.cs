@@ -5,7 +5,9 @@ using Microsoft.EntityFrameworkCore;
 
 namespace DocumentaleMarta.Data;
 
-public class ArchivioService(IDbContextFactory<AppDbContext> dbFactory, IArchivioFileService files) : IArchivioService
+/// <param name="indicizzatore">Riceve i documenti appena allegati per leggerne il testo in background; senza, non si indicizza nulla.</param>
+public class ArchivioService(
+    IDbContextFactory<AppDbContext> dbFactory, IArchivioFileService files, IIndicizzatore? indicizzatore = null) : IArchivioService
 {
     private static readonly StringComparer OrdineAlfabetico =
         StringComparer.Create(CultureInfo.GetCultureInfo("it-IT"), ignoreCase: true);
@@ -183,6 +185,7 @@ public class ArchivioService(IDbContextFactory<AppDbContext> dbFactory, IArchivi
 
             db.Cartelle.Add(cartella);
             await db.SaveChangesAsync();
+            indicizzatore?.Accoda(cartella.Documenti.Select(d => d.Id));
             return (await LeggiDettaglioAsync(db, cartella.Id))!;
         }
         catch
@@ -244,6 +247,7 @@ public class ArchivioService(IDbContextFactory<AppDbContext> dbFactory, IArchivi
                 documento.CartellaId = cartella.Id;
             db.Documenti.AddRange(documenti);
             await db.SaveChangesAsync();
+            indicizzatore?.Accoda(documenti.Select(d => d.Id));
             return documenti.Select(ADettaglio).ToList();
         }
         catch

@@ -93,13 +93,64 @@ public class DatabaseTests : IDisposable
     public void TabellaFts5_Esiste_EFunzionaConAccentiEMaiuscole()
     {
         using var db = NuovoContesto();
-        db.Database.ExecuteSqlRaw("INSERT INTO documenti_fts(documento_id, contenuto) VALUES (1, 'Fattura per la società Metalli è Più')");
-        db.Database.ExecuteSqlRaw("INSERT INTO documenti_fts(documento_id, contenuto) VALUES (2, 'Verbale di riunione')");
+        db.Database.ExecuteSqlRaw("INSERT INTO documenti_fts(rowid, contenuto) VALUES (1, 'Fattura per la società Metalli è Più')");
+        db.Database.ExecuteSqlRaw("INSERT INTO documenti_fts(rowid, contenuto) VALUES (2, 'Verbale di riunione')");
 
         var trovati = db.Database
-            .SqlQueryRaw<long>("SELECT CAST(documento_id AS INTEGER) AS Value FROM documenti_fts WHERE documenti_fts MATCH 'societa AND piu'")
+            .SqlQueryRaw<long>("SELECT rowid AS Value FROM documenti_fts WHERE documenti_fts MATCH 'societa AND piu'")
             .ToList();
 
         Assert.Equal([1L], trovati);
+    }
+
+    [Fact]
+    public void TabellaFts5_HaSoloLaColonnaDelTesto_LIdDelDocumentoELARowid()
+    {
+        using var db = NuovoContesto();
+
+        var colonne = db.Database.SqlQueryRaw<string>("SELECT name AS Value FROM pragma_table_info('documenti_fts')").ToList();
+
+        Assert.Equal(["contenuto"], colonne);
+    }
+
+    [Fact]
+    public void Trigger_EliminandoUnDocumento_LoTogliDallIndice()
+    {
+        using var db = NuovoContesto();
+        var cartella = new Cartella { Area = new Area { Nome = "A", PercorsoRelativo = "A" }, Titolo = "C", PercorsoRelativo = @"A\C" };
+        cartella.Documenti.Add(new Documento { NomeFile = "uno.txt", PercorsoRelativo = @"A\C\uno.txt", Hash = "1" });
+        cartella.Documenti.Add(new Documento { NomeFile = "due.txt", PercorsoRelativo = @"A\C\due.txt", Hash = "2" });
+        db.Cartelle.Add(cartella);
+        db.SaveChanges();
+        var (uno, due) = (cartella.Documenti[0].Id, cartella.Documenti[1].Id);
+        db.Database.ExecuteSqlRaw("INSERT INTO documenti_fts(rowid, contenuto) VALUES ({0}, 'alfa'), ({1}, 'beta')", uno, due);
+
+        db.Documenti.Remove(cartella.Documenti[0]);
+        db.SaveChanges();
+
+        var restano = db.Database.SqlQueryRaw<long>("SELECT rowid AS Value FROM documenti_fts").ToList();
+        Assert.Equal([(long)due], restano);
+    }
+
+    [Fact]
+    public void Trigger_EliminandoUnAreaACascata_SvuotaLIndiceDeiSuoiDocumenti()
+    {
+        using var db = NuovoContesto();
+        var area = new Area { Nome = "A", PercorsoRelativo = "A" };
+        var cartella = new Cartella { Area = area, Titolo = "C", PercorsoRelativo = @"A\C" };
+        cartella.Documenti.Add(new Documento { NomeFile = "uno.txt", PercorsoRelativo = @"A\C\uno.txt", Hash = "1" });
+        db.Cartelle.Add(cartella);
+        var altra = new Cartella { Area = new Area { Nome = "B", PercorsoRelativo = "B" }, Titolo = "C2", PercorsoRelativo = @"B\C2" };
+        altra.Documenti.Add(new Documento { NomeFile = "tre.txt", PercorsoRelativo = @"B\C2\tre.txt", Hash = "3" });
+        db.Cartelle.Add(altra);
+        db.SaveChanges();
+        db.Database.ExecuteSqlRaw("INSERT INTO documenti_fts(rowid, contenuto) VALUES ({0}, 'alfa'), ({1}, 'gamma')",
+            cartella.Documenti[0].Id, altra.Documenti[0].Id);
+
+        db.Aree.Remove(area); // il database elimina a cascata cartelle e documenti
+        db.SaveChanges();
+
+        var restano = db.Database.SqlQueryRaw<long>("SELECT rowid AS Value FROM documenti_fts").ToList();
+        Assert.Equal([(long)altra.Documenti[0].Id], restano);
     }
 }

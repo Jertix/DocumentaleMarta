@@ -10,17 +10,24 @@ using DocumentaleMarta.Core.Servizi;
 namespace DocumentaleMarta.App.ViewModels;
 
 /// <param name="avvisi">Decide quali scadenze segnalare; se manca lo si crea con le soglie delle impostazioni.</param>
+/// <param name="ricerca">Senza, il campo di ricerca non compare.</param>
+/// <param name="monitor">Lo stato della lettura dei documenti in background, per la barra in fondo alla finestra.</param>
+/// <param name="ocr">Serve solo a spiegare perché manca il riconoscimento del testo.</param>
 public partial class MainViewModel(
     IArchivioService archivio,
     IArchivioFileService files,
     IDialogService dialog,
     IShellService shell,
     ImpostazioniApp impostazioni,
-    AlertService? avvisi = null) : ObservableObject
+    AlertService? avvisi = null,
+    IRicercaService? ricerca = null,
+    IMonitorIndicizzazione? monitor = null,
+    IOcr? ocr = null) : ObservableObject
 {
     private readonly AlertService _avvisi = avvisi ?? new AlertService(impostazioni);
 
     private bool _caricamentoInCorso;
+    private bool _ripristinandoSelezione;
     private DateOnly _dataUltimoCalcolo;
 
     /// <summary>Contiene sempre e solo la radice "Tutti i documenti" (il TreeView vuole una lista).</summary>
@@ -40,8 +47,14 @@ public partial class MainViewModel(
     [ObservableProperty]
     private CartellaFormViewModel? _formCartella;
 
-    /// <summary>L'elenco dei documenti della radice (tutti) o dell'area selezionata; null quando è selezionato altro.</summary>
+    /// <summary>
+    /// L'elenco dei documenti della radice (tutti) o dell'area selezionata, oppure i risultati della ricerca;
+    /// null quando è selezionato altro.
+    /// </summary>
     [ObservableProperty]
+    [NotifyPropertyChangedFor(nameof(InRicerca), nameof(RiepilogoVisibile), nameof(HaPercorsoFisico),
+        nameof(TipoDettaglio), nameof(TitoloDettaglio), nameof(RiepilogoDettaglio), nameof(PercorsoDettaglio))]
+    [NotifyCanExecuteChangedFor(nameof(ApriInEsploraCommand))]
     private ElencoDocumentiViewModel? _elencoDocumenti;
 
     /// <summary>L'elenco delle scadenze, quando è selezionato il nodo "Scadenze"; null altrimenti.</summary>
@@ -49,7 +62,7 @@ public partial class MainViewModel(
     private ScadenzeViewModel? _elencoScadenze;
 
     /// <summary>L'intestazione con il riepilogo si vede per radice, aree e "Scadenze" (non per le cartelle, che hanno il loro form).</summary>
-    public bool RiepilogoVisibile => NodoSelezionato is { Tipo: not TipoNodo.Cartella };
+    public bool RiepilogoVisibile => InRicerca || NodoSelezionato is { Tipo: not TipoNodo.Cartella };
 
     private Task _caricamentoForm = Task.CompletedTask;
     private Task _caricamentoElenco = Task.CompletedTask;
@@ -68,16 +81,29 @@ public partial class MainViewModel(
         _caricamentoForm = Task.CompletedTask;
         _caricamentoElenco = Task.CompletedTask;
 
-        switch (value?.Tipo)
+        // Se c'è una ricerca in corso (es. l'albero è stato riletto) si mostrano di nuovo i suoi risultati.
+        if (TestoRicercaAttivo && value is not null)
+        {
+            _caricamentoElenco = _ricerca = EseguiRicercaAsync(TestoRicerca.Trim(), TimeSpan.Zero);
+            return;
+        }
+
+        CaricaPannello(value);
+    }
+
+    /// <summary>Carica il pannello di destra che spetta al nodo: il form di una cartella, la griglia di un'area o l'elenco delle scadenze.</summary>
+    private void CaricaPannello(NodoAlberoViewModel? nodo)
+    {
+        switch (nodo?.Tipo)
         {
             case TipoNodo.Cartella:
-                _caricamentoForm = CaricaFormAsync(value);
+                _caricamentoForm = CaricaFormAsync(nodo);
                 break;
             case TipoNodo.Radice or TipoNodo.Area:
-                _caricamentoElenco = CaricaElencoAsync(value);
+                _caricamentoElenco = CaricaElencoAsync(nodo);
                 break;
             case TipoNodo.Scadenze:
-                _caricamentoElenco = CaricaScadenzeAsync(value);
+                _caricamentoElenco = CaricaScadenzeAsync(nodo);
                 break;
         }
     }
@@ -89,12 +115,10 @@ public partial class MainViewModel(
             var elenco = new ElencoDocumentiViewModel(
                 archivio, files, dialog, shell, nodo.Tipo == TipoNodo.Area ? nodo.Id : null, _avvisi);
             await elenco.CaricaAsync();
-            if (!ReferenceEquals(NodoSelezionato, nodo))
-                return; // nel frattempo l'utente ha scelto un altro elemento
+            if (!ReferenceEquals(NodoSelezionato, nodo) || TestoRicercaAttivo)
+                return; // nel frattempo l'utente ha scelto un altro elemento o ha iniziato una ricerca
 
-            elenco.VaiAllaCartellaRichiesto += VaiAllaCartella;
-            elenco.DocumentoEliminato += OnDocumentoEliminato;
-            elenco.RicaricaRichiesta += () => _ = RicaricaSicuraAsync();
+            CollegaElenco(elenco);
             ElencoDocumenti = elenco;
         }
         catch (Exception ex)
@@ -110,7 +134,7 @@ public partial class MainViewModel(
         {
             var elenco = new ScadenzeViewModel(archivio, _avvisi);
             await elenco.CaricaAsync();
-            if (!ReferenceEquals(NodoSelezionato, nodo))
+            if (!ReferenceEquals(NodoSelezionato, nodo) || TestoRicercaAttivo)
                 return;
 
             elenco.VaiAllaCartellaRichiesto += VaiAllaCartella;
@@ -127,8 +151,8 @@ public partial class MainViewModel(
         try
         {
             var dettaglio = await archivio.CaricaCartellaAsync(nodo.Id);
-            if (!ReferenceEquals(NodoSelezionato, nodo))
-                return; // nel frattempo l'utente ha scelto un altro elemento
+            if (!ReferenceEquals(NodoSelezionato, nodo) || TestoRicercaAttivo)
+                return; // nel frattempo l'utente ha scelto un altro elemento o ha iniziato una ricerca
 
             if (dettaglio is null)
             {
@@ -167,6 +191,11 @@ public partial class MainViewModel(
             _ = RicaricaSicuraAsync();
             return;
         }
+
+        // Dai risultati di una ricerca si va alla cartella: la ricerca finisce. Se la cartella è già quella selezionata
+        // la selezione non cambia e il pannello va ricaricato da qui.
+        if (TestoRicercaAttivo)
+            EsciDallaRicerca(ricarica: nodo.IsSelected);
 
         for (var p = nodo.Padre; p is not null; p = p.Padre)
             p.IsExpanded = true;
@@ -224,11 +253,11 @@ public partial class MainViewModel(
     public bool PuoModificare => NodoSelezionato?.Tipo is TipoNodo.Area or TipoNodo.Cartella;
 
     /// <summary>Il nodo "Scadenze" non corrisponde a nessuna cartella su disco.</summary>
-    public bool HaPercorsoFisico => NodoSelezionato is { Tipo: not TipoNodo.Scadenze };
+    public bool HaPercorsoFisico => !InRicerca && NodoSelezionato is { Tipo: not TipoNodo.Scadenze };
 
     // ---------- Intestazione del pannello di destra ----------
 
-    public string TipoDettaglio => NodoSelezionato?.Tipo switch
+    public string TipoDettaglio => InRicerca ? "Ricerca" : NodoSelezionato?.Tipo switch
     {
         TipoNodo.Radice => "Archivio",
         TipoNodo.Scadenze => "Promemoria",
@@ -237,9 +266,11 @@ public partial class MainViewModel(
         _ => ""
     };
 
-    public string TitoloDettaglio => NodoSelezionato?.Nome ?? "";
+    public string TitoloDettaglio => InRicerca ? "Risultati" : NodoSelezionato?.Nome ?? "";
 
-    public string RiepilogoDettaglio => NodoSelezionato switch
+    public string RiepilogoDettaglio => ElencoDocumenti is { IsRicerca: true } risultati
+        ? RiepilogoRicerca(risultati)
+        : NodoSelezionato switch
     {
         { Tipo: TipoNodo.Radice } n =>
             $"{Conta(n.Aree.Count(), "area", "aree")}  ·  {Conta(n.NumeroCartelle, "cartella", "cartelle")}  ·  {Conta(n.NumeroDocumenti, "documento", "documenti")}",
@@ -253,13 +284,14 @@ public partial class MainViewModel(
     };
 
     public string PercorsoDettaglio =>
-        NodoSelezionato is { Tipo: not TipoNodo.Scadenze } n ? files.PercorsoAssoluto(n.PercorsoRelativo) : "";
+        !InRicerca && NodoSelezionato is { Tipo: not TipoNodo.Scadenze } n ? files.PercorsoAssoluto(n.PercorsoRelativo) : "";
 
     // ---------- Caricamento ----------
 
     /// <summary>Carica l'albero e, se le impostazioni lo prevedono, segnala le scadenze in arrivo.</summary>
     public Task InizializzaAsync() => EseguiAsync(async () =>
     {
+        SeguiIndicizzazione();
         await RicaricaAsync();
         MostraRiepilogoAvvio();
     });
@@ -319,14 +351,27 @@ public partial class MainViewModel(
             p.IsExpanded = true;
 
         // I nodi sono nuovi, quindi IsSelected passa sempre da false a true e scatta Seleziona.
-        NodoSelezionato = null;
-        daSelezionare.IsSelected = true;
+        // Non è l'utente che sceglie un altro elemento: una ricerca in corso non deve finire.
+        _ripristinandoSelezione = true;
+        try
+        {
+            NodoSelezionato = null;
+            daSelezionare.IsSelected = true;
+        }
+        finally
+        {
+            _ripristinandoSelezione = false;
+        }
     }
 
     private void Seleziona(NodoAlberoViewModel nodo)
     {
         if (_caricamentoInCorso)
             return;
+
+        // Chi sceglie un altro elemento dell'albero ha finito di cercare.
+        if (TestoRicercaAttivo && !_ripristinandoSelezione)
+            EsciDallaRicerca(ricarica: false);
 
         var precedente = NodoSelezionato;
         NodoSelezionato = nodo;
@@ -461,6 +506,199 @@ public partial class MainViewModel(
     {
         if (Radice?.Figli.FirstOrDefault(f => f.Tipo == TipoNodo.Scadenze) is { } nodo)
             nodo.IsSelected = true;
+    }
+
+    // ---------- Ricerca ----------
+
+    /// <summary>Il campo di ricerca compare solo se c'è un servizio di ricerca.</summary>
+    public bool RicercaDisponibile => ricerca is not null;
+
+    /// <summary>Quanto si aspetta, dopo l'ultimo carattere digitato, prima di cercare (per non cercare a ogni tasto).</summary>
+    public TimeSpan RitardoRicerca { get; set; } = TimeSpan.FromMilliseconds(350);
+
+    /// <summary>Quello che l'utente ha scritto nel campo di ricerca.</summary>
+    [ObservableProperty]
+    [NotifyPropertyChangedFor(nameof(TestoRicercaAttivo))]
+    private string _testoRicerca = "";
+
+    /// <summary>C'è qualcosa da cercare (il campo non è vuoto né fatto di soli spazi).</summary>
+    public bool TestoRicercaAttivo => !string.IsNullOrWhiteSpace(TestoRicerca);
+
+    /// <summary>Sono mostrati i risultati di una ricerca.</summary>
+    public bool InRicerca => ElencoDocumenti is { IsRicerca: true };
+
+    private CancellationTokenSource? _ricercaInCorso;
+    private bool _sopprimiRicerca;
+    private Task _ricerca = Task.CompletedTask;
+
+    /// <summary>Completa quando l'ultima ricerca avviata ha mostrato i suoi risultati (serve ai test).</summary>
+    public Task RicercaCompletata => _ricerca;
+
+    partial void OnTestoRicercaChanged(string value)
+    {
+        if (_sopprimiRicerca)
+            return;
+
+        AnnullaRicercaInCorso();
+        if (!TestoRicercaAttivo)
+        {
+            // Campo svuotato: si torna a mostrare ciò che spetta all'elemento selezionato.
+            ElencoDocumenti = null;
+            CaricaPannello(NodoSelezionato);
+            return;
+        }
+
+        _ricerca = EseguiRicercaAsync(value.Trim(), RitardoRicerca);
+    }
+
+    /// <summary>Cerca subito, senza aspettare (tasto Invio o pulsante "Cerca").</summary>
+    [RelayCommand]
+    private Task CercaAsync()
+    {
+        AnnullaRicercaInCorso();
+        if (!TestoRicercaAttivo)
+            return Task.CompletedTask;
+
+        return _ricerca = EseguiRicercaAsync(TestoRicerca.Trim(), TimeSpan.Zero);
+    }
+
+    [RelayCommand]
+    private void PulisciRicerca() => TestoRicerca = "";
+
+    private void AnnullaRicercaInCorso()
+    {
+        _ricercaInCorso?.Cancel();
+        _ricercaInCorso = null;
+    }
+
+    private async Task EseguiRicercaAsync(string testo, TimeSpan attesa)
+    {
+        if (ricerca is null)
+            return;
+
+        // Una sola ricerca alla volta conta: quella più recente. (Il CancellationTokenSource non ha risorse da rilasciare.)
+        AnnullaRicercaInCorso();
+        var annullamento = new CancellationTokenSource();
+        _ricercaInCorso = annullamento;
+        var token = annullamento.Token;
+
+        try
+        {
+            if (attesa > TimeSpan.Zero)
+                await Task.Delay(attesa, token);
+
+            var risultati = new ElencoDocumentiViewModel(archivio, files, dialog, shell, null, _avvisi, ricerca, testo);
+            await risultati.CaricaAsync();
+            if (token.IsCancellationRequested)
+                return; // nel frattempo il testo è cambiato: vale la ricerca più recente
+
+            FormCartella = null;
+            ElencoScadenze = null;
+            CollegaElenco(risultati);
+            ElencoDocumenti = risultati;
+        }
+        catch (OperationCanceledException)
+        {
+            // Ricerca sostituita da una più recente.
+        }
+        catch (Exception ex)
+        {
+            // Come per gli altri caricamenti in background: nessuno attende questo compito, l'errore si mostra qui.
+            dialog.MostraErrore($"La ricerca non è riuscita: {ex.Message}");
+        }
+        finally
+        {
+            if (ReferenceEquals(_ricercaInCorso, annullamento))
+                _ricercaInCorso = null;
+        }
+    }
+
+    /// <summary>Svuota il campo di ricerca senza far partire altro; se richiesto ricarica il pannello dell'elemento selezionato.</summary>
+    private void EsciDallaRicerca(bool ricarica)
+    {
+        AnnullaRicercaInCorso();
+
+        _sopprimiRicerca = true;
+        try { TestoRicerca = ""; }
+        finally { _sopprimiRicerca = false; }
+
+        if (ElencoDocumenti is { IsRicerca: true })
+            ElencoDocumenti = null;
+        if (ricarica)
+            CaricaPannello(NodoSelezionato);
+    }
+
+    private string RiepilogoRicerca(ElencoDocumentiViewModel risultati)
+    {
+        var testo = $"{Conta(risultati.Documenti.Count, "documento trovato", "documenti trovati")} per «{risultati.TestoRicerca}»";
+        return risultati.Troncato ? testo + " (ce ne sono altri: scrivi più parole per restringere la ricerca)" : testo;
+    }
+
+    /// <summary>Gli eventi delle griglie (doppio clic, eliminazione...) sono gli stessi per documenti di un'area e risultati di ricerca.</summary>
+    private void CollegaElenco(ElencoDocumentiViewModel elenco)
+    {
+        elenco.VaiAllaCartellaRichiesto += VaiAllaCartella;
+        elenco.DocumentoEliminato += OnDocumentoEliminato;
+        elenco.RicaricaRichiesta += () => _ = RicaricaSicuraAsync();
+    }
+
+    // ---------- Stato della lettura dei documenti in background ----------
+
+    /// <summary>Il messaggio nella barra in fondo alla finestra; vuoto quando non c'è nulla da dire.</summary>
+    [ObservableProperty]
+    private string _testoIndicizzazione = "";
+
+    /// <summary>Spiegazione più lunga, per il suggerimento che compare passando il mouse sul messaggio.</summary>
+    [ObservableProperty]
+    private string _dettaglioIndicizzazione = "";
+
+    private bool _indicizzazioneSeguita;
+    private SynchronizationContext? _contestoInterfaccia;
+
+    private void SeguiIndicizzazione()
+    {
+        if (monitor is null || _indicizzazioneSeguita)
+            return;
+        _indicizzazioneSeguita = true;
+
+        // Lo stato cambia su un thread in background: si torna al thread dell'interfaccia prima di toccare le proprietà.
+        _contestoInterfaccia = SynchronizationContext.Current;
+        monitor.Cambiato += () =>
+        {
+            if (_contestoInterfaccia is null)
+                AggiornaIndicizzazione();
+            else
+                _contestoInterfaccia.Post(_ => AggiornaIndicizzazione(), null);
+        };
+        AggiornaIndicizzazione();
+    }
+
+    private void AggiornaIndicizzazione()
+    {
+        if (monitor is null)
+            return;
+
+        var stato = monitor.Stato;
+        if (stato.InCoda > 0)
+        {
+            TestoIndicizzazione = stato.InElaborazione is { } nome
+                ? stato.InCoda > 1
+                    ? $"Lettura del testo: «{nome}» e altri {stato.InCoda - 1} in coda"
+                    : $"Lettura del testo: «{nome}»"
+                : $"Lettura del testo: {Conta(stato.InCoda, "documento", "documenti")} in coda";
+            DettaglioIndicizzazione = "I documenti appena allegati si leggono in background: finché non hanno finito " +
+                                      "la ricerca non trova ancora il loro contenuto (il nome del file sì).";
+        }
+        else if (stato.InAttesaOcr > 0)
+        {
+            TestoIndicizzazione = $"{Conta(stato.InAttesaOcr, "documento", "documenti")} da leggere con il riconoscimento del testo (OCR), non disponibile";
+            DettaglioIndicizzazione = ocr?.MotivoNonDisponibile ?? "Il riconoscimento del testo (OCR) non è disponibile su questo PC.";
+        }
+        else
+        {
+            TestoIndicizzazione = "";
+            DettaglioIndicizzazione = "";
+        }
     }
 
     // ---------- Comandi ----------
