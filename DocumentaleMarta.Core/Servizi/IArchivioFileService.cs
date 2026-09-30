@@ -25,8 +25,11 @@ public interface IArchivioFileService
     /// <summary>Rinomina una cartella e restituisce il nuovo percorso relativo.</summary>
     string RinominaCartella(string percorsoRelativo, string nuovoNome);
 
-    /// <summary>Manda la cartella, con tutto il contenuto, nel Cestino di Windows.</summary>
+    /// <summary>Manda la cartella, con tutto il contenuto, nel Cestino di Windows. Mai la radice.</summary>
     void EliminaCartella(string percorsoRelativo);
+
+    /// <summary>Elimina la cartella solo se è vuota, senza passare dal Cestino. Serve ad annullare una creazione fallita.</summary>
+    void RimuoviCartellaVuota(string percorsoRelativo);
 
     /// <summary>Copia un file esterno nella cartella indicata. L'originale non viene toccato.</summary>
     FileArchiviato CopiaFile(string percorsoSorgente, string cartellaRelativa);

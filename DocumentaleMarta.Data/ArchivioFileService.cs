@@ -40,9 +40,18 @@ public class ArchivioFileService(string percorsoRadice, bool usaCestino = true) 
         return Path.Combine(padreRelativo, nomeFinale);
     }
 
+    /// <summary>Come <see cref="PercorsoAssoluto"/> ma rifiuta la radice: rinominarla o eliminarla sarebbe un disastro.</summary>
+    private string PercorsoSottocartella(string percorsoRelativo)
+    {
+        var percorso = PercorsoAssoluto(percorsoRelativo);
+        if (percorso.Equals(Path.TrimEndingDirectorySeparator(PercorsoRadice), StringComparison.OrdinalIgnoreCase))
+            throw new ArgumentException("L'operazione non è consentita sulla radice dell'archivio.", nameof(percorsoRelativo));
+        return percorso;
+    }
+
     public string RinominaCartella(string percorsoRelativo, string nuovoNome)
     {
-        var origine = PercorsoAssoluto(percorsoRelativo);
+        var origine = PercorsoSottocartella(percorsoRelativo);
         if (!Directory.Exists(origine))
             throw new DirectoryNotFoundException($"Cartella non trovata: {percorsoRelativo}");
 
@@ -66,7 +75,7 @@ public class ArchivioFileService(string percorsoRadice, bool usaCestino = true) 
 
     public void EliminaCartella(string percorsoRelativo)
     {
-        var percorso = PercorsoAssoluto(percorsoRelativo);
+        var percorso = PercorsoSottocartella(percorsoRelativo);
         if (!Directory.Exists(percorso))
             return;
 
@@ -74,6 +83,13 @@ public class ArchivioFileService(string percorsoRadice, bool usaCestino = true) 
             FileSystem.DeleteDirectory(percorso, UIOption.OnlyErrorDialogs, RecycleOption.SendToRecycleBin);
         else
             Directory.Delete(percorso, recursive: true);
+    }
+
+    public void RimuoviCartellaVuota(string percorsoRelativo)
+    {
+        var percorso = PercorsoSottocartella(percorsoRelativo);
+        if (Directory.Exists(percorso) && !Directory.EnumerateFileSystemEntries(percorso).Any())
+            Directory.Delete(percorso);
     }
 
     public FileArchiviato CopiaFile(string percorsoSorgente, string cartellaRelativa)

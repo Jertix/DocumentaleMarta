@@ -139,6 +139,34 @@ public class ArchivioFileServiceTests : IDisposable
         Assert.Equal("gia in B", File.ReadAllText(_servizio.PercorsoAssoluto(Path.Combine("B", "doc.txt"))));
     }
 
+    [Theory]
+    [InlineData("")]
+    [InlineData(".")]
+    public void RadiceDellArchivio_NonSiPuoRinominareEliminareORimuovere(string radice)
+    {
+        _servizio.CreaCartella("", "A");
+
+        Assert.Throws<ArgumentException>(() => _servizio.EliminaCartella(radice));
+        Assert.Throws<ArgumentException>(() => _servizio.RinominaCartella(radice, "X"));
+        Assert.Throws<ArgumentException>(() => _servizio.RimuoviCartellaVuota(radice));
+        Assert.True(Directory.Exists(_servizio.PercorsoAssoluto("A")));
+    }
+
+    [Fact]
+    public void RimuoviCartellaVuota_RimuoveSoloSeVuota()
+    {
+        var vuota = _servizio.CreaCartella("", "Vuota");
+        var piena = _servizio.CreaCartella("", "Piena");
+        _servizio.CopiaFile(_tmp.CreaFile("x.txt"), piena);
+
+        _servizio.RimuoviCartellaVuota(vuota);
+        _servizio.RimuoviCartellaVuota(piena);
+        _servizio.RimuoviCartellaVuota("NonEsiste");
+
+        Assert.False(_servizio.Esiste(vuota));
+        Assert.True(_servizio.Esiste(piena));
+    }
+
     [Fact]
     public void EliminaFile_EEliminaCartella_RimuovonoDalDisco_EToleranoIlGiaEliminato()
     {

@@ -14,11 +14,20 @@ public class ImpostazioniService(string? percorsoFile = null)
 
     public string PercorsoFile { get; } = percorsoFile ?? PercorsoPredefinito();
 
-    public static string PercorsoPredefinito() =>
-        Path.Combine(
+    public const string VariabileAmbientePercorso = "DOCUMENTALE_MARTA_IMPOSTAZIONI";
+
+    /// <summary>%AppData%\DocumentaleMarta\impostazioni.json, salvo che la variabile d'ambiente indichi un altro file (utile per le prove).</summary>
+    public static string PercorsoPredefinito()
+    {
+        var personalizzato = Environment.GetEnvironmentVariable(VariabileAmbientePercorso);
+        if (!string.IsNullOrWhiteSpace(personalizzato))
+            return personalizzato;
+
+        return Path.Combine(
             Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData),
             "DocumentaleMarta",
             "impostazioni.json");
+    }
 
     /// <exception cref="InvalidDataException">Il file esiste ma non è un JSON valido.</exception>
     public ImpostazioniApp Carica()
