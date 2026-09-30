@@ -43,10 +43,72 @@ public partial class MainViewModel(
     /// <summary>Completa quando il form della selezione corrente è pronto (serve ai test).</summary>
     public Task CaricamentoFormCompletato => _caricamentoForm;
 
+    // ---------- Griglia documenti della radice o dell'area selezionata ----------
+
+    /// <summary>L'elenco dei documenti della radice (tutti) o dell'area selezionata; null quando è selezionata una cartella.</summary>
+    [ObservableProperty]
+    private ElencoDocumentiViewModel? _elencoDocumenti;
+
+    private Task _caricamentoElenco = Task.CompletedTask;
+
+    /// <summary>Completa quando l'elenco della selezione corrente è pronto (serve ai test).</summary>
+    public Task CaricamentoElencoCompletato => _caricamentoElenco;
+
     partial void OnNodoSelezionatoChanged(NodoAlberoViewModel? value)
     {
         FormCartella = null;
+        ElencoDocumenti = null;
         _caricamentoForm = value?.Tipo == TipoNodo.Cartella ? CaricaFormAsync(value) : Task.CompletedTask;
+        _caricamentoElenco = value is { Tipo: not TipoNodo.Cartella } ? CaricaElencoAsync(value) : Task.CompletedTask;
+    }
+
+    private async Task CaricaElencoAsync(NodoAlberoViewModel nodo)
+    {
+        try
+        {
+            var elenco = new ElencoDocumentiViewModel(
+                archivio, files, dialog, shell, nodo.Tipo == TipoNodo.Area ? nodo.Id : null);
+            await elenco.CaricaAsync();
+            if (!ReferenceEquals(NodoSelezionato, nodo))
+                return; // nel frattempo l'utente ha scelto un altro elemento
+
+            elenco.VaiAllaCartellaRichiesto += VaiAllaCartella;
+            elenco.DocumentoEliminato += OnDocumentoEliminato;
+            elenco.RicaricaRichiesta += () => _ = RicaricaSicuraAsync();
+            ElencoDocumenti = elenco;
+        }
+        catch (Exception ex)
+        {
+            // Come per il form: nessuno attende questo compito, quindi l'errore va mostrato qui.
+            dialog.MostraErrore($"Non è stato possibile caricare i documenti: {ex.Message}");
+        }
+    }
+
+    /// <summary>Seleziona nell'albero la cartella indicata, aprendo i rami che la contengono.</summary>
+    private void VaiAllaCartella(int cartellaId)
+    {
+        var nodo = Radici.SelectMany(r => r.ConDiscendenti())
+            .FirstOrDefault(n => n.Chiave == NodoAlberoViewModel.CreaChiave(TipoNodo.Cartella, cartellaId));
+        if (nodo is null)
+        {
+            // L'elenco mostrava un documento di una cartella che nell'albero non c'è più.
+            _ = RicaricaSicuraAsync();
+            return;
+        }
+
+        for (var p = nodo.Padre; p is not null; p = p.Padre)
+            p.IsExpanded = true;
+        nodo.IsSelected = true;
+    }
+
+    private void OnDocumentoEliminato(int cartellaId)
+    {
+        var nodo = Radici.SelectMany(r => r.ConDiscendenti())
+            .FirstOrDefault(n => n.Chiave == NodoAlberoViewModel.CreaChiave(TipoNodo.Cartella, cartellaId));
+        nodo?.ImpostaNumeroDocumenti(Math.Max(0, nodo.NumeroDocumenti - 1));
+
+        // Il riepilogo sopra la griglia ("N documenti") dipende dai contatori dei nodi.
+        OnPropertyChanged(nameof(RiepilogoDettaglio));
     }
 
     private async Task CaricaFormAsync(NodoAlberoViewModel nodo)

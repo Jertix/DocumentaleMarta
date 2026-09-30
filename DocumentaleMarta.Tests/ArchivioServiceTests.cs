@@ -611,6 +611,63 @@ public class ArchivioServiceTests : IDisposable
     public async Task EliminaDocumento_Inesistente_DaErroreChiaro() =>
         await Assert.ThrowsAsync<ArchivioException>(() => _servizio.EliminaDocumentoAsync(999));
 
+    // ---------- Elenco documenti (radice e aree) ----------
+
+    private async Task<(int Area1, int Area2)> DueAreeConDocumentiAsync()
+    {
+        var a1 = await _servizio.CreaAreaAsync("Fatture");
+        var a2 = await _servizio.CreaAreaAsync("INPS");
+        var c1 = await _servizio.CreaCartellaConDatiAsync(a1, Dati("Fattura 1", scadenza: new DateOnly(2026, 11, 30)), []);
+        var c2 = await _servizio.CreaCartellaConDatiAsync(a2, Dati("Contributi"), []);
+
+        using var db = _factory.CreateDbContext();
+        db.Documenti.AddRange(
+            new Documento { CartellaId = c1.Id, NomeFile = "vecchio.pdf", Estensione = ".pdf", Dimensione = 10, Hash = "1",
+                            PercorsoRelativo = @"Fatture\Fattura 1\vecchio.pdf", DataCaricamento = new DateTime(2026, 1, 1) },
+            new Documento { CartellaId = c2.Id, NomeFile = "nuovo.docx", Estensione = ".docx", Dimensione = 20, Hash = "2",
+                            PercorsoRelativo = @"INPS\Contributi\nuovo.docx", DataCaricamento = new DateTime(2026, 9, 1) },
+            new Documento { CartellaId = c1.Id, NomeFile = "medio.jpg", Estensione = ".jpg", Dimensione = 30, Hash = "3",
+                            PercorsoRelativo = @"Fatture\Fattura 1\medio.jpg", DataCaricamento = new DateTime(2026, 5, 1) });
+        db.SaveChanges();
+        return (a1, a2);
+    }
+
+    [Fact]
+    public async Task CaricaDocumenti_Tutti_DalPiuRecenteAlPiuVecchio_ConCartellaEAreaEScadenza()
+    {
+        await DueAreeConDocumentiAsync();
+
+        var elenco = await _servizio.CaricaDocumentiAsync(null);
+
+        Assert.Equal(["nuovo.docx", "medio.jpg", "vecchio.pdf"], elenco.Select(d => d.NomeFile));
+        var nuovo = elenco[0];
+        Assert.Equal("Contributi", nuovo.TitoloCartella);
+        Assert.Equal("INPS", nuovo.NomeArea);
+        Assert.Null(nuovo.ScadenzaCartella);
+        Assert.Equal(20, nuovo.Dimensione);
+        Assert.Equal(new DateOnly(2026, 11, 30), elenco[1].ScadenzaCartella);
+        Assert.Equal("Fatture", elenco[1].NomeArea);
+    }
+
+    [Fact]
+    public async Task CaricaDocumenti_DiUnArea_SoloQuelliDiQuellArea()
+    {
+        var (a1, a2) = await DueAreeConDocumentiAsync();
+
+        Assert.Equal(["medio.jpg", "vecchio.pdf"], (await _servizio.CaricaDocumentiAsync(a1)).Select(d => d.NomeFile));
+        Assert.Equal(["nuovo.docx"], (await _servizio.CaricaDocumentiAsync(a2)).Select(d => d.NomeFile));
+    }
+
+    [Fact]
+    public async Task CaricaDocumenti_AreaSenzaDocumentiOInesistente_ListaVuota()
+    {
+        var area = await _servizio.CreaAreaAsync("Vuota");
+
+        Assert.Empty(await _servizio.CaricaDocumentiAsync(area));
+        Assert.Empty(await _servizio.CaricaDocumentiAsync(999));
+        Assert.Empty(await _servizio.CaricaDocumentiAsync(null));
+    }
+
     // ---------- Supporto ----------
 
     /// <summary>Inserisce un documento nel database e il file corrispondente sul disco. Restituisce il percorso relativo.</summary>

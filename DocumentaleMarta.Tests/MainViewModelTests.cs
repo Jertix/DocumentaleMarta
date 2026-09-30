@@ -393,6 +393,128 @@ public class MainViewModelTests : IDisposable
         Assert.Null(_vm.FormCartella);
     }
 
+    // ---------- Griglia documenti di radice e aree ----------
+
+    /// <summary>Fatture/Fattura 1 (uno.pdf, due.jpg) e INPS/Contributi (tre.docx).</summary>
+    private async Task PreparaDocumentiAsync()
+    {
+        var fatture = await _archivio.CreaAreaAsync("Fatture");
+        var inps = await _archivio.CreaAreaAsync("INPS");
+        await _archivio.CreaCartellaConDatiAsync(fatture, new("Fattura 1", null, null, false, null),
+            [_tmp.CreaFile("s/uno.pdf"), _tmp.CreaFile("s/due.jpg")]);
+        await _archivio.CreaCartellaConDatiAsync(inps, new("Contributi", null, null, false, null),
+            [_tmp.CreaFile("s/tre.docx")]);
+        await _vm.InizializzaAsync();
+        await _vm.CaricamentoElencoCompletato;
+    }
+
+    [Fact]
+    public async Task SelezionandoLaRadice_SiVedonoTuttiIDocumenti_ELAreaFiltra_LaCartellaMostraIlForm()
+    {
+        await PreparaDocumentiAsync();
+
+        Assert.Equal(3, _vm.ElencoDocumenti!.Documenti.Count);
+        Assert.True(_vm.ElencoDocumenti.MostraArea);
+        Assert.True(_vm.RiepilogoVisibile);
+
+        Area("INPS").IsSelected = true;
+        await _vm.CaricamentoElencoCompletato;
+        Assert.Equal(["tre.docx"], _vm.ElencoDocumenti!.Documenti.Select(d => d.NomeFile));
+        Assert.False(_vm.ElencoDocumenti.MostraArea);
+
+        Cartella("Fatture", "Fattura 1").IsSelected = true;
+        await _vm.CaricamentoFormCompletato;
+        Assert.Null(_vm.ElencoDocumenti);
+        Assert.NotNull(_vm.FormCartella);
+
+        Radice.IsSelected = true;
+        await _vm.CaricamentoElencoCompletato;
+        Assert.Equal(3, _vm.ElencoDocumenti!.Documenti.Count);
+        Assert.Null(_vm.FormCartella);
+    }
+
+    [Fact]
+    public async Task DoppioClicSuUnDocumento_SelezionaLaSuaCartella_ApreIRamiEMostraIlForm()
+    {
+        await PreparaDocumentiAsync();
+        Assert.False(Area("INPS").IsExpanded);
+        var riga = _vm.ElencoDocumenti!.Documenti.Single(d => d.NomeFile == "tre.docx");
+
+        riga.VaiAllaCartellaCommand.Execute(null);
+        await _vm.CaricamentoFormCompletato;
+
+        Assert.Same(Cartella("INPS", "Contributi"), _vm.NodoSelezionato);
+        Assert.True(Area("INPS").IsExpanded);
+        Assert.Equal("Contributi", _vm.FormCartella!.Titolo);
+        Assert.Null(_vm.ElencoDocumenti);
+    }
+
+    [Fact]
+    public async Task EliminandoUnDocumentoDallaGriglia_IContatoriEIlRiepilogoSiAggiornano()
+    {
+        await PreparaDocumentiAsync();
+        var notifiche = new List<string?>();
+        _vm.PropertyChanged += (_, e) => notifiche.Add(e.PropertyName);
+        Assert.Contains("3 documenti", _vm.RiepilogoDettaglio);
+
+        await _vm.ElencoDocumenti!.Documenti.Single(d => d.NomeFile == "uno.pdf").EliminaCommand.ExecuteAsync(null);
+
+        Assert.Equal(1, Cartella("Fatture", "Fattura 1").NumeroDocumenti);
+        Assert.Equal(1, Area("Fatture").NumeroDocumenti);
+        Assert.Equal(2, Radice.NumeroDocumenti);
+        Assert.Contains("2 documenti", _vm.RiepilogoDettaglio);
+        Assert.Contains(nameof(MainViewModel.RiepilogoDettaglio), notifiche);
+        Assert.Equal(2, _vm.ElencoDocumenti.Documenti.Count);
+    }
+
+    [Fact]
+    public async Task DocumentoAllegatoDalForm_CompareNellaGrigliaTornandoAllaRadice()
+    {
+        await PreparaDocumentiAsync();
+        Cartella("INPS", "Contributi").IsSelected = true;
+        await _vm.CaricamentoFormCompletato;
+        _dialog.RispondiFile(_tmp.CreaFile("s/nuovo.pdf"));
+        await _vm.FormCartella!.AllegaCommand.ExecuteAsync(null);
+
+        Radice.IsSelected = true;
+        await _vm.CaricamentoElencoCompletato;
+
+        Assert.Contains(_vm.ElencoDocumenti!.Documenti, d => d.NomeFile == "nuovo.pdf");
+        Assert.Equal(4, _vm.ElencoDocumenti.Documenti.Count);
+        Assert.Contains("4 documenti", _vm.RiepilogoDettaglio);
+    }
+
+    [Fact]
+    public async Task RinominandoUnAreaSelezionata_LaGrigliaSiRicaricaPerLaNuovaArea()
+    {
+        await PreparaDocumentiAsync();
+        Area("INPS").IsSelected = true;
+        await _vm.CaricamentoElencoCompletato;
+
+        _dialog.RispondiTesto("Previdenza");
+        await _vm.RinominaCommand.ExecuteAsync(null);
+        await _vm.CaricamentoElencoCompletato;
+
+        Assert.Same(Area("Previdenza"), _vm.NodoSelezionato);
+        Assert.Equal(["tre.docx"], _vm.ElencoDocumenti!.Documenti.Select(d => d.NomeFile));
+        Assert.Equal("Previdenza", _vm.ElencoDocumenti.Documenti[0].NomeArea);
+    }
+
+    [Fact]
+    public async Task UnDocumentoEliminatoAltrove_LaGrigliaChiedeDiRicaricare_EL_AlberoSiAllinea()
+    {
+        await PreparaDocumentiAsync();
+        var riga = _vm.ElencoDocumenti!.Documenti.Single(d => d.NomeFile == "tre.docx");
+        await _archivio.EliminaDocumentoAsync(riga.Id);
+
+        await riga.EliminaCommand.ExecuteAsync(null);
+        await _vm.CaricamentoElencoCompletato;
+
+        Assert.Contains("non esiste più", Assert.Single(_dialog.Errori));
+        Assert.Equal(2, _vm.ElencoDocumenti!.Documenti.Count);
+        Assert.Equal(0, Cartella("INPS", "Contributi").NumeroDocumenti);
+    }
+
     // ---------- Rinomina ----------
 
     [Fact]

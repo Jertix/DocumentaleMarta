@@ -26,11 +26,15 @@ public sealed class ArchivioDiProva : IDisposable
     public string Fisico(params string[] parti) => Files.PercorsoAssoluto(Path.Combine(parti));
 
     /// <summary>Crea un'area e una cartella con i file indicati (creati al volo fuori dall'archivio).</summary>
-    public async Task<CartellaDettaglio> CreaCartellaAsync(string area, string titolo, params string[] nomiFile)
+    public async Task<CartellaDettaglio> CreaCartellaAsync(string area, string titolo, params string[] nomiFile) =>
+        await CreaCartellaInAreaAsync(await Servizio.CreaAreaAsync(area), titolo, nomiFile);
+
+    /// <summary>Crea una cartella in un'area già esistente, con i file indicati (creati al volo fuori dall'archivio).</summary>
+    public async Task<CartellaDettaglio> CreaCartellaInAreaAsync(
+        int areaId, string titolo, string[] nomiFile, DateOnly? scadenza = null)
     {
-        var areaId = await Servizio.CreaAreaAsync(area);
         var sorgenti = nomiFile.Select(n => Tmp.CreaFile(Path.Combine("sorgenti", n), "contenuto di " + n)).ToList();
-        return await Servizio.CreaCartellaConDatiAsync(areaId, new DatiCartella(titolo, null, null, false, null), sorgenti);
+        return await Servizio.CreaCartellaConDatiAsync(areaId, new DatiCartella(titolo, null, scadenza, false, null), sorgenti);
     }
 
     public void Dispose() => Tmp.Dispose();

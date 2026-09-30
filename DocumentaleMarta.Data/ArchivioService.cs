@@ -271,6 +271,31 @@ public class ArchivioService(IDbContextFactory<AppDbContext> dbFactory, IArchivi
         await EliminaConCestinoAsync(db, cartella, cartella.PercorsoRelativo);
     }
 
+    public async Task<IReadOnlyList<DocumentoElenco>> CaricaDocumentiAsync(int? areaId)
+    {
+        await using var db = await dbFactory.CreateDbContextAsync();
+
+        var righe = await db.Documenti.AsNoTracking()
+            .Where(d => areaId == null || d.Cartella.AreaId == areaId)
+            .Select(d => new
+            {
+                d.Id, d.NomeFile, d.Estensione, d.Dimensione, d.DataCaricamento, d.PercorsoRelativo,
+                d.CartellaId,
+                TitoloCartella = d.Cartella.Titolo,
+                d.Cartella.AreaId,
+                NomeArea = d.Cartella.Area.Nome,
+                Scadenza = d.Cartella.DataScadenza
+            })
+            .ToListAsync();
+
+        return righe
+            .OrderByDescending(d => d.DataCaricamento).ThenByDescending(d => d.Id)
+            .Select(d => new DocumentoElenco(
+                d.Id, d.NomeFile, d.Estensione, d.Dimensione, d.DataCaricamento, d.PercorsoRelativo,
+                d.CartellaId, d.TitoloCartella, d.AreaId, d.NomeArea, d.Scadenza))
+            .ToList();
+    }
+
     // ---------- Supporto ----------
 
     private static string Valida(string? testo, int lunghezzaMassima) =>

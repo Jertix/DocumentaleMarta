@@ -171,6 +171,154 @@ public class VisteTests
         Assert.Empty(errori);
     }
 
+    private static async Task<ElencoDocumentiViewModel> ElencoConDocumentiAsync(ArchivioDiProva a, int? areaId = null)
+    {
+        var fatture = await a.Servizio.CreaAreaAsync("Fatture");
+        var inps = await a.Servizio.CreaAreaAsync("Previdenza sociale");
+        await a.CreaCartellaInAreaAsync(fatture, "Fattura 123", ["Fattura 123.pdf", "scansione.jpg"], new DateOnly(2026, 10, 31));
+        await a.CreaCartellaInAreaAsync(inps, "Contributi 2026", ["F24 settembre.pdf", "relazione con un nome davvero molto lungo.docx"]);
+        File.Delete(a.Fisico("Fatture", "Fattura 123", "scansione.jpg")); // una riga col file mancante
+
+        var elenco = new ElencoDocumentiViewModel(a.Servizio, a.Files, a.Dialog, a.Shell, areaId is null ? null : fatture);
+        await elenco.CaricaAsync();
+        return elenco;
+    }
+
+    [Fact]
+    public async Task ElencoView_TuttiIDocumenti_SiDisegna_ConLaColonnaArea_SenzaErroriDiBinding()
+    {
+        using var a = new ArchivioDiProva();
+        var elenco = await ElencoConDocumentiAsync(a);
+
+        var errori = InSta(() =>
+        {
+            var vista = new ElencoView { DataContext = elenco };
+            Disegna(vista, 780, 360, "elenco-tutti");
+
+            var griglia = FindDataGrid(vista)!;
+            Assert.Equal(4, griglia.Items.Count);
+            Assert.Equal(Visibility.Visible, griglia.Columns.Single(c => (string)c.Header == "Area").Visibility);
+        });
+
+        Assert.Empty(errori);
+    }
+
+    [Fact]
+    public async Task ElencoView_DiUnArea_NascondeLaColonnaArea()
+    {
+        using var a = new ArchivioDiProva();
+        var elenco = await ElencoConDocumentiAsync(a, areaId: 1);
+
+        var errori = InSta(() =>
+        {
+            var vista = new ElencoView { DataContext = elenco };
+            Disegna(vista, 780, 360, "elenco-area");
+
+            var griglia = FindDataGrid(vista)!;
+            Assert.Equal(2, griglia.Items.Count);
+            Assert.Equal(Visibility.Collapsed, griglia.Columns.Single(c => (string)c.Header == "Area").Visibility);
+        });
+
+        Assert.Empty(errori);
+    }
+
+    [Fact]
+    public async Task ElencoView_Vuoto_SiDisegna_SenzaErroriDiBinding()
+    {
+        using var a = new ArchivioDiProva();
+        var elenco = new ElencoDocumentiViewModel(a.Servizio, a.Files, a.Dialog, a.Shell, null);
+        await elenco.CaricaAsync();
+
+        var errori = InSta(() => Disegna(new ElencoView { DataContext = elenco }, 780, 300, "elenco-vuoto"));
+
+        Assert.Empty(errori);
+    }
+
+    [Fact]
+    public async Task ElencoView_DoppioClicSuUnaRiga_VaAllaCartella_MaNonSeSiClicSuUnPulsante()
+    {
+        using var a = new ArchivioDiProva();
+        var elenco = await ElencoConDocumentiAsync(a);
+        var richieste = new List<int>();
+        elenco.VaiAllaCartellaRichiesto += richieste.Add;
+
+        InSta(() =>
+        {
+            var vista = new ElencoView { DataContext = elenco };
+            Disegna(vista, 780, 360, "elenco-doppio-clic");
+            var griglia = FindDataGrid(vista)!;
+            var riga = (DataGridRow)griglia.ItemContainerGenerator.ContainerFromIndex(0);
+            var cartellaDellaRiga = ((DocumentoElencoViewModel)riga.DataContext).CartellaId;
+
+            // Doppio clic sulla riga (sul testo): si va alla cartella.
+            var sulTesto = FindFirst<TextBlock>(riga)!;
+            sulTesto.RaiseEvent(NuovoDoppioClic());
+            Assert.Equal([cartellaDellaRiga], richieste);
+
+            // Doppio clic su un pulsante della riga: nessun cambio di cartella.
+            FindFirst<Button>(riga)!.RaiseEvent(NuovoDoppioClic());
+            Assert.Single(richieste);
+
+            // Doppio clic sull'intestazione delle colonne: nessun cambio di cartella.
+            FindFirst<System.Windows.Controls.Primitives.DataGridColumnHeader>(griglia)!.RaiseEvent(NuovoDoppioClic());
+            Assert.Single(richieste);
+
+            // Un solo clic sulla riga non basta.
+            var singolo = NuovoDoppioClic();
+            typeof(System.Windows.Input.MouseButtonEventArgs).GetProperty("ClickCount")!.GetSetMethod(true)!.Invoke(singolo, [1]);
+            sulTesto.RaiseEvent(singolo);
+            Assert.Single(richieste);
+        });
+    }
+
+    /// <summary>Un clic sinistro con ClickCount = 2, come lo genera Windows per il secondo clic di un doppio clic.</summary>
+    private static System.Windows.Input.MouseButtonEventArgs NuovoDoppioClic()
+    {
+        var evento = new System.Windows.Input.MouseButtonEventArgs(
+            System.Windows.Input.Mouse.PrimaryDevice, Environment.TickCount, System.Windows.Input.MouseButton.Left)
+        {
+            RoutedEvent = UIElement.MouseDownEvent
+        };
+        // ClickCount si può impostare solo dall'interno di WPF.
+        typeof(System.Windows.Input.MouseButtonEventArgs)
+            .GetProperty(nameof(System.Windows.Input.MouseButtonEventArgs.ClickCount))!
+            .GetSetMethod(nonPublic: true)!.Invoke(evento, [2]);
+        return evento;
+    }
+
+    private static T? FindFirst<T>(DependencyObject radice) where T : DependencyObject
+    {
+        for (var i = 0; i < VisualTreeHelper.GetChildrenCount(radice); i++)
+        {
+            var figlio = VisualTreeHelper.GetChild(radice, i);
+            if (figlio is T trovato)
+                return trovato;
+            if (FindFirst<T>(figlio) is { } piuInProfondita)
+                return piuInProfondita;
+        }
+        return null;
+    }
+
+    [Fact]
+    public async Task FinestraPrincipale_ConLaRadiceSelezionata_MostraLaGrigliaDiTuttiIDocumenti()
+    {
+        using var a = new ArchivioDiProva();
+        var fatture = await a.Servizio.CreaAreaAsync("Fatture");
+        await a.CreaCartellaInAreaAsync(fatture, "Fattura 123", ["Fattura 123.pdf", "scansione.jpg"], new DateOnly(2026, 10, 31));
+        var vm = new MainViewModel(a.Servizio, a.Files, a.Dialog, a.Shell, new ImpostazioniApp { PercorsoRadice = a.Radice });
+        await vm.InizializzaAsync();
+        await vm.CaricamentoElencoCompletato;
+
+        var errori = InSta(() =>
+        {
+            var finestra = new MainWindow(vm);
+            Disegna((FrameworkElement)finestra.Content, 1100, 680, "finestra-radice");
+            Assert.Equal(2, FindDataGrid((FrameworkElement)finestra.Content)!.Items.Count);
+        });
+
+        Assert.Empty(errori);
+    }
+
     private static DataGrid? FindDataGrid(DependencyObject radice)
     {
         for (var i = 0; i < VisualTreeHelper.GetChildrenCount(radice); i++)

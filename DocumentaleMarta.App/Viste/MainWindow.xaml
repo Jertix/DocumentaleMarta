@@ -78,14 +78,31 @@
 
             <!-- Pannello di destra: riepilogo per radice e aree, form per le cartelle -->
             <Grid Grid.Column="2">
-                <StackPanel Margin="28,24" Visibility="{Binding RiepilogoVisibile, Converter={StaticResource BoolToVis}}">
-                    <TextBlock Text="{Binding TipoDettaglio}" Foreground="#777" FontSize="13"/>
-                    <TextBlock Text="{Binding TitoloDettaglio}" FontSize="26" FontWeight="SemiBold" TextWrapping="Wrap" Margin="0,2,0,0"/>
-                    <TextBlock Text="{Binding RiepilogoDettaglio}" Foreground="#444" Margin="0,10,0,0"/>
-                    <TextBlock Text="{Binding PercorsoDettaglio}" Foreground="#777" FontSize="12" TextWrapping="Wrap" Margin="0,4,0,0"/>
-                    <Button Content="Apri in Esplora file" Command="{Binding ApriInEsploraCommand}"
-                            HorizontalAlignment="Left" Padding="12,4" Margin="0,16,0,0"/>
-                </StackPanel>
+                <!-- Radice e aree: intestazione con il riepilogo e sotto la griglia dei documenti -->
+                <DockPanel Visibility="{Binding RiepilogoVisibile, Converter={StaticResource BoolToVis}}">
+                    <DockPanel DockPanel.Dock="Top" Margin="28,22,28,14">
+                        <Button DockPanel.Dock="Right" Content="Apri in Esplora file" Command="{Binding ApriInEsploraCommand}"
+                                VerticalAlignment="Top" Padding="12,4" Margin="16,4,0,0"/>
+                        <StackPanel>
+                            <TextBlock Text="{Binding TipoDettaglio}" Foreground="#777" FontSize="13"/>
+                            <TextBlock Text="{Binding TitoloDettaglio}" FontSize="26" FontWeight="SemiBold" TextWrapping="Wrap" Margin="0,2,0,0"/>
+                            <TextBlock Text="{Binding RiepilogoDettaglio}" Foreground="#444" Margin="0,8,0,0"/>
+                            <TextBlock Text="{Binding PercorsoDettaglio}" Foreground="#777" FontSize="12" TextWrapping="Wrap" Margin="0,2,0,0"/>
+                        </StackPanel>
+                    </DockPanel>
+
+                    <viste:ElencoView DataContext="{Binding ElencoDocumenti}" Margin="28,0,28,20">
+                        <viste:ElencoView.Style>
+                            <Style TargetType="viste:ElencoView">
+                                <Style.Triggers>
+                                    <DataTrigger Binding="{Binding}" Value="{x:Null}">
+                                        <Setter Property="Visibility" Value="Collapsed"/>
+                                    </DataTrigger>
+                                </Style.Triggers>
+                            </Style>
+                        </viste:ElencoView.Style>
+                    </viste:ElencoView>
+                </DockPanel>
 
                 <viste:CartellaView DataContext="{Binding FormCartella}">
                     <viste:CartellaView.Style>

@@ -19,6 +19,7 @@ public partial class CartellaFormViewModel : CartellaCampiViewModel
     private readonly IArchivioFileService _files;
     private readonly IDialogService _dialog;
     private readonly IShellService _shell;
+    private readonly AzioniDocumenti _azioni;
 
     private DatiCartella _salvati;
     private bool _salvataggioInCorso;
@@ -33,6 +34,7 @@ public partial class CartellaFormViewModel : CartellaCampiViewModel
         _files = files;
         _dialog = dialog;
         _shell = shell;
+        _azioni = new AzioniDocumenti(archivio, files, dialog, shell);
 
         Id = dettaglio.Id;
         NomeArea = dettaglio.NomeArea;
@@ -222,60 +224,30 @@ public partial class CartellaFormViewModel : CartellaCampiViewModel
 
     internal void ApriDocumento(DocumentoViewModel documento)
     {
-        if (!VerificaFile(documento, out var percorso))
-            return;
-
-        try
-        {
-            _shell.ApriFile(percorso);
-        }
-        catch (Win32Exception)
-        {
-            _dialog.MostraErrore(
-                $"Windows non ha un programma per aprire questo tipo di file ({documento.Tipo}).\n\nUsa «Apri nella cartella» e scegli tu il programma.");
-        }
+        // La riga si aggiorna: se il file è sparito la prossima volta si vede subito.
+        documento.FileMancante = !_azioni.FileEsiste(documento.PercorsoRelativo);
+        if (!documento.FileMancante)
+            _azioni.Apri(documento.PercorsoRelativo, documento.Tipo);
     }
 
     internal void MostraDocumentoInEsplora(DocumentoViewModel documento)
     {
-        if (VerificaFile(documento, out var percorso))
-            _shell.MostraFileInEsplora(percorso);
+        documento.FileMancante = !_azioni.FileEsiste(documento.PercorsoRelativo);
+        if (!documento.FileMancante)
+            _azioni.MostraInEsplora(documento.PercorsoRelativo);
     }
 
     internal async Task EliminaDocumentoAsync(DocumentoViewModel documento)
     {
-        if (!_dialog.Conferma(
-                "Elimina documento",
-                $"Eliminare il documento «{documento.NomeFile}»?\n\nIl file viene spostato nel Cestino di Windows."))
-            return;
-
-        try
+        switch (await _azioni.EliminaAsync(documento.Id, documento.NomeFile))
         {
-            await _archivio.EliminaDocumentoAsync(documento.Id);
-            Documenti.Remove(documento);
-            NumeroDocumentiCambiato?.Invoke(Documenti.Count);
+            case EsitoEliminazione.Eliminato:
+                Documenti.Remove(documento);
+                NumeroDocumentiCambiato?.Invoke(Documenti.Count);
+                break;
+            case EsitoEliminazione.NonPiuEsistente:
+                RicaricaRichiesta?.Invoke();
+                break;
         }
-        catch (ArchivioException ex)
-        {
-            _dialog.MostraErrore(ex.Message);
-            RicaricaRichiesta?.Invoke();
-        }
-        catch (Exception ex) when (ex is IOException or UnauthorizedAccessException)
-        {
-            _dialog.MostraErrore(
-                $"Non è stato possibile eliminare il documento: {ex.Message}\n\nControlla che non sia aperto in un altro programma.");
-        }
-    }
-
-    /// <summary>Controlla che il file ci sia ancora sul disco, aggiornando la riga; se manca avvisa l'utente.</summary>
-    private bool VerificaFile(DocumentoViewModel documento, out string percorso)
-    {
-        percorso = _files.PercorsoAssoluto(documento.PercorsoRelativo);
-        var esiste = File.Exists(percorso);
-        documento.FileMancante = !esiste;
-        if (!esiste)
-            _dialog.MostraErrore(
-                $"Il file non si trova più nell'archivio:\n{percorso}\n\nPotrebbe essere stato spostato o eliminato da Esplora file.");
-        return esiste;
     }
 }

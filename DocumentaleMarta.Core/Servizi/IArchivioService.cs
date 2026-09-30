@@ -46,4 +46,10 @@ public interface IArchivioService
 
     /// <summary>Elimina il documento dal database e manda il file nel Cestino.</summary>
     Task EliminaDocumentoAsync(int documentoId);
+
+    /// <summary>
+    /// I documenti di un'area, o di tutto l'archivio se <paramref name="areaId"/> è null,
+    /// dal più recente al più vecchio.
+    /// </summary>
+    Task<IReadOnlyList<DocumentoElenco>> CaricaDocumentiAsync(int? areaId);
 }
