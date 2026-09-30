@@ -23,11 +23,65 @@ public partial class MainViewModel(
 
     [ObservableProperty]
     [NotifyPropertyChangedFor(nameof(HaSelezione), nameof(RadiceSelezionata), nameof(AreaSelezionata),
-        nameof(PuoCreareCartella), nameof(PuoModificare),
+        nameof(PuoCreareCartella), nameof(PuoModificare), nameof(RiepilogoVisibile),
         nameof(TipoDettaglio), nameof(TitoloDettaglio), nameof(RiepilogoDettaglio), nameof(PercorsoDettaglio))]
     [NotifyCanExecuteChangedFor(nameof(NuovaCartellaCommand), nameof(RinominaCommand),
         nameof(EliminaCommand), nameof(ApriInEsploraCommand))]
     private NodoAlberoViewModel? _nodoSelezionato;
+
+    // ---------- Form della cartella selezionata ----------
+
+    /// <summary>Il form della cartella selezionata; null quando è selezionata la radice o un'area.</summary>
+    [ObservableProperty]
+    private CartellaFormViewModel? _formCartella;
+
+    /// <summary>Il riepilogo (radice e aree) si vede quando non c'è il form di una cartella.</summary>
+    public bool RiepilogoVisibile => NodoSelezionato is { Tipo: not TipoNodo.Cartella };
+
+    private Task _caricamentoForm = Task.CompletedTask;
+
+    /// <summary>Completa quando il form della selezione corrente è pronto (serve ai test).</summary>
+    public Task CaricamentoFormCompletato => _caricamentoForm;
+
+    partial void OnNodoSelezionatoChanged(NodoAlberoViewModel? value)
+    {
+        FormCartella = null;
+        _caricamentoForm = value?.Tipo == TipoNodo.Cartella ? CaricaFormAsync(value) : Task.CompletedTask;
+    }
+
+    private async Task CaricaFormAsync(NodoAlberoViewModel nodo)
+    {
+        try
+        {
+            var dettaglio = await archivio.CaricaCartellaAsync(nodo.Id);
+            if (!ReferenceEquals(NodoSelezionato, nodo))
+                return; // nel frattempo l'utente ha scelto un altro elemento
+
+            if (dettaglio is null)
+            {
+                dialog.MostraErrore("La cartella non esiste più nell'archivio.");
+                await RicaricaAsync();
+                return;
+            }
+
+            var form = new CartellaFormViewModel(archivio, files, dialog, shell, dettaglio);
+            form.TitoloSalvato += (titolo, percorso) => nodo.Rinomina(titolo, percorso);
+            form.NumeroDocumentiCambiato += numero => nodo.ImpostaNumeroDocumenti(numero);
+            form.RicaricaRichiesta += () => _ = RicaricaSicuraAsync();
+            FormCartella = form;
+        }
+        catch (Exception ex)
+        {
+            // Nessuno attende questo compito (parte da un cambio di selezione): l'errore va mostrato qui o andrebbe perso.
+            dialog.MostraErrore($"Non è stato possibile aprire la cartella: {ex.Message}");
+        }
+    }
+
+    private async Task RicaricaSicuraAsync()
+    {
+        try { await RicaricaAsync(); }
+        catch (Exception ex) { dialog.MostraErrore($"Non è stato possibile aggiornare l'elenco: {ex.Message}"); }
+    }
 
     // ---------- Intestazione e piè di pagina ----------
 
@@ -108,22 +162,17 @@ public partial class MainViewModel(
         NodoAlberoViewModel radice;
         try
         {
-            radice = new NodoAlberoViewModel(TipoNodo.Radice, 0, impostazioni.NomeRadice, "", null, Seleziona)
-            {
-                NumeroCartelle = aree.Sum(a => a.Cartelle.Count),
-                NumeroDocumenti = aree.Sum(a => a.Cartelle.Sum(c => c.NumeroDocumenti))
-            };
+            radice = new NodoAlberoViewModel(TipoNodo.Radice, 0, impostazioni.NomeRadice, "", null, Seleziona);
             foreach (var area in aree)
             {
-                var nodoArea = new NodoAlberoViewModel(TipoNodo.Area, area.Id, area.Nome, area.PercorsoRelativo, radice, Seleziona)
-                {
-                    NumeroCartelle = area.Cartelle.Count,
-                    NumeroDocumenti = area.Cartelle.Sum(c => c.NumeroDocumenti)
-                };
+                var nodoArea = new NodoAlberoViewModel(TipoNodo.Area, area.Id, area.Nome, area.PercorsoRelativo, radice, Seleziona);
                 foreach (var cartella in area.Cartelle)
-                    nodoArea.Figli.Add(new NodoAlberoViewModel(
-                        TipoNodo.Cartella, cartella.Id, cartella.Titolo, cartella.PercorsoRelativo, nodoArea, Seleziona)
-                    { NumeroDocumenti = cartella.NumeroDocumenti });
+                {
+                    var nodoCartella = new NodoAlberoViewModel(
+                        TipoNodo.Cartella, cartella.Id, cartella.Titolo, cartella.PercorsoRelativo, nodoArea, Seleziona);
+                    nodoCartella.ImpostaNumeroDocumenti(cartella.NumeroDocumenti);
+                    nodoArea.Figli.Add(nodoCartella);
+                }
                 radice.Figli.Add(nodoArea);
             }
 
@@ -185,17 +234,26 @@ public partial class MainViewModel(
         if (area is null)
             return;
 
-        var titolo = dialog.ChiediTesto(
-            "Nuova cartella", $"Titolo della nuova cartella in «{area.Nome}»:", "",
-            testo => ValidazioneNomi.Errore(testo, ValidazioneNomi.LunghezzaMassimaTitolo));
-        if (titolo is null)
-            return;
-
-        await EseguiAsync(async () =>
+        // Se la creazione fallisce (es. un file scelto non si riesce a leggere) la finestra si riapre con
+        // gli stessi dati, così l'utente non deve riscrivere tutto.
+        var modello = new NuovaCartellaViewModel(dialog, area.Nome);
+        while (dialog.MostraNuovaCartella(modello))
         {
-            var id = await archivio.CreaCartellaAsync(area.Id, titolo);
-            await RicaricaAsync(NodoAlberoViewModel.CreaChiave(TipoNodo.Cartella, id));
-        });
+            try
+            {
+                var creata = await archivio.CreaCartellaConDatiAsync(area.Id, modello.Dati, modello.PercorsiFile);
+                await RicaricaAsync(NodoAlberoViewModel.CreaChiave(TipoNodo.Cartella, creata.Id));
+                return;
+            }
+            catch (ArchivioException ex)
+            {
+                dialog.MostraErrore(ex.Message);
+            }
+            catch (Exception ex) when (ex is IOException or UnauthorizedAccessException)
+            {
+                dialog.MostraErrore($"Non è stato possibile creare la cartella: {ex.Message}\n\nNon è stato creato nulla.");
+            }
+        }
     }
 
     [RelayCommand(CanExecute = nameof(PuoModificare))]

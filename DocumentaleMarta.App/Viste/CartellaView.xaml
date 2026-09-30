@@ -1,0 +1,172 @@
+<UserControl x:Class="DocumentaleMarta.App.Viste.CartellaView"
+             xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
+             xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
+             xmlns:vm="clr-namespace:DocumentaleMarta.App.ViewModels"
+             mc:Ignorable="d"
+             d:DataContext="{d:DesignInstance Type=vm:CartellaFormViewModel}"
+             d:DesignWidth="760" d:DesignHeight="560">
+    <UserControl.Resources>
+        <BooleanToVisibilityConverter x:Key="BoolToVis"/>
+
+        <Style x:Key="Etichetta" TargetType="TextBlock">
+            <Setter Property="Foreground" Value="#555"/>
+            <Setter Property="VerticalAlignment" Value="Center"/>
+            <Setter Property="Margin" Value="0,0,12,0"/>
+        </Style>
+
+        <!-- Testo d'errore: sparisce quando è vuoto -->
+        <Style x:Key="TestoErrore" TargetType="TextBlock">
+            <Setter Property="Foreground" Value="#C42B1C"/>
+            <Setter Property="TextWrapping" Value="Wrap"/>
+            <Style.Triggers>
+                <DataTrigger Binding="{Binding Errore}" Value="">
+                    <Setter Property="Visibility" Value="Collapsed"/>
+                </DataTrigger>
+            </Style.Triggers>
+        </Style>
+
+        <Style x:Key="RigaDocumento" TargetType="DataGridRow">
+            <Style.Triggers>
+                <DataTrigger Binding="{Binding FileMancante}" Value="True">
+                    <Setter Property="Foreground" Value="#B42318"/>
+                </DataTrigger>
+            </Style.Triggers>
+        </Style>
+
+        <Style x:Key="CellaTesto" TargetType="TextBlock">
+            <Setter Property="VerticalAlignment" Value="Center"/>
+            <Setter Property="Padding" Value="4,0"/>
+            <Setter Property="TextTrimming" Value="CharacterEllipsis"/>
+        </Style>
+    </UserControl.Resources>
+
+    <Grid Margin="24,20,24,16">
+        <Grid.RowDefinitions>
+            <RowDefinition Height="Auto"/>
+            <RowDefinition Height="Auto"/>
+            <RowDefinition Height="Auto"/>
+            <RowDefinition Height="*"/>
+        </Grid.RowDefinitions>
+
+        <!-- Intestazione -->
+        <TextBlock Grid.Row="0" Foreground="#777" FontSize="13" Margin="0,0,0,10">
+            <Run Text="Cartella in "/><Run Text="{Binding NomeArea, Mode=OneWay}"/>
+        </TextBlock>
+
+        <!-- Campi: si salvano da soli -->
+        <Grid Grid.Row="1">
+            <Grid.ColumnDefinitions>
+                <ColumnDefinition Width="Auto"/>
+                <ColumnDefinition Width="*"/>
+            </Grid.ColumnDefinitions>
+            <Grid.RowDefinitions>
+                <RowDefinition Height="Auto"/>
+                <RowDefinition Height="Auto"/>
+                <RowDefinition Height="Auto"/>
+                <RowDefinition Height="Auto"/>
+                <RowDefinition Height="Auto"/>
+            </Grid.RowDefinitions>
+
+            <TextBlock Grid.Row="0" Text="Titolo" Style="{StaticResource Etichetta}"/>
+            <TextBox Grid.Row="0" Grid.Column="1" Text="{Binding Titolo, UpdateSourceTrigger=LostFocus}"
+                     MaxLength="200" FontSize="18" FontWeight="SemiBold" Padding="4,3"/>
+
+            <TextBlock Grid.Row="1" Text="Descrizione" Style="{StaticResource Etichetta}"
+                       VerticalAlignment="Top" Margin="0,14,12,0"/>
+            <TextBox Grid.Row="1" Grid.Column="1" Margin="0,10,0,0"
+                     Text="{Binding Descrizione, UpdateSourceTrigger=LostFocus}"
+                     AcceptsReturn="True" TextWrapping="Wrap" MinLines="3" MaxLines="6"
+                     VerticalScrollBarVisibility="Auto" MaxLength="4000" Padding="4,3"/>
+
+            <TextBlock Grid.Row="2" Text="Scadenza" Style="{StaticResource Etichetta}" Margin="0,10,12,0"/>
+            <StackPanel Grid.Row="2" Grid.Column="1" Orientation="Horizontal" Margin="0,10,0,0">
+                <DatePicker SelectedDate="{Binding DataScadenza}" Width="150"/>
+                <Button Content="✕" Command="{Binding CancellaScadenzaCommand}" Margin="6,0,0,0" Width="26"
+                        ToolTip="Rimuovi la scadenza"/>
+            </StackPanel>
+
+            <TextBlock Grid.Row="3" Text="Completato" Style="{StaticResource Etichetta}" Margin="0,10,12,0"/>
+            <StackPanel Grid.Row="3" Grid.Column="1" Orientation="Horizontal" Margin="0,10,0,0">
+                <CheckBox IsChecked="{Binding Completato}" VerticalAlignment="Center" Margin="0,0,24,0"/>
+                <TextBlock Text="Data completamento" Style="{StaticResource Etichetta}"/>
+                <DatePicker SelectedDate="{Binding DataCompletamento}" IsEnabled="{Binding Completato}" Width="150"/>
+            </StackPanel>
+
+            <StackPanel Grid.Row="4" Grid.Column="1" Margin="0,8,0,0">
+                <TextBlock Text="{Binding Errore}" Style="{StaticResource TestoErrore}"/>
+                <TextBlock Text="Le modifiche vengono salvate automaticamente." Foreground="#888" FontSize="12"/>
+            </StackPanel>
+        </Grid>
+
+        <!-- Barra dei documenti -->
+        <DockPanel Grid.Row="2" Margin="0,18,0,8">
+            <StackPanel DockPanel.Dock="Right" Orientation="Horizontal">
+                <TextBlock Text="Copia in corso…" Foreground="#555" VerticalAlignment="Center" Margin="0,0,12,0"
+                           Visibility="{Binding AllegaCommand.IsRunning, Converter={StaticResource BoolToVis}}"/>
+                <Button Content="Allega…" Command="{Binding AllegaCommand}" Padding="14,4"/>
+                <Button Content="Apri in Esplora file" Command="{Binding ApriCartellaCommand}" Padding="12,4" Margin="8,0,0,0"/>
+            </StackPanel>
+            <TextBlock Text="{Binding TitoloDocumenti}" FontSize="15" FontWeight="SemiBold" VerticalAlignment="Center"/>
+        </DockPanel>
+
+        <!-- Griglia dei documenti -->
+        <Grid Grid.Row="3">
+            <DataGrid ItemsSource="{Binding Documenti}" AutoGenerateColumns="False" IsReadOnly="True"
+                      CanUserAddRows="False" CanUserDeleteRows="False" CanUserResizeRows="False"
+                      HeadersVisibility="Column" GridLinesVisibility="Horizontal"
+                      HorizontalGridLinesBrush="#E4E4E4" BorderBrush="#D0D0D0" Background="White"
+                      SelectionMode="Single" SelectionUnit="FullRow" RowHeaderWidth="0" RowHeight="36"
+                      RowStyle="{StaticResource RigaDocumento}">
+                <DataGrid.Columns>
+                    <DataGridTemplateColumn Width="30">
+                        <DataGridTemplateColumn.CellTemplate>
+                            <DataTemplate>
+                                <TextBlock Text="&#xE7BA;" FontFamily="Segoe Fluent Icons, Segoe MDL2 Assets" Foreground="#B42318"
+                                           HorizontalAlignment="Center" VerticalAlignment="Center"
+                                           ToolTip="Il file non si trova più nell'archivio"
+                                           Visibility="{Binding FileMancante, Converter={StaticResource BoolToVis}}"/>
+                            </DataTemplate>
+                        </DataGridTemplateColumn.CellTemplate>
+                    </DataGridTemplateColumn>
+                    <DataGridTextColumn Header="Nome file" Binding="{Binding NomeFile}" Width="*" MinWidth="160"
+                                        ElementStyle="{StaticResource CellaTesto}"/>
+                    <DataGridTextColumn Header="Tipo" Binding="{Binding Tipo}" Width="60"
+                                        ElementStyle="{StaticResource CellaTesto}"/>
+                    <DataGridTextColumn Header="Dimensione" Binding="{Binding DimensioneTesto}" Width="90"
+                                        ElementStyle="{StaticResource CellaTesto}"/>
+                    <DataGridTextColumn Header="Caricato il" Binding="{Binding DataCaricamento, StringFormat='dd/MM/yyyy HH:mm'}" Width="125"
+                                        ElementStyle="{StaticResource CellaTesto}"/>
+                    <DataGridTemplateColumn Header="Azioni" Width="Auto" MinWidth="290">
+                        <DataGridTemplateColumn.CellTemplate>
+                            <DataTemplate>
+                                <StackPanel Orientation="Horizontal" VerticalAlignment="Center">
+                                    <Button Content="Apri" Command="{Binding ApriCommand}" Padding="10,2" Margin="2,0"/>
+                                    <Button Content="Apri nella cartella" Command="{Binding ApriNellaCartellaCommand}" Padding="10,2" Margin="2,0"/>
+                                    <Button Content="Elimina" Command="{Binding EliminaCommand}" Padding="10,2" Margin="2,0"/>
+                                </StackPanel>
+                            </DataTemplate>
+                        </DataGridTemplateColumn.CellTemplate>
+                    </DataGridTemplateColumn>
+                </DataGrid.Columns>
+            </DataGrid>
+
+            <!-- Elenco vuoto -->
+            <TextBlock Text="Nessun documento. Usa «Allega…» per aggiungerne." Foreground="#888"
+                       HorizontalAlignment="Center" VerticalAlignment="Center" Margin="0,30,0,0"
+                       IsHitTestVisible="False">
+                <TextBlock.Style>
+                    <Style TargetType="TextBlock">
+                        <Setter Property="Visibility" Value="Collapsed"/>
+                        <Style.Triggers>
+                            <DataTrigger Binding="{Binding Documenti.Count}" Value="0">
+                                <Setter Property="Visibility" Value="Visible"/>
+                            </DataTrigger>
+                        </Style.Triggers>
+                    </Style>
+                </TextBlock.Style>
+            </TextBlock>
+        </Grid>
+    </Grid>
+</UserControl>

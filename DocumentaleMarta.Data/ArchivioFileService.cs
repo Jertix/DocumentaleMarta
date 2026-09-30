@@ -149,6 +149,13 @@ public class ArchivioFileService(string percorsoRadice, bool usaCestino = true) 
             File.Delete(percorso);
     }
 
+    public void RimuoviFileCopiato(string percorsoRelativo)
+    {
+        var percorso = PercorsoAssoluto(percorsoRelativo);
+        if (File.Exists(percorso))
+            File.Delete(percorso);
+    }
+
     private static string CalcolaHash(string percorso)
     {
         using var stream = File.OpenRead(percorso);

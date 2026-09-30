@@ -1,5 +1,7 @@
+using System.Globalization;
 using System.IO;
 using System.Windows;
+using System.Windows.Markup;
 using System.Windows.Threading;
 using DocumentaleMarta.App.Servizi;
 using DocumentaleMarta.App.ViewModels;
@@ -22,6 +24,11 @@ public partial class App : Application
     {
         base.OnStartup(e);
         DispatcherUnhandledException += OnErroreNonGestito;
+
+        // Senza questo WPF formatta date e numeri all'americana invece che secondo le impostazioni di Windows.
+        FrameworkElement.LanguageProperty.OverrideMetadata(
+            typeof(FrameworkElement),
+            new FrameworkPropertyMetadata(XmlLanguage.GetLanguage(CultureInfo.CurrentCulture.IetfLanguageTag)));
 
         var servizi = Avvia();
         if (servizi is null)

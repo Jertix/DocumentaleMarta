@@ -24,7 +24,7 @@ public class ArchivioServiceTests : IDisposable
 
     public void Dispose() => _tmp.Dispose();
 
-    private string Fisico(string relativo) => _files.PercorsoAssoluto(relativo);
+    private string Fisico(params string[] parti) => _files.PercorsoAssoluto(Path.Combine(parti));
 
     // ---------- Aree ----------
 
@@ -349,6 +349,267 @@ public class ArchivioServiceTests : IDisposable
     [Fact]
     public async Task CaricaAlbero_DatabaseVuoto_ListaVuota() =>
         Assert.Empty(await _servizio.CaricaAlberoAsync());
+
+    // ---------- Dettaglio, aggiornamento, allegati ----------
+
+    private static DatiCartella Dati(string titolo, string? descrizione = null, DateOnly? scadenza = null,
+        bool completato = false, DateOnly? dataCompletamento = null) =>
+        new(titolo, descrizione, scadenza, completato, dataCompletamento);
+
+    [Fact]
+    public async Task CaricaCartella_Inesistente_RestituisceNull() =>
+        Assert.Null(await _servizio.CaricaCartellaAsync(999));
+
+    [Fact]
+    public async Task CreaCartellaConDati_SalvaICampi_CopiaIFile_LasciaGliOriginali()
+    {
+        var areaId = await _servizio.CreaAreaAsync("Fatture");
+        var f1 = _tmp.CreaFile(Path.Combine("scan", "a.pdf"), "uno");
+        var f2 = _tmp.CreaFile(Path.Combine("scan", "b.jpg"), "due");
+
+        var d = await _servizio.CreaCartellaConDatiAsync(
+            areaId, Dati("Fattura 12", "note", new DateOnly(2026, 12, 31)), [f1, f2]);
+
+        Assert.Equal("Fatture", d.NomeArea);
+        Assert.Equal("Fattura 12", d.Dati.Titolo);
+        Assert.Equal("note", d.Dati.Descrizione);
+        Assert.Equal(new DateOnly(2026, 12, 31), d.Dati.DataScadenza);
+        Assert.Equal(Path.Combine("Fatture", "Fattura 12"), d.PercorsoRelativo);
+        Assert.Equal(["a.pdf", "b.jpg"], d.Documenti.Select(x => x.NomeFile));
+        Assert.Equal([".pdf", ".jpg"], d.Documenti.Select(x => x.Estensione));
+        Assert.Equal("uno", File.ReadAllText(Fisico(d.Documenti[0].PercorsoRelativo)));
+        Assert.True(File.Exists(f1) && File.Exists(f2));
+
+        using var db = _factory.CreateDbContext();
+        Assert.Equal(2, db.Documenti.Count(x => x.CartellaId == d.Id));
+        Assert.All(db.Documenti, x => Assert.Equal(64, x.Hash.Length));
+        Assert.All(db.Documenti, x => Assert.Equal(StatoIndicizzazione.DaIndicizzare, x.StatoIndicizzazione));
+    }
+
+    [Fact]
+    public async Task CreaCartellaConDati_SenzaFile_Funziona()
+    {
+        var areaId = await _servizio.CreaAreaAsync("Fatture");
+
+        var d = await _servizio.CreaCartellaConDatiAsync(areaId, Dati("Vuota"), []);
+
+        Assert.Empty(d.Documenti);
+        Assert.True(Directory.Exists(Fisico(d.PercorsoRelativo)));
+    }
+
+    [Fact]
+    public async Task CreaCartellaConDati_SecondoFileMancante_NonLasciaNulla()
+    {
+        var areaId = await _servizio.CreaAreaAsync("Fatture");
+        var buono = _tmp.CreaFile("a.pdf");
+
+        await Assert.ThrowsAsync<FileNotFoundException>(() =>
+            _servizio.CreaCartellaConDatiAsync(areaId, Dati("Pratica"), [buono, _tmp.Combina("non-esiste.pdf")]));
+
+        Assert.False(Directory.Exists(Fisico("Fatture", "Pratica"))); // né la cartella né la copia del primo file
+        using var db = _factory.CreateDbContext();
+        Assert.Empty(db.Cartelle);
+        Assert.Empty(db.Documenti);
+        Assert.True(File.Exists(buono));
+    }
+
+    [Fact]
+    public async Task CreaCartellaConDati_TitoloVuoto_RifiutatoSenzaCopiare()
+    {
+        var areaId = await _servizio.CreaAreaAsync("Fatture");
+
+        await Assert.ThrowsAsync<ArchivioException>(() =>
+            _servizio.CreaCartellaConDatiAsync(areaId, Dati("  "), [_tmp.CreaFile("a.pdf")]));
+
+        Assert.Empty(Directory.GetDirectories(Fisico("Fatture")));
+    }
+
+    [Fact]
+    public async Task CreaCartellaConDati_NonCompletata_LaDataDiCompletamentoVieneIgnorata()
+    {
+        var areaId = await _servizio.CreaAreaAsync("A");
+
+        var d = await _servizio.CreaCartellaConDatiAsync(
+            areaId, Dati("X", completato: false, dataCompletamento: new DateOnly(2026, 1, 1)), []);
+
+        Assert.Null(d.Dati.DataCompletamento);
+    }
+
+    [Fact]
+    public async Task CreaCartellaConDati_Completata_ConservaLaData()
+    {
+        var areaId = await _servizio.CreaAreaAsync("A");
+
+        var d = await _servizio.CreaCartellaConDatiAsync(
+            areaId, Dati("X", completato: true, dataCompletamento: new DateOnly(2026, 9, 30)), []);
+
+        Assert.True(d.Dati.Completato);
+        Assert.Equal(new DateOnly(2026, 9, 30), d.Dati.DataCompletamento);
+    }
+
+    [Fact]
+    public async Task AggiornaCartella_CambiaICampiSenzaToccareLaCartellaFisica()
+    {
+        var areaId = await _servizio.CreaAreaAsync("A");
+        var id = await _servizio.CreaCartellaAsync(areaId, "Pratica");
+
+        var d = await _servizio.AggiornaCartellaAsync(
+            id, Dati("Pratica", "descrizione", new DateOnly(2027, 1, 15), true, new DateOnly(2026, 10, 1)));
+
+        Assert.Equal("descrizione", d.Dati.Descrizione);
+        Assert.Equal(new DateOnly(2027, 1, 15), d.Dati.DataScadenza);
+        Assert.True(d.Dati.Completato);
+        Assert.Equal(new DateOnly(2026, 10, 1), d.Dati.DataCompletamento);
+        Assert.Equal(Path.Combine("A", "Pratica"), d.PercorsoRelativo);
+    }
+
+    [Fact]
+    public async Task AggiornaCartella_DescrizioneVuota_DiventaNull_ECompletatoFalsoAzzeraLaData()
+    {
+        var areaId = await _servizio.CreaAreaAsync("A");
+        var id = await _servizio.CreaCartellaAsync(areaId, "Pratica");
+        await _servizio.AggiornaCartellaAsync(id, Dati("Pratica", "x", null, true, new DateOnly(2026, 1, 1)));
+
+        var d = await _servizio.AggiornaCartellaAsync(id, Dati("Pratica", "   ", null, false, new DateOnly(2026, 1, 1)));
+
+        Assert.Null(d.Dati.Descrizione);
+        Assert.False(d.Dati.Completato);
+        Assert.Null(d.Dati.DataCompletamento);
+    }
+
+    [Fact]
+    public async Task AggiornaCartella_CambioTitolo_RinominaLaCartellaEIPercorsiDeiDocumenti()
+    {
+        var areaId = await _servizio.CreaAreaAsync("A");
+        var d0 = await _servizio.CreaCartellaConDatiAsync(areaId, Dati("Vecchio"), [_tmp.CreaFile("a.pdf")]);
+
+        var d = await _servizio.AggiornaCartellaAsync(d0.Id, Dati("Nuovo", "nota"));
+
+        Assert.Equal("Nuovo", d.Dati.Titolo);
+        Assert.Equal(Path.Combine("A", "Nuovo"), d.PercorsoRelativo);
+        Assert.Equal(Path.Combine("A", "Nuovo", "a.pdf"), d.Documenti.Single().PercorsoRelativo);
+        Assert.True(File.Exists(Fisico(d.Documenti.Single().PercorsoRelativo)));
+        Assert.False(Directory.Exists(Fisico("A", "Vecchio")));
+    }
+
+    [Fact]
+    public async Task AggiornaCartella_TitoloVuoto_Rifiutato()
+    {
+        var areaId = await _servizio.CreaAreaAsync("A");
+        var id = await _servizio.CreaCartellaAsync(areaId, "Pratica");
+
+        await Assert.ThrowsAsync<ArchivioException>(() => _servizio.AggiornaCartellaAsync(id, Dati(" ")));
+
+        Assert.True(Directory.Exists(Fisico("A", "Pratica")));
+    }
+
+    [Fact]
+    public async Task AggiornaCartella_FileAperto_LaRinominaFallisceENessunCampoCambia()
+    {
+        var areaId = await _servizio.CreaAreaAsync("A");
+        var d0 = await _servizio.CreaCartellaConDatiAsync(areaId, Dati("Vecchio", "originale"), [_tmp.CreaFile("a.pdf")]);
+
+        using (new FileStream(Fisico(d0.Documenti[0].PercorsoRelativo), FileMode.Open, FileAccess.Read, FileShare.Read))
+        {
+            await Assert.ThrowsAnyAsync<IOException>(() => _servizio.AggiornaCartellaAsync(d0.Id, Dati("Nuovo", "modificata")));
+        }
+
+        var d = (await _servizio.CaricaCartellaAsync(d0.Id))!;
+        Assert.Equal("Vecchio", d.Dati.Titolo);
+        Assert.Equal("originale", d.Dati.Descrizione);
+        Assert.True(File.Exists(Fisico(d.Documenti[0].PercorsoRelativo)));
+    }
+
+    [Fact]
+    public async Task AggiornaCartella_Inesistente_DaErroreChiaro() =>
+        await Assert.ThrowsAsync<ArchivioException>(() => _servizio.AggiornaCartellaAsync(999, Dati("X")));
+
+    [Fact]
+    public async Task AllegaDocumenti_CopiaISalvaLeRighe_ConNomiUnivoci()
+    {
+        var areaId = await _servizio.CreaAreaAsync("A");
+        var cartellaId = await _servizio.CreaCartellaAsync(areaId, "Pratica");
+        var primo = _tmp.CreaFile(Path.Combine("x", "doc.txt"), "uno");
+        var secondo = _tmp.CreaFile(Path.Combine("y", "doc.txt"), "due");
+
+        var nuovi = await _servizio.AllegaDocumentiAsync(cartellaId, [primo, secondo]);
+
+        Assert.Equal(["doc.txt", "doc (1).txt"], nuovi.Select(d => d.NomeFile));
+        Assert.All(nuovi, d => Assert.True(d.Id > 0));
+        Assert.Equal("due", File.ReadAllText(Fisico(nuovi[1].PercorsoRelativo)));
+        var dettaglio = (await _servizio.CaricaCartellaAsync(cartellaId))!;
+        Assert.Equal(2, dettaglio.Documenti.Count);
+    }
+
+    [Fact]
+    public async Task AllegaDocumenti_SecondoFileMancante_NonAggiungeNulla()
+    {
+        var areaId = await _servizio.CreaAreaAsync("A");
+        var cartellaId = await _servizio.CreaCartellaAsync(areaId, "Pratica");
+
+        await Assert.ThrowsAsync<FileNotFoundException>(() =>
+            _servizio.AllegaDocumentiAsync(cartellaId, [_tmp.CreaFile("a.txt"), _tmp.Combina("manca.txt")]));
+
+        Assert.Empty(Directory.GetFiles(Fisico("A", "Pratica")));
+        using var db = _factory.CreateDbContext();
+        Assert.Empty(db.Documenti);
+    }
+
+    [Fact]
+    public async Task AllegaDocumenti_ListaVuota_NonFaNulla()
+    {
+        var areaId = await _servizio.CreaAreaAsync("A");
+        var cartellaId = await _servizio.CreaCartellaAsync(areaId, "Pratica");
+
+        Assert.Empty(await _servizio.AllegaDocumentiAsync(cartellaId, []));
+    }
+
+    [Fact]
+    public async Task AllegaDocumenti_CartellaInesistente_DaErroreChiaro() =>
+        await Assert.ThrowsAsync<ArchivioException>(() => _servizio.AllegaDocumentiAsync(999, [_tmp.CreaFile("a.txt")]));
+
+    [Fact]
+    public async Task EliminaDocumento_RimuoveRigaEFile_LasciaGliAltri()
+    {
+        var areaId = await _servizio.CreaAreaAsync("A");
+        var d = await _servizio.CreaCartellaConDatiAsync(areaId, Dati("P"), [_tmp.CreaFile("a.txt"), _tmp.CreaFile("b.txt")]);
+
+        await _servizio.EliminaDocumentoAsync(d.Documenti[0].Id);
+
+        Assert.False(File.Exists(Fisico(d.Documenti[0].PercorsoRelativo)));
+        Assert.True(File.Exists(Fisico(d.Documenti[1].PercorsoRelativo)));
+        Assert.Equal(["b.txt"], (await _servizio.CaricaCartellaAsync(d.Id))!.Documenti.Select(x => x.NomeFile));
+    }
+
+    [Fact]
+    public async Task EliminaDocumento_FileGiaSparitoDalDisco_EliminaComunqueLaRiga()
+    {
+        var areaId = await _servizio.CreaAreaAsync("A");
+        var d = await _servizio.CreaCartellaConDatiAsync(areaId, Dati("P"), [_tmp.CreaFile("a.txt")]);
+        File.Delete(Fisico(d.Documenti[0].PercorsoRelativo));
+
+        await _servizio.EliminaDocumentoAsync(d.Documenti[0].Id);
+
+        Assert.Empty((await _servizio.CaricaCartellaAsync(d.Id))!.Documenti);
+    }
+
+    [Fact]
+    public async Task EliminaDocumento_FileAperto_FallisceELaRigaResta()
+    {
+        var areaId = await _servizio.CreaAreaAsync("A");
+        var d = await _servizio.CreaCartellaConDatiAsync(areaId, Dati("P"), [_tmp.CreaFile("a.txt")]);
+
+        using (new FileStream(Fisico(d.Documenti[0].PercorsoRelativo), FileMode.Open, FileAccess.Read, FileShare.Read))
+        {
+            await Assert.ThrowsAnyAsync<IOException>(() => _servizio.EliminaDocumentoAsync(d.Documenti[0].Id));
+        }
+
+        Assert.Single((await _servizio.CaricaCartellaAsync(d.Id))!.Documenti);
+    }
+
+    [Fact]
+    public async Task EliminaDocumento_Inesistente_DaErroreChiaro() =>
+        await Assert.ThrowsAsync<ArchivioException>(() => _servizio.EliminaDocumentoAsync(999));
 
     // ---------- Supporto ----------
 

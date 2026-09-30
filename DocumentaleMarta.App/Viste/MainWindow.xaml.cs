@@ -13,6 +13,10 @@ public partial class MainWindow : Window
         InitializeComponent();
         DataContext = viewModel;
         Loaded += async (_, _) => await viewModel.InizializzaAsync();
+
+        // I campi del form si salvano quando perdono il cursore: chiudendo la finestra mentre si scrive
+        // l'ultima modifica andrebbe persa, quindi si toglie il cursore dal campo prima di chiudere.
+        Closing += (_, _) => Keyboard.ClearFocus();
     }
 
     /// <summary>Il tasto destro in un TreeView non seleziona il nodo: lo facciamo noi, così il menu agisce su quello cliccato.</summary>

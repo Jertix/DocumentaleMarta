@@ -1,11 +1,17 @@
 using System.Windows;
+using DocumentaleMarta.App.ViewModels;
 using DocumentaleMarta.App.Viste;
+using Microsoft.Win32;
 
 namespace DocumentaleMarta.App.Servizi;
 
 public class DialogService : IDialogService
 {
     private const string TitoloApplicazione = "Documentale";
+
+    private const string FiltroFile =
+        "Documenti e immagini|*.pdf;*.doc;*.docx;*.xls;*.xlsx;*.ppt;*.pptx;*.odt;*.ods;*.rtf;*.txt;*.csv;*.jpg;*.jpeg;*.png;*.tif;*.tiff;*.bmp;*.gif" +
+        "|Tutti i file|*.*";
 
     private static Window? Proprietaria => Application.Current?.MainWindow;
 
@@ -20,6 +26,22 @@ public class DialogService : IDialogService
 
     public void MostraErrore(string messaggio) =>
         Mostra(messaggio, TitoloApplicazione, MessageBoxButton.OK, MessageBoxImage.Error, MessageBoxResult.OK);
+
+    public IReadOnlyList<string> SelezionaFile(string titolo)
+    {
+        var dialogo = new OpenFileDialog
+        {
+            Title = titolo,
+            Multiselect = true,
+            CheckFileExists = true,
+            Filter = FiltroFile
+        };
+        var confermato = Proprietaria is { } finestra ? dialogo.ShowDialog(finestra) : dialogo.ShowDialog();
+        return confermato == true ? dialogo.FileNames : [];
+    }
+
+    public bool MostraNuovaCartella(NuovaCartellaViewModel modello) =>
+        new NuovaCartellaDialog(modello) { Owner = Proprietaria }.ShowDialog() == true;
 
     private static MessageBoxResult Mostra(string messaggio, string titolo, MessageBoxButton pulsanti, MessageBoxImage icona, MessageBoxResult predefinito) =>
         Proprietaria is { } finestra

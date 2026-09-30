@@ -25,4 +25,25 @@ public interface IArchivioService
 
     /// <summary>Elimina la cartella con i suoi documenti. I file vanno nel Cestino.</summary>
     Task EliminaCartellaAsync(int cartellaId);
+
+    /// <summary>Restituisce null se la cartella non esiste (più).</summary>
+    Task<CartellaDettaglio?> CaricaCartellaAsync(int cartellaId);
+
+    /// <summary>
+    /// Crea la cartella con tutti i suoi dati e copia i file indicati al suo interno. È tutto o niente:
+    /// se una copia fallisce non resta né la cartella né i file già copiati.
+    /// </summary>
+    Task<CartellaDettaglio> CreaCartellaConDatiAsync(int areaId, DatiCartella dati, IReadOnlyList<string> fileDaAllegare);
+
+    /// <summary>
+    /// Salva i dati della cartella. Se il titolo cambia rinomina anche la cartella fisica (e aggiorna i percorsi dei
+    /// documenti); se la rinomina fallisce (file aperto altrove) non cambia nulla.
+    /// </summary>
+    Task<CartellaDettaglio> AggiornaCartellaAsync(int cartellaId, DatiCartella dati);
+
+    /// <summary>Copia i file nella cartella (gli originali restano dove sono). È tutto o niente.</summary>
+    Task<IReadOnlyList<DocumentoDettaglio>> AllegaDocumentiAsync(int cartellaId, IReadOnlyList<string> percorsiFile);
+
+    /// <summary>Elimina il documento dal database e manda il file nel Cestino.</summary>
+    Task EliminaDocumentoAsync(int documentoId);
 }

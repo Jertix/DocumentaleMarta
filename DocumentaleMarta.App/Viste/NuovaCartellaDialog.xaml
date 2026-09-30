@@ -1,0 +1,96 @@
+<Window x:Class="DocumentaleMarta.App.Viste.NuovaCartellaDialog"
+        xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
+        xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
+        xmlns:vm="clr-namespace:DocumentaleMarta.App.ViewModels"
+        mc:Ignorable="d"
+        d:DataContext="{d:DesignInstance Type=vm:NuovaCartellaViewModel}"
+        Title="Nuova cartella" Width="600" SizeToContent="Height" ResizeMode="NoResize"
+        WindowStartupLocation="CenterOwner" ShowInTaskbar="False"
+        FocusManager.FocusedElement="{Binding ElementName=CasellaTitolo}">
+    <Window.Resources>
+        <Style x:Key="Etichetta" TargetType="TextBlock">
+            <Setter Property="Foreground" Value="#555"/>
+            <Setter Property="VerticalAlignment" Value="Center"/>
+            <Setter Property="Margin" Value="0,0,12,0"/>
+        </Style>
+    </Window.Resources>
+
+    <StackPanel Margin="20">
+        <TextBlock Margin="0,0,0,14" TextWrapping="Wrap">
+            <Run Text="Nuova cartella in "/><Run Text="{Binding NomeArea, Mode=OneWay}" FontWeight="SemiBold"/>
+        </TextBlock>
+
+        <Grid>
+            <Grid.ColumnDefinitions>
+                <ColumnDefinition Width="Auto"/>
+                <ColumnDefinition Width="*"/>
+            </Grid.ColumnDefinitions>
+            <Grid.RowDefinitions>
+                <RowDefinition Height="Auto"/>
+                <RowDefinition Height="Auto"/>
+                <RowDefinition Height="Auto"/>
+                <RowDefinition Height="Auto"/>
+            </Grid.RowDefinitions>
+
+            <TextBlock Grid.Row="0" Text="Titolo" Style="{StaticResource Etichetta}"/>
+            <TextBox x:Name="CasellaTitolo" Grid.Row="0" Grid.Column="1" Padding="4,3" MaxLength="200"
+                     Text="{Binding Titolo, UpdateSourceTrigger=PropertyChanged}"/>
+
+            <TextBlock Grid.Row="1" Text="Descrizione" Style="{StaticResource Etichetta}" VerticalAlignment="Top" Margin="0,14,12,0"/>
+            <TextBox Grid.Row="1" Grid.Column="1" Margin="0,10,0,0" Padding="4,3" MaxLength="4000"
+                     Text="{Binding Descrizione, UpdateSourceTrigger=PropertyChanged}"
+                     AcceptsReturn="True" TextWrapping="Wrap" MinLines="3" MaxLines="5" VerticalScrollBarVisibility="Auto"/>
+
+            <TextBlock Grid.Row="2" Text="Scadenza" Style="{StaticResource Etichetta}" Margin="0,10,12,0"/>
+            <StackPanel Grid.Row="2" Grid.Column="1" Orientation="Horizontal" Margin="0,10,0,0">
+                <DatePicker SelectedDate="{Binding DataScadenza}" Width="150"/>
+                <Button Content="✕" Command="{Binding CancellaScadenzaCommand}" Margin="6,0,0,0" Width="26"
+                        ToolTip="Rimuovi la scadenza"/>
+            </StackPanel>
+
+            <TextBlock Grid.Row="3" Text="Completato" Style="{StaticResource Etichetta}" Margin="0,10,12,0"/>
+            <StackPanel Grid.Row="3" Grid.Column="1" Orientation="Horizontal" Margin="0,10,0,0">
+                <CheckBox IsChecked="{Binding Completato}" VerticalAlignment="Center" Margin="0,0,24,0"/>
+                <TextBlock Text="Data completamento" Style="{StaticResource Etichetta}"/>
+                <DatePicker SelectedDate="{Binding DataCompletamento}" IsEnabled="{Binding Completato}" Width="150"/>
+            </StackPanel>
+        </Grid>
+
+        <!-- Documenti da allegare -->
+        <DockPanel Margin="0,18,0,6">
+            <Button DockPanel.Dock="Right" Content="Allega…" Command="{Binding AllegaCommand}" Padding="14,4"/>
+            <TextBlock Text="Documenti da allegare" FontWeight="SemiBold" VerticalAlignment="Center"/>
+        </DockPanel>
+        <ListBox ItemsSource="{Binding Allegati}" MinHeight="64" MaxHeight="150" HorizontalContentAlignment="Stretch">
+            <ListBox.ItemTemplate>
+                <DataTemplate>
+                    <Grid>
+                        <Grid.ColumnDefinitions>
+                            <ColumnDefinition Width="*"/>
+                            <ColumnDefinition Width="Auto"/>
+                            <ColumnDefinition Width="Auto"/>
+                        </Grid.ColumnDefinitions>
+                        <TextBlock Text="{Binding NomeFile}" TextTrimming="CharacterEllipsis" VerticalAlignment="Center"
+                                   ToolTip="{Binding Percorso}"/>
+                        <TextBlock Grid.Column="1" Text="{Binding DimensioneTesto}" Foreground="#777" Margin="12,0"
+                                   VerticalAlignment="Center"/>
+                        <Button Grid.Column="2" Content="Rimuovi" Padding="8,1"
+                                Command="{Binding DataContext.RimuoviCommand, RelativeSource={RelativeSource AncestorType=ListBox}}"
+                                CommandParameter="{Binding}"/>
+                    </Grid>
+                </DataTemplate>
+            </ListBox.ItemTemplate>
+        </ListBox>
+        <TextBlock Text="I file vengono copiati nell'archivio: gli originali restano dove sono."
+                   Foreground="#888" FontSize="12" Margin="0,4,0,0"/>
+
+        <TextBlock Text="{Binding Errore}" Foreground="#C42B1C" TextWrapping="Wrap" Margin="0,10,0,0" MinHeight="18"/>
+
+        <StackPanel Orientation="Horizontal" HorizontalAlignment="Right" Margin="0,10,0,0">
+            <Button Content="Crea" Width="90" Padding="0,4" IsDefault="True" Click="Crea_Click"/>
+            <Button Content="Annulla" Width="90" Padding="0,4" Margin="8,0,0,0" IsCancel="True"/>
+        </StackPanel>
+    </StackPanel>
+</Window>

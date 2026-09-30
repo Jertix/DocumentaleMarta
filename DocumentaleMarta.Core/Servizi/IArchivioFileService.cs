@@ -39,4 +39,7 @@ public interface IArchivioFileService
 
     /// <summary>Manda il file nel Cestino di Windows.</summary>
     void EliminaFile(string percorsoRelativo);
+
+    /// <summary>Elimina subito (senza Cestino) un file appena copiato. Serve ad annullare un'operazione fallita a metà.</summary>
+    void RimuoviFileCopiato(string percorsoRelativo);
 }

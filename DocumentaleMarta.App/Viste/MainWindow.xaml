@@ -4,6 +4,7 @@
         xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
         xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
         xmlns:vm="clr-namespace:DocumentaleMarta.App.ViewModels"
+        xmlns:viste="clr-namespace:DocumentaleMarta.App.Viste"
         mc:Ignorable="d"
         d:DataContext="{d:DesignInstance Type=vm:MainViewModel}"
         Title="Documentale" Width="1100" Height="700" MinWidth="760" MinHeight="480">
@@ -75,15 +76,29 @@
             <GridSplitter Grid.Column="1" Width="5" HorizontalAlignment="Center" VerticalAlignment="Stretch"
                           Background="#E4E4E4" ShowsPreview="False"/>
 
-            <!-- Dettaglio del nodo selezionato -->
-            <StackPanel Grid.Column="2" Margin="28,24" Visibility="{Binding HaSelezione, Converter={StaticResource BoolToVis}}">
-                <TextBlock Text="{Binding TipoDettaglio}" Foreground="#777" FontSize="13"/>
-                <TextBlock Text="{Binding TitoloDettaglio}" FontSize="26" FontWeight="SemiBold" TextWrapping="Wrap" Margin="0,2,0,0"/>
-                <TextBlock Text="{Binding RiepilogoDettaglio}" Foreground="#444" Margin="0,10,0,0"/>
-                <TextBlock Text="{Binding PercorsoDettaglio}" Foreground="#777" FontSize="12" TextWrapping="Wrap" Margin="0,4,0,0"/>
-                <Button Content="Apri in Esplora file" Command="{Binding ApriInEsploraCommand}"
-                        HorizontalAlignment="Left" Padding="12,4" Margin="0,16,0,0"/>
-            </StackPanel>
+            <!-- Pannello di destra: riepilogo per radice e aree, form per le cartelle -->
+            <Grid Grid.Column="2">
+                <StackPanel Margin="28,24" Visibility="{Binding RiepilogoVisibile, Converter={StaticResource BoolToVis}}">
+                    <TextBlock Text="{Binding TipoDettaglio}" Foreground="#777" FontSize="13"/>
+                    <TextBlock Text="{Binding TitoloDettaglio}" FontSize="26" FontWeight="SemiBold" TextWrapping="Wrap" Margin="0,2,0,0"/>
+                    <TextBlock Text="{Binding RiepilogoDettaglio}" Foreground="#444" Margin="0,10,0,0"/>
+                    <TextBlock Text="{Binding PercorsoDettaglio}" Foreground="#777" FontSize="12" TextWrapping="Wrap" Margin="0,4,0,0"/>
+                    <Button Content="Apri in Esplora file" Command="{Binding ApriInEsploraCommand}"
+                            HorizontalAlignment="Left" Padding="12,4" Margin="0,16,0,0"/>
+                </StackPanel>
+
+                <viste:CartellaView DataContext="{Binding FormCartella}">
+                    <viste:CartellaView.Style>
+                        <Style TargetType="viste:CartellaView">
+                            <Style.Triggers>
+                                <DataTrigger Binding="{Binding}" Value="{x:Null}">
+                                    <Setter Property="Visibility" Value="Collapsed"/>
+                                </DataTrigger>
+                            </Style.Triggers>
+                        </Style>
+                    </viste:CartellaView.Style>
+                </viste:CartellaView>
+            </Grid>
         </Grid>
     </DockPanel>
 </Window>

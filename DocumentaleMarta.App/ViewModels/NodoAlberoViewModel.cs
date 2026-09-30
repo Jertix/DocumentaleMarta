@@ -1,4 +1,5 @@
 using System.Collections.ObjectModel;
+using System.Globalization;
 using CommunityToolkit.Mvvm.ComponentModel;
 
 namespace DocumentaleMarta.App.ViewModels;
@@ -15,18 +16,34 @@ public partial class NodoAlberoViewModel(
     TipoNodo tipo, int id, string nome, string percorsoRelativo, NodoAlberoViewModel? padre,
     Action<NodoAlberoViewModel> selezionato) : ObservableObject
 {
+    private static readonly StringComparer OrdineAlfabetico =
+        StringComparer.Create(CultureInfo.GetCultureInfo("it-IT"), ignoreCase: true);
+
+    private int _documentiDellaCartella;
+
     public TipoNodo Tipo { get; } = tipo;
     public int Id { get; } = id;
-    public string Nome { get; } = nome;
-    public string PercorsoRelativo { get; } = percorsoRelativo;
     public NodoAlberoViewModel? Padre { get; } = padre;
     public ObservableCollection<NodoAlberoViewModel> Figli { get; } = [];
 
-    /// <summary>Cartelle contenute (per la radice e le aree). Serve ai riepiloghi e alle conferme di eliminazione.</summary>
-    public int NumeroCartelle { get; init; }
+    [ObservableProperty]
+    private string _nome = nome;
 
-    /// <summary>Documenti contenuti, anche nelle cartelle figlie.</summary>
-    public int NumeroDocumenti { get; init; }
+    [ObservableProperty]
+    private string _percorsoRelativo = percorsoRelativo;
+
+    /// <summary>Cartelle contenute (per la radice e le aree). Serve ai riepiloghi e alle conferme di eliminazione.</summary>
+    public int NumeroCartelle => Tipo switch
+    {
+        TipoNodo.Radice => Figli.Sum(a => a.Figli.Count),
+        TipoNodo.Area => Figli.Count,
+        _ => 0
+    };
+
+    /// <summary>Documenti contenuti: per radice e aree la somma delle cartelle sottostanti.</summary>
+    public int NumeroDocumenti => Tipo == TipoNodo.Cartella ? _documentiDellaCartella : Figli.Sum(f => f.NumeroDocumenti);
+
+    public void ImpostaNumeroDocumenti(int numero) => _documentiDellaCartella = numero;
 
     [ObservableProperty]
     private bool _isExpanded;
@@ -59,5 +76,27 @@ public partial class NodoAlberoViewModel(
         foreach (var figlio in Figli)
             foreach (var nodo in figlio.ConDiscendenti())
                 yield return nodo;
+    }
+
+    /// <summary>Cambia nome e percorso sul posto (la cartella è stata rinominata dal form) e rimette il nodo in ordine alfabetico.</summary>
+    public void Rinomina(string nome, string percorsoRelativo)
+    {
+        Nome = nome;
+        PercorsoRelativo = percorsoRelativo;
+
+        if (Padre is null)
+            return;
+
+        var fratelli = Padre.Figli;
+        var posizioneAttuale = fratelli.IndexOf(this);
+        var posizioneGiusta = 0;
+        foreach (var fratello in fratelli)
+        {
+            if (!ReferenceEquals(fratello, this) && OrdineAlfabetico.Compare(fratello.Nome, nome) <= 0)
+                posizioneGiusta++;
+        }
+
+        if (posizioneGiusta != posizioneAttuale)
+            fratelli.Move(posizioneAttuale, posizioneGiusta);
     }
 }

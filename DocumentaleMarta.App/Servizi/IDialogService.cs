@@ -1,3 +1,5 @@
+using DocumentaleMarta.App.ViewModels;
+
 namespace DocumentaleMarta.App.Servizi;
 
 /// <summary>Finestre di dialogo che i ViewModel possono chiedere senza conoscere WPF (così si testano).</summary>
@@ -13,4 +15,10 @@ public interface IDialogService
     bool Conferma(string titolo, string messaggio);
 
     void MostraErrore(string messaggio);
+
+    /// <summary>Scelta di uno o più file da allegare. Lista vuota se l'utente annulla.</summary>
+    IReadOnlyList<string> SelezionaFile(string titolo);
+
+    /// <summary>Mostra la finestra di creazione di una cartella. True se l'utente conferma.</summary>
+    bool MostraNuovaCartella(NuovaCartellaViewModel modello);
 }
