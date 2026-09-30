@@ -1,32 +1,28 @@
-<UserControl x:Class="DocumentaleMarta.App.Viste.ElencoView"
+<UserControl x:Class="DocumentaleMarta.App.Viste.ScadenzeView"
              xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
              xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
              xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
              xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
              xmlns:vm="clr-namespace:DocumentaleMarta.App.ViewModels"
              mc:Ignorable="d"
-             d:DataContext="{d:DesignInstance Type=vm:ElencoDocumentiViewModel}"
-             d:DesignWidth="780" d:DesignHeight="420">
+             d:DataContext="{d:DesignInstance Type=vm:ScadenzeViewModel}"
+             d:DesignWidth="780" d:DesignHeight="360">
     <UserControl.Resources>
         <ResourceDictionary>
             <ResourceDictionary.MergedDictionaries>
                 <ResourceDictionary Source="Colori.xaml"/>
             </ResourceDictionary.MergedDictionaries>
 
-            <BooleanToVisibilityConverter x:Key="BoolToVis"/>
             <FontFamily x:Key="FontIcone">Segoe Fluent Icons, Segoe MDL2 Assets</FontFamily>
 
-            <!-- Sfondo secondo l'urgenza della scadenza della cartella; testo rosso se il file non c'è più -->
-            <Style x:Key="RigaDocumento" TargetType="DataGridRow">
+            <!-- Sfondo della riga secondo l'urgenza della scadenza -->
+            <Style x:Key="RigaScadenza" TargetType="DataGridRow">
                 <Style.Triggers>
                     <DataTrigger Binding="{Binding Avviso}" Value="Arancione">
                         <Setter Property="Background" Value="{StaticResource SfondoArancione}"/>
                     </DataTrigger>
                     <DataTrigger Binding="{Binding Avviso}" Value="Rosso">
                         <Setter Property="Background" Value="{StaticResource SfondoRosso}"/>
-                    </DataTrigger>
-                    <DataTrigger Binding="{Binding FileMancante}" Value="True">
-                        <Setter Property="Foreground" Value="#B42318"/>
                     </DataTrigger>
                 </Style.Triggers>
             </Style>
@@ -37,65 +33,71 @@
                 <Setter Property="TextTrimming" Value="CharacterEllipsis"/>
             </Style>
 
-            <!-- Pulsanti compatti: icona e, al passaggio del mouse, la descrizione -->
-            <Style x:Key="PulsanteIcona" TargetType="Button">
-                <Setter Property="Width" Value="32"/>
-                <Setter Property="Height" Value="26"/>
-                <Setter Property="Margin" Value="2,0"/>
+            <!-- Il "quando" (es. "Scade tra 5 giorni") nel colore dell'urgenza -->
+            <Style x:Key="CellaQuando" TargetType="TextBlock" BasedOn="{StaticResource CellaTesto}">
+                <Setter Property="FontWeight" Value="SemiBold"/>
+                <Style.Triggers>
+                    <DataTrigger Binding="{Binding Avviso}" Value="Arancione">
+                        <Setter Property="Foreground" Value="{StaticResource TestoArancione}"/>
+                    </DataTrigger>
+                    <DataTrigger Binding="{Binding Avviso}" Value="Rosso">
+                        <Setter Property="Foreground" Value="{StaticResource TestoRosso}"/>
+                    </DataTrigger>
+                </Style.Triggers>
+            </Style>
+
+            <Style x:Key="IconaAvviso" TargetType="TextBlock">
                 <Setter Property="FontFamily" Value="{StaticResource FontIcone}"/>
-                <Setter Property="FontSize" Value="14"/>
+                <Setter Property="Text" Value="&#xE7BA;"/>
+                <Setter Property="HorizontalAlignment" Value="Center"/>
+                <Setter Property="VerticalAlignment" Value="Center"/>
+                <Setter Property="Foreground" Value="{StaticResource IconaArancione}"/>
+                <Style.Triggers>
+                    <DataTrigger Binding="{Binding Avviso}" Value="Rosso">
+                        <Setter Property="Foreground" Value="{StaticResource IconaRossa}"/>
+                    </DataTrigger>
+                </Style.Triggers>
             </Style>
         </ResourceDictionary>
     </UserControl.Resources>
 
     <Grid>
-        <DataGrid x:Name="Griglia" ItemsSource="{Binding Documenti}" AutoGenerateColumns="False" IsReadOnly="True"
+        <DataGrid x:Name="Griglia" ItemsSource="{Binding Righe}" AutoGenerateColumns="False" IsReadOnly="True"
                   CanUserAddRows="False" CanUserDeleteRows="False" CanUserResizeRows="False"
                   HeadersVisibility="Column" GridLinesVisibility="Horizontal"
                   HorizontalGridLinesBrush="#E4E4E4" BorderBrush="#D0D0D0" Background="White"
                   SelectionMode="Single" SelectionUnit="FullRow" RowHeaderWidth="0" RowHeight="36"
-                  RowStyle="{StaticResource RigaDocumento}">
+                  RowStyle="{StaticResource RigaScadenza}">
             <DataGrid.Columns>
                 <DataGridTemplateColumn Width="30" CanUserSort="False">
                     <DataGridTemplateColumn.CellTemplate>
                         <DataTemplate>
-                            <TextBlock Text="&#xE7BA;" FontFamily="{StaticResource FontIcone}" Foreground="#B42318"
-                                       HorizontalAlignment="Center" VerticalAlignment="Center"
-                                       ToolTip="Il file non si trova più nell'archivio"
-                                       Visibility="{Binding FileMancante, Converter={StaticResource BoolToVis}}"/>
+                            <TextBlock Style="{StaticResource IconaAvviso}"/>
                         </DataTemplate>
                     </DataGridTemplateColumn.CellTemplate>
                 </DataGridTemplateColumn>
-                <DataGridTextColumn Header="Nome file" Binding="{Binding NomeFile}" Width="*" MinWidth="140"
+                <DataGridTextColumn Header="Cartella" Binding="{Binding Titolo}" Width="*" MinWidth="140"
                                     ElementStyle="{StaticResource CellaTesto}"/>
-                <DataGridTextColumn Header="Tipo" Binding="{Binding Tipo}" Width="55"
+                <DataGridTextColumn Header="Area" Binding="{Binding NomeArea}" Width="130" MinWidth="80"
                                     ElementStyle="{StaticResource CellaTesto}"/>
-                <DataGridTextColumn Header="Cartella" Binding="{Binding TitoloCartella}" Width="140" MinWidth="80"
+                <DataGridTextColumn Header="Scadenza" Binding="{Binding DataScadenza, StringFormat='dd/MM/yyyy'}" Width="90"
                                     ElementStyle="{StaticResource CellaTesto}"/>
-                <DataGridTextColumn x:Name="ColonnaArea" Header="Area" Binding="{Binding NomeArea}" Width="110" MinWidth="70"
+                <DataGridTextColumn Header="Quando" Binding="{Binding Quando}" SortMemberPath="DataScadenza" Width="140"
+                                    ElementStyle="{StaticResource CellaQuando}"/>
+                <DataGridTextColumn Header="Documenti" Binding="{Binding NumeroDocumenti}" Width="80"
                                     ElementStyle="{StaticResource CellaTesto}"/>
-                <DataGridTextColumn Header="Scadenza" Binding="{Binding Scadenza, StringFormat='dd/MM/yyyy'}" Width="85"
-                                    ElementStyle="{StaticResource CellaTesto}"/>
-                <DataGridTextColumn Header="Caricato il" Binding="{Binding DataCaricamento, StringFormat='dd/MM/yyyy'}" Width="85"
-                                    ElementStyle="{StaticResource CellaTesto}"/>
-                <DataGridTemplateColumn Header="Azioni" Width="Auto" MinWidth="110" CanUserSort="False">
+                <DataGridTemplateColumn Header="Azioni" Width="Auto" MinWidth="130" CanUserSort="False">
                     <DataGridTemplateColumn.CellTemplate>
                         <DataTemplate>
-                            <StackPanel Orientation="Horizontal" VerticalAlignment="Center">
-                                <Button Content="&#xE8E5;" Command="{Binding ApriCommand}" Style="{StaticResource PulsanteIcona}"
-                                        ToolTip="Apri documento" AutomationProperties.Name="Apri documento"/>
-                                <Button Content="&#xE838;" Command="{Binding ApriNellaCartellaCommand}" Style="{StaticResource PulsanteIcona}"
-                                        ToolTip="Apri nella cartella" AutomationProperties.Name="Apri nella cartella"/>
-                                <Button Content="&#xE74D;" Command="{Binding EliminaCommand}" Style="{StaticResource PulsanteIcona}"
-                                        ToolTip="Elimina" AutomationProperties.Name="Elimina"/>
-                            </StackPanel>
+                            <Button Content="Vai alla cartella" Command="{Binding VaiAllaCartellaCommand}"
+                                    Padding="10,2" Margin="2,0" VerticalAlignment="Center"/>
                         </DataTemplate>
                     </DataGridTemplateColumn.CellTemplate>
                 </DataGridTemplateColumn>
             </DataGrid.Columns>
         </DataGrid>
 
-        <!-- Elenco vuoto -->
+        <!-- Nessuna scadenza -->
         <TextBlock Text="{Binding TestoVuoto}" Foreground="#888"
                    HorizontalAlignment="Center" VerticalAlignment="Center" Margin="0,30,0,0"
                    IsHitTestVisible="False">
@@ -103,7 +105,7 @@
                 <Style TargetType="TextBlock">
                     <Setter Property="Visibility" Value="Collapsed"/>
                     <Style.Triggers>
-                        <DataTrigger Binding="{Binding Documenti.Count}" Value="0">
+                        <DataTrigger Binding="{Binding Righe.Count}" Value="0">
                             <Setter Property="Visibility" Value="Visible"/>
                         </DataTrigger>
                     </Style.Triggers>

@@ -9,57 +9,77 @@ using DocumentaleMarta.Core.Servizi;
 
 namespace DocumentaleMarta.App.ViewModels;
 
+/// <param name="avvisi">Decide quali scadenze segnalare; se manca lo si crea con le soglie delle impostazioni.</param>
 public partial class MainViewModel(
     IArchivioService archivio,
     IArchivioFileService files,
     IDialogService dialog,
     IShellService shell,
-    ImpostazioniApp impostazioni) : ObservableObject
+    ImpostazioniApp impostazioni,
+    AlertService? avvisi = null) : ObservableObject
 {
+    private readonly AlertService _avvisi = avvisi ?? new AlertService(impostazioni);
+
     private bool _caricamentoInCorso;
+    private DateOnly _dataUltimoCalcolo;
 
     /// <summary>Contiene sempre e solo la radice "Tutti i documenti" (il TreeView vuole una lista).</summary>
     public ObservableCollection<NodoAlberoViewModel> Radici { get; } = [];
 
     [ObservableProperty]
     [NotifyPropertyChangedFor(nameof(HaSelezione), nameof(RadiceSelezionata), nameof(AreaSelezionata),
-        nameof(PuoCreareCartella), nameof(PuoModificare), nameof(RiepilogoVisibile),
+        nameof(PuoCreareCartella), nameof(PuoModificare), nameof(HaPercorsoFisico), nameof(RiepilogoVisibile),
         nameof(TipoDettaglio), nameof(TitoloDettaglio), nameof(RiepilogoDettaglio), nameof(PercorsoDettaglio))]
     [NotifyCanExecuteChangedFor(nameof(NuovaCartellaCommand), nameof(RinominaCommand),
         nameof(EliminaCommand), nameof(ApriInEsploraCommand))]
     private NodoAlberoViewModel? _nodoSelezionato;
 
-    // ---------- Form della cartella selezionata ----------
+    // ---------- Cosa c'è nel pannello di destra ----------
 
-    /// <summary>Il form della cartella selezionata; null quando è selezionata la radice o un'area.</summary>
+    /// <summary>Il form della cartella selezionata; null quando è selezionato altro.</summary>
     [ObservableProperty]
     private CartellaFormViewModel? _formCartella;
 
-    /// <summary>Il riepilogo (radice e aree) si vede quando non c'è il form di una cartella.</summary>
+    /// <summary>L'elenco dei documenti della radice (tutti) o dell'area selezionata; null quando è selezionato altro.</summary>
+    [ObservableProperty]
+    private ElencoDocumentiViewModel? _elencoDocumenti;
+
+    /// <summary>L'elenco delle scadenze, quando è selezionato il nodo "Scadenze"; null altrimenti.</summary>
+    [ObservableProperty]
+    private ScadenzeViewModel? _elencoScadenze;
+
+    /// <summary>L'intestazione con il riepilogo si vede per radice, aree e "Scadenze" (non per le cartelle, che hanno il loro form).</summary>
     public bool RiepilogoVisibile => NodoSelezionato is { Tipo: not TipoNodo.Cartella };
 
     private Task _caricamentoForm = Task.CompletedTask;
+    private Task _caricamentoElenco = Task.CompletedTask;
 
     /// <summary>Completa quando il form della selezione corrente è pronto (serve ai test).</summary>
     public Task CaricamentoFormCompletato => _caricamentoForm;
 
-    // ---------- Griglia documenti della radice o dell'area selezionata ----------
-
-    /// <summary>L'elenco dei documenti della radice (tutti) o dell'area selezionata; null quando è selezionata una cartella.</summary>
-    [ObservableProperty]
-    private ElencoDocumentiViewModel? _elencoDocumenti;
-
-    private Task _caricamentoElenco = Task.CompletedTask;
-
-    /// <summary>Completa quando l'elenco della selezione corrente è pronto (serve ai test).</summary>
+    /// <summary>Completa quando l'elenco (documenti o scadenze) della selezione corrente è pronto (serve ai test).</summary>
     public Task CaricamentoElencoCompletato => _caricamentoElenco;
 
     partial void OnNodoSelezionatoChanged(NodoAlberoViewModel? value)
     {
         FormCartella = null;
         ElencoDocumenti = null;
-        _caricamentoForm = value?.Tipo == TipoNodo.Cartella ? CaricaFormAsync(value) : Task.CompletedTask;
-        _caricamentoElenco = value is { Tipo: not TipoNodo.Cartella } ? CaricaElencoAsync(value) : Task.CompletedTask;
+        ElencoScadenze = null;
+        _caricamentoForm = Task.CompletedTask;
+        _caricamentoElenco = Task.CompletedTask;
+
+        switch (value?.Tipo)
+        {
+            case TipoNodo.Cartella:
+                _caricamentoForm = CaricaFormAsync(value);
+                break;
+            case TipoNodo.Radice or TipoNodo.Area:
+                _caricamentoElenco = CaricaElencoAsync(value);
+                break;
+            case TipoNodo.Scadenze:
+                _caricamentoElenco = CaricaScadenzeAsync(value);
+                break;
+        }
     }
 
     private async Task CaricaElencoAsync(NodoAlberoViewModel nodo)
@@ -67,7 +87,7 @@ public partial class MainViewModel(
         try
         {
             var elenco = new ElencoDocumentiViewModel(
-                archivio, files, dialog, shell, nodo.Tipo == TipoNodo.Area ? nodo.Id : null);
+                archivio, files, dialog, shell, nodo.Tipo == TipoNodo.Area ? nodo.Id : null, _avvisi);
             await elenco.CaricaAsync();
             if (!ReferenceEquals(NodoSelezionato, nodo))
                 return; // nel frattempo l'utente ha scelto un altro elemento
@@ -84,31 +104,22 @@ public partial class MainViewModel(
         }
     }
 
-    /// <summary>Seleziona nell'albero la cartella indicata, aprendo i rami che la contengono.</summary>
-    private void VaiAllaCartella(int cartellaId)
+    private async Task CaricaScadenzeAsync(NodoAlberoViewModel nodo)
     {
-        var nodo = Radici.SelectMany(r => r.ConDiscendenti())
-            .FirstOrDefault(n => n.Chiave == NodoAlberoViewModel.CreaChiave(TipoNodo.Cartella, cartellaId));
-        if (nodo is null)
+        try
         {
-            // L'elenco mostrava un documento di una cartella che nell'albero non c'è più.
-            _ = RicaricaSicuraAsync();
-            return;
+            var elenco = new ScadenzeViewModel(archivio, _avvisi);
+            await elenco.CaricaAsync();
+            if (!ReferenceEquals(NodoSelezionato, nodo))
+                return;
+
+            elenco.VaiAllaCartellaRichiesto += VaiAllaCartella;
+            ElencoScadenze = elenco;
         }
-
-        for (var p = nodo.Padre; p is not null; p = p.Padre)
-            p.IsExpanded = true;
-        nodo.IsSelected = true;
-    }
-
-    private void OnDocumentoEliminato(int cartellaId)
-    {
-        var nodo = Radici.SelectMany(r => r.ConDiscendenti())
-            .FirstOrDefault(n => n.Chiave == NodoAlberoViewModel.CreaChiave(TipoNodo.Cartella, cartellaId));
-        nodo?.ImpostaNumeroDocumenti(Math.Max(0, nodo.NumeroDocumenti - 1));
-
-        // Il riepilogo sopra la griglia ("N documenti") dipende dai contatori dei nodi.
-        OnPropertyChanged(nameof(RiepilogoDettaglio));
+        catch (Exception ex)
+        {
+            dialog.MostraErrore($"Non è stato possibile caricare le scadenze: {ex.Message}");
+        }
     }
 
     private async Task CaricaFormAsync(NodoAlberoViewModel nodo)
@@ -126,9 +137,15 @@ public partial class MainViewModel(
                 return;
             }
 
-            var form = new CartellaFormViewModel(archivio, files, dialog, shell, dettaglio);
+            var form = new CartellaFormViewModel(archivio, files, dialog, shell, dettaglio, _avvisi);
             form.TitoloSalvato += (titolo, percorso) => nodo.Rinomina(titolo, percorso);
             form.NumeroDocumentiCambiato += numero => nodo.ImpostaNumeroDocumenti(numero);
+            form.DatiSalvati += dati =>
+            {
+                // Scadenza o "completato" sono cambiati: le icone di avviso dell'albero vanno rifatte.
+                nodo.ImpostaScadenza(dati.DataScadenza, dati.Completato);
+                RicalcolaAvvisi();
+            };
             form.RicaricaRichiesta += () => _ = RicaricaSicuraAsync();
             FormCartella = form;
         }
@@ -137,6 +154,33 @@ public partial class MainViewModel(
             // Nessuno attende questo compito (parte da un cambio di selezione): l'errore va mostrato qui o andrebbe perso.
             dialog.MostraErrore($"Non è stato possibile aprire la cartella: {ex.Message}");
         }
+    }
+
+    /// <summary>Seleziona nell'albero la cartella indicata, aprendo i rami che la contengono.</summary>
+    private void VaiAllaCartella(int cartellaId)
+    {
+        var nodo = Radici.SelectMany(r => r.ConDiscendenti())
+            .FirstOrDefault(n => n.Chiave == NodoAlberoViewModel.CreaChiave(TipoNodo.Cartella, cartellaId));
+        if (nodo is null)
+        {
+            // L'elenco mostrava un elemento di una cartella che nell'albero non c'è più.
+            _ = RicaricaSicuraAsync();
+            return;
+        }
+
+        for (var p = nodo.Padre; p is not null; p = p.Padre)
+            p.IsExpanded = true;
+        nodo.IsSelected = true;
+    }
+
+    private void OnDocumentoEliminato(int cartellaId)
+    {
+        var nodo = Radici.SelectMany(r => r.ConDiscendenti())
+            .FirstOrDefault(n => n.Chiave == NodoAlberoViewModel.CreaChiave(TipoNodo.Cartella, cartellaId));
+        nodo?.ImpostaNumeroDocumenti(Math.Max(0, nodo.NumeroDocumenti - 1));
+
+        // Il riepilogo sopra la griglia ("N documenti") dipende dai contatori dei nodi.
+        OnPropertyChanged(nameof(RiepilogoDettaglio));
     }
 
     private async Task RicaricaSicuraAsync()
@@ -179,11 +223,15 @@ public partial class MainViewModel(
 
     public bool PuoModificare => NodoSelezionato?.Tipo is TipoNodo.Area or TipoNodo.Cartella;
 
-    // ---------- Pannello di destra ----------
+    /// <summary>Il nodo "Scadenze" non corrisponde a nessuna cartella su disco.</summary>
+    public bool HaPercorsoFisico => NodoSelezionato is { Tipo: not TipoNodo.Scadenze };
+
+    // ---------- Intestazione del pannello di destra ----------
 
     public string TipoDettaglio => NodoSelezionato?.Tipo switch
     {
         TipoNodo.Radice => "Archivio",
+        TipoNodo.Scadenze => "Promemoria",
         TipoNodo.Area => "Area",
         TipoNodo.Cartella => "Cartella",
         _ => ""
@@ -194,19 +242,27 @@ public partial class MainViewModel(
     public string RiepilogoDettaglio => NodoSelezionato switch
     {
         { Tipo: TipoNodo.Radice } n =>
-            $"{Conta(n.Figli.Count, "area", "aree")}  ·  {Conta(n.NumeroCartelle, "cartella", "cartelle")}  ·  {Conta(n.NumeroDocumenti, "documento", "documenti")}",
+            $"{Conta(n.Aree.Count(), "area", "aree")}  ·  {Conta(n.NumeroCartelle, "cartella", "cartelle")}  ·  {Conta(n.NumeroDocumenti, "documento", "documenti")}",
         { Tipo: TipoNodo.Area } n =>
             $"{Conta(n.NumeroCartelle, "cartella", "cartelle")}  ·  {Conta(n.NumeroDocumenti, "documento", "documenti")}",
         { Tipo: TipoNodo.Cartella } n => Conta(n.NumeroDocumenti, "documento", "documenti"),
+        { Tipo: TipoNodo.Scadenze } => DescriviAvvisi(ContaAvvisi()) is { Count: > 0 } righe
+            ? string.Join("  ·  ", righe)
+            : "Nessuna scadenza in arrivo.",
         _ => ""
     };
 
     public string PercorsoDettaglio =>
-        NodoSelezionato is { } n ? files.PercorsoAssoluto(n.PercorsoRelativo) : "";
+        NodoSelezionato is { Tipo: not TipoNodo.Scadenze } n ? files.PercorsoAssoluto(n.PercorsoRelativo) : "";
 
     // ---------- Caricamento ----------
 
-    public Task InizializzaAsync() => EseguiAsync(() => RicaricaAsync());
+    /// <summary>Carica l'albero e, se le impostazioni lo prevedono, segnala le scadenze in arrivo.</summary>
+    public Task InizializzaAsync() => EseguiAsync(async () =>
+    {
+        await RicaricaAsync();
+        MostraRiepilogoAvvio();
+    });
 
     /// <summary>
     /// Rilegge l'albero dal database conservando i rami aperti. Seleziona <paramref name="chiaveDaSelezionare"/>
@@ -225,6 +281,11 @@ public partial class MainViewModel(
         try
         {
             radice = new NodoAlberoViewModel(TipoNodo.Radice, 0, impostazioni.NomeRadice, "", null, Seleziona);
+
+            // Il nodo "Scadenze" sta in cima, prima delle aree, e non c'è se gli avvisi sono disattivati.
+            if (_avvisi.Attivo)
+                radice.Figli.Add(new NodoAlberoViewModel(TipoNodo.Scadenze, 0, "Scadenze", "", radice, Seleziona));
+
             foreach (var area in aree)
             {
                 var nodoArea = new NodoAlberoViewModel(TipoNodo.Area, area.Id, area.Nome, area.PercorsoRelativo, radice, Seleziona);
@@ -233,6 +294,7 @@ public partial class MainViewModel(
                     var nodoCartella = new NodoAlberoViewModel(
                         TipoNodo.Cartella, cartella.Id, cartella.Titolo, cartella.PercorsoRelativo, nodoArea, Seleziona);
                     nodoCartella.ImpostaNumeroDocumenti(cartella.NumeroDocumenti);
+                    nodoCartella.ImpostaScadenza(cartella.DataScadenza, cartella.Completato);
                     nodoArea.Figli.Add(nodoCartella);
                 }
                 radice.Figli.Add(nodoArea);
@@ -245,6 +307,7 @@ public partial class MainViewModel(
 
             Radici.Clear();
             Radici.Add(radice);
+            RicalcolaAvvisi();
         }
         finally
         {
@@ -269,6 +332,135 @@ public partial class MainViewModel(
         NodoSelezionato = nodo;
         if (precedente is not null && !ReferenceEquals(precedente, nodo))
             precedente.IsSelected = false;
+    }
+
+    // ---------- Avvisi di scadenza ----------
+
+    /// <summary>
+    /// Rifà le icone di avviso dell'albero: ogni cartella ha il suo stato, ogni area e la radice il più grave
+    /// tra quelli che contengono, e il nodo "Scadenze" il conteggio totale.
+    /// </summary>
+    private void RicalcolaAvvisi()
+    {
+        _dataUltimoCalcolo = _avvisi.Oggi;
+        if (Radice is not { } radice)
+            return;
+
+        var statoRadice = StatoAvviso.Nessuno;
+        var cartelleInAvviso = 0;
+
+        foreach (var area in radice.Aree)
+        {
+            var statoArea = StatoAvviso.Nessuno;
+            var inAvvisoNellArea = 0;
+
+            foreach (var cartella in area.Figli)
+            {
+                var stato = _avvisi.Valuta(cartella.DataScadenza, cartella.Completato);
+                cartella.Avviso = stato;
+                cartella.DescrizioneAvviso = stato == StatoAvviso.Nessuno ? "" : _avvisi.Descrivi(cartella.DataScadenza!.Value);
+
+                statoArea = AlertService.Peggiore(statoArea, stato);
+                if (stato != StatoAvviso.Nessuno)
+                    inAvvisoNellArea++;
+            }
+
+            area.Avviso = statoArea;
+            area.DescrizioneAvviso = DescrizioneRiassuntivaAvvisi(inAvvisoNellArea);
+            statoRadice = AlertService.Peggiore(statoRadice, statoArea);
+            cartelleInAvviso += inAvvisoNellArea;
+        }
+
+        radice.Avviso = statoRadice;
+        radice.DescrizioneAvviso = DescrizioneRiassuntivaAvvisi(cartelleInAvviso);
+
+        if (radice.Figli.FirstOrDefault(f => f.Tipo == TipoNodo.Scadenze) is { } scadenze)
+        {
+            scadenze.Avviso = statoRadice;
+            scadenze.NumeroAvvisi = cartelleInAvviso;
+            scadenze.DescrizioneAvviso = DescrizioneRiassuntivaAvvisi(cartelleInAvviso);
+        }
+
+        OnPropertyChanged(nameof(RiepilogoDettaglio));
+    }
+
+    /// <summary>
+    /// Da chiamare quando la finestra torna in primo piano: se nel frattempo è cambiato il giorno (il PC è rimasto
+    /// acceso per la notte) gli stati delle scadenze vanno rifatti.
+    /// </summary>
+    public void ControllaCambioData()
+    {
+        if (Radici.Count > 0 && _avvisi.Oggi != _dataUltimoCalcolo)
+            _ = RicaricaSicuraAsync();
+    }
+
+    private readonly record struct ConteggioAvvisi(int Scadute, int InScadenzaRossa, int InScadenzaArancione)
+    {
+        public int Totale => Scadute + InScadenzaRossa + InScadenzaArancione;
+    }
+
+    private ConteggioAvvisi ContaAvvisi()
+    {
+        int scadute = 0, rosse = 0, arancioni = 0;
+        foreach (var cartella in Radici.SelectMany(r => r.Aree).SelectMany(a => a.Figli))
+        {
+            switch (cartella.Avviso)
+            {
+                case StatoAvviso.Rosso when cartella.DataScadenza is { } data && _avvisi.Giorni(data) < 0:
+                    scadute++;
+                    break;
+                case StatoAvviso.Rosso:
+                    rosse++;
+                    break;
+                case StatoAvviso.Arancione:
+                    arancioni++;
+                    break;
+            }
+        }
+        return new ConteggioAvvisi(scadute, rosse, arancioni);
+    }
+
+    /// <summary>"2 cartelle scadute", "1 cartella in scadenza entro 7 giorni"... una riga per ogni categoria non vuota.</summary>
+    private List<string> DescriviAvvisi(ConteggioAvvisi conteggio)
+    {
+        var righe = new List<string>();
+        if (conteggio.Scadute > 0)
+            righe.Add(Conta(conteggio.Scadute, "cartella scaduta", "cartelle scadute"));
+        if (conteggio.InScadenzaRossa > 0)
+            righe.Add($"{Conta(conteggio.InScadenzaRossa, "cartella", "cartelle")} in scadenza entro {Giorni(_avvisi.SogliaRossaGiorni)}");
+        if (conteggio.InScadenzaArancione > 0)
+            righe.Add($"{Conta(conteggio.InScadenzaArancione, "cartella", "cartelle")} in scadenza entro {Giorni(_avvisi.SogliaArancioneGiorni)}");
+        return righe;
+    }
+
+    private static string DescrizioneRiassuntivaAvvisi(int cartelle) => cartelle switch
+    {
+        0 => "",
+        1 => "1 cartella con una scadenza da controllare",
+        _ => $"{cartelle} cartelle con scadenze da controllare"
+    };
+
+    /// <summary>All'apertura: se ci sono scadenze da controllare lo dice e offre di andare all'elenco.</summary>
+    private void MostraRiepilogoAvvio()
+    {
+        if (!_avvisi.Attivo || !impostazioni.RiepilogoAvvio)
+            return;
+
+        var righe = DescriviAvvisi(ContaAvvisi());
+        if (righe.Count == 0)
+            return;
+
+        var messaggio = "Ci sono scadenze da controllare:\n\n"
+                        + string.Join("\n", righe.Select(r => "•  " + r))
+                        + "\n\nVuoi vedere l'elenco?";
+        if (dialog.Conferma("Scadenze", messaggio))
+            VaiAlleScadenze();
+    }
+
+    private void VaiAlleScadenze()
+    {
+        if (Radice?.Figli.FirstOrDefault(f => f.Tipo == TipoNodo.Scadenze) is { } nodo)
+            nodo.IsSelected = true;
     }
 
     // ---------- Comandi ----------
@@ -321,7 +513,7 @@ public partial class MainViewModel(
     [RelayCommand(CanExecute = nameof(PuoModificare))]
     private async Task RinominaAsync()
     {
-        if (NodoSelezionato is not { Tipo: not TipoNodo.Radice } nodo)
+        if (NodoSelezionato is not { Tipo: TipoNodo.Area or TipoNodo.Cartella } nodo)
             return;
 
         var eArea = nodo.Tipo == TipoNodo.Area;
@@ -348,7 +540,7 @@ public partial class MainViewModel(
     [RelayCommand(CanExecute = nameof(PuoModificare))]
     private async Task EliminaAsync()
     {
-        if (NodoSelezionato is not { Tipo: not TipoNodo.Radice } nodo)
+        if (NodoSelezionato is not { Tipo: TipoNodo.Area or TipoNodo.Cartella } nodo)
             return;
 
         var eArea = nodo.Tipo == TipoNodo.Area;
@@ -367,10 +559,10 @@ public partial class MainViewModel(
         });
     }
 
-    [RelayCommand(CanExecute = nameof(HaSelezione))]
+    [RelayCommand(CanExecute = nameof(HaPercorsoFisico))]
     private void ApriInEsplora()
     {
-        if (NodoSelezionato is not { } nodo)
+        if (NodoSelezionato is not { Tipo: not TipoNodo.Scadenze } nodo)
             return;
 
         var percorso = files.PercorsoAssoluto(nodo.PercorsoRelativo);
@@ -390,6 +582,10 @@ public partial class MainViewModel(
         }
     }
 
+    /// <summary>Rilegge tutto dall'archivio (utile se i file sono stati toccati fuori dal programma).</summary>
+    [RelayCommand]
+    private Task AggiornaAsync() => EseguiAsync(() => RicaricaAsync());
+
     // ---------- Supporto ----------
 
     private NodoAlberoViewModel? Radice => Radici.FirstOrDefault();
@@ -400,7 +596,7 @@ public partial class MainViewModel(
             return errore;
 
         var nome = testo.Trim();
-        var giaUsato = Radice?.Figli.Any(a =>
+        var giaUsato = Radice?.Aree.Any(a =>
             !ReferenceEquals(a, escludi) && string.Equals(a.Nome, nome, StringComparison.OrdinalIgnoreCase)) == true;
         return giaUsato ? $"Esiste già un'area chiamata «{nome}»." : null;
     }
@@ -422,6 +618,8 @@ public partial class MainViewModel(
 
     private static string Conta(int numero, string singolare, string plurale) =>
         $"{numero} {(numero == 1 ? singolare : plurale)}";
+
+    private static string Giorni(int numero) => Conta(numero, "giorno", "giorni");
 
     /// <summary>Esegue un'operazione trasformando gli errori prevedibili in messaggi per l'utente.</summary>
     private async Task EseguiAsync(Func<Task> operazione)

@@ -8,6 +8,7 @@ using DocumentaleMarta.App.ViewModels;
 using DocumentaleMarta.App.Viste;
 using DocumentaleMarta.Core.Impostazioni;
 using DocumentaleMarta.Core.Modelli;
+using DocumentaleMarta.Core.Servizi;
 
 namespace DocumentaleMarta.Tests;
 
@@ -154,7 +155,7 @@ public class VisteTests
         using var a = new ArchivioDiProva();
         await a.CreaCartellaAsync("Fatture", "Fattura 123", "Fattura 123.pdf");
         await a.Servizio.CreaAreaAsync("INPS");
-        var vm = new MainViewModel(a.Servizio, a.Files, a.Dialog, a.Shell, new ImpostazioniApp { PercorsoRadice = a.Radice });
+        var vm = new MainViewModel(a.Servizio, a.Files, a.Dialog, a.Shell, new ImpostazioniApp { PercorsoRadice = a.Radice, RiepilogoAvvio = false });
         await vm.InizializzaAsync();
         vm.Radici[0].Figli.Single(n => n.Nome == "Fatture").Figli.Single().IsSelected = true;
         await vm.CaricamentoFormCompletato;
@@ -299,13 +300,107 @@ public class VisteTests
         return null;
     }
 
+    /// <summary>Un archivio con scadenze di ogni urgenza, per vedere colori e icone. "Oggi" è il 1 ottobre 2026.</summary>
+    private static async Task<(MainViewModel Vm, AlertService Avvisi)> ArchivioConAvvisiAsync(ArchivioDiProva a)
+    {
+        var avvisi = new AlertService(30, 7, true, new TempoFisso(new DateTime(2026, 10, 1)));
+        var fatture = await a.Servizio.CreaAreaAsync("Fatture");
+        var inps = await a.Servizio.CreaAreaAsync("INPS");
+        var agenzia = await a.Servizio.CreaAreaAsync("Agenzia Entrate");
+        await a.CreaCartellaInAreaAsync(fatture, "Fattura 123", ["Fattura 123.pdf", "scansione.jpg"], new DateOnly(2026, 10, 4));
+        await a.CreaCartellaInAreaAsync(fatture, "Fattura 124", ["Fattura 124.pdf"], new DateOnly(2026, 10, 25));
+        await a.CreaCartellaInAreaAsync(inps, "Contributi", ["F24 settembre.pdf"], new DateOnly(2026, 9, 28));
+        await a.CreaCartellaInAreaAsync(inps, "Malattia", ["certificato.pdf"], new DateOnly(2027, 3, 1));
+        await a.CreaCartellaInAreaAsync(agenzia, "Dichiarazione", ["modello.pdf"]);
+
+        var vm = new MainViewModel(a.Servizio, a.Files, a.Dialog, a.Shell,
+            new ImpostazioniApp { PercorsoRadice = a.Radice, RiepilogoAvvio = false }, avvisi);
+        await vm.InizializzaAsync();
+        await vm.CaricamentoElencoCompletato;
+        foreach (var area in vm.Radici[0].Aree)
+            area.IsExpanded = true;
+        return (vm, avvisi);
+    }
+
+    [Fact]
+    public async Task FinestraPrincipale_ConAvvisi_MostraIconeNellAlbero_ERigheColorateNellaGriglia()
+    {
+        using var a = new ArchivioDiProva();
+        var (vm, _) = await ArchivioConAvvisiAsync(a);
+
+        var errori = InSta(() =>
+        {
+            var finestra = new MainWindow(vm);
+            Disegna((FrameworkElement)finestra.Content, 1100, 680, "avvisi-radice");
+        });
+
+        Assert.Empty(errori);
+    }
+
+    [Fact]
+    public async Task FinestraPrincipale_NodoScadenze_MostraLElencoDelleCartelleInAvviso()
+    {
+        using var a = new ArchivioDiProva();
+        var (vm, _) = await ArchivioConAvvisiAsync(a);
+        vm.Radici[0].Figli.Single(f => f.Tipo == TipoNodo.Scadenze).IsSelected = true;
+        await vm.CaricamentoElencoCompletato;
+
+        var errori = InSta(() =>
+        {
+            var finestra = new MainWindow(vm);
+            Disegna((FrameworkElement)finestra.Content, 1100, 680, "avvisi-scadenze");
+            Assert.Equal(3, FindDataGrid((FrameworkElement)finestra.Content, "Cartella")!.Items.Count);
+        });
+
+        Assert.Empty(errori);
+    }
+
+    [Fact]
+    public async Task ScadenzeView_DoppioClicSuUnaRiga_VaAllaCartella_MaNonSuUnPulsante()
+    {
+        using var a = new ArchivioDiProva();
+        var (vm, avvisi) = await ArchivioConAvvisiAsync(a);
+        var scadenze = new ScadenzeViewModel(a.Servizio, avvisi);
+        await scadenze.CaricaAsync();
+        var richieste = new List<int>();
+        scadenze.VaiAllaCartellaRichiesto += richieste.Add;
+
+        InSta(() =>
+        {
+            var vista = new ScadenzeView { DataContext = scadenze };
+            Disegna(vista, 780, 300, "scadenze-vista");
+            var riga = (DataGridRow)FindDataGrid(vista)!.ItemContainerGenerator.ContainerFromIndex(0);
+
+            FindFirst<TextBlock>(riga)!.RaiseEvent(NuovoDoppioClic());
+            Assert.Single(richieste);
+
+            FindFirst<Button>(riga)!.RaiseEvent(NuovoDoppioClic());
+            Assert.Single(richieste);
+        });
+    }
+
+    [Fact]
+    public async Task CartellaView_ConScadenzaVicina_MostraQuantoManca()
+    {
+        using var a = new ArchivioDiProva();
+        var (_, avvisi) = await ArchivioConAvvisiAsync(a);
+        var dettaglio = (await a.Servizio.CaricaScadenzeAsync()).First();
+        var form = new CartellaFormViewModel(a.Servizio, a.Files, a.Dialog, a.Shell,
+            (await a.Servizio.CaricaCartellaAsync(dettaglio.CartellaId))!, avvisi);
+
+        var errori = InSta(() => Disegna(new CartellaView { DataContext = form }, 780, 480, "form-con-scadenza"));
+
+        Assert.Empty(errori);
+        Assert.Equal(StatoAvviso.Rosso, form.StatoScadenza);
+    }
+
     [Fact]
     public async Task FinestraPrincipale_ConLaRadiceSelezionata_MostraLaGrigliaDiTuttiIDocumenti()
     {
         using var a = new ArchivioDiProva();
         var fatture = await a.Servizio.CreaAreaAsync("Fatture");
         await a.CreaCartellaInAreaAsync(fatture, "Fattura 123", ["Fattura 123.pdf", "scansione.jpg"], new DateOnly(2026, 10, 31));
-        var vm = new MainViewModel(a.Servizio, a.Files, a.Dialog, a.Shell, new ImpostazioniApp { PercorsoRadice = a.Radice });
+        var vm = new MainViewModel(a.Servizio, a.Files, a.Dialog, a.Shell, new ImpostazioniApp { PercorsoRadice = a.Radice, RiepilogoAvvio = false });
         await vm.InizializzaAsync();
         await vm.CaricamentoElencoCompletato;
 
@@ -319,14 +414,15 @@ public class VisteTests
         Assert.Empty(errori);
     }
 
-    private static DataGrid? FindDataGrid(DependencyObject radice)
+    /// <summary>La prima griglia nell'albero visuale; con <paramref name="intestazione"/> quella che ha una colonna con quel titolo.</summary>
+    private static DataGrid? FindDataGrid(DependencyObject radice, string? intestazione = null)
     {
         for (var i = 0; i < VisualTreeHelper.GetChildrenCount(radice); i++)
         {
             var figlio = VisualTreeHelper.GetChild(radice, i);
-            if (figlio is DataGrid griglia)
+            if (figlio is DataGrid griglia && (intestazione is null || griglia.Columns.Any(c => c.Header as string == intestazione)))
                 return griglia;
-            if (FindDataGrid(figlio) is { } trovata)
+            if (FindDataGrid(figlio, intestazione) is { } trovata)
                 return trovata;
         }
         return null;

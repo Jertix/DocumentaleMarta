@@ -52,4 +52,10 @@ public interface IArchivioService
     /// dal più recente al più vecchio.
     /// </summary>
     Task<IReadOnlyList<DocumentoElenco>> CaricaDocumentiAsync(int? areaId);
+
+    /// <summary>
+    /// Le cartelle non completate che hanno una scadenza, dalla più vicina (o più scaduta) alla più lontana.
+    /// Quali siano "in scadenza" lo decide <see cref="AlertService"/>, non il database.
+    /// </summary>
+    Task<IReadOnlyList<CartellaScadenza>> CaricaScadenzeAsync();
 }

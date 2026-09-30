@@ -1,17 +1,22 @@
 using System.Collections.ObjectModel;
 using System.Globalization;
 using CommunityToolkit.Mvvm.ComponentModel;
+using DocumentaleMarta.Core.Servizi;
 
 namespace DocumentaleMarta.App.ViewModels;
 
 public enum TipoNodo
 {
     Radice,
+
+    /// <summary>Nodo speciale sotto la radice: non corrisponde a nessuna cartella su disco, mostra le scadenze in arrivo.</summary>
+    Scadenze,
+
     Area,
     Cartella
 }
 
-/// <summary>Un nodo dell'albero a sinistra: la radice "Tutti i documenti", un'area o una cartella.</summary>
+/// <summary>Un nodo dell'albero a sinistra: la radice "Tutti i documenti", il nodo "Scadenze", un'area o una cartella.</summary>
 public partial class NodoAlberoViewModel(
     TipoNodo tipo, int id, string nome, string percorsoRelativo, NodoAlberoViewModel? padre,
     Action<NodoAlberoViewModel> selezionato) : ObservableObject
@@ -27,15 +32,54 @@ public partial class NodoAlberoViewModel(
     public ObservableCollection<NodoAlberoViewModel> Figli { get; } = [];
 
     [ObservableProperty]
+    [NotifyPropertyChangedFor(nameof(Testo))]
     private string _nome = nome;
 
     [ObservableProperty]
     private string _percorsoRelativo = percorsoRelativo;
 
+    /// <summary>Scadenza della cartella (solo per i nodi cartella).</summary>
+    public DateOnly? DataScadenza { get; private set; }
+
+    /// <summary>La cartella è completata: non genera più avvisi.</summary>
+    public bool Completato { get; private set; }
+
+    public void ImpostaScadenza(DateOnly? dataScadenza, bool completato)
+    {
+        DataScadenza = dataScadenza;
+        Completato = completato;
+    }
+
+    // ---------- Avvisi di scadenza ----------
+
+    /// <summary>
+    /// Per una cartella lo stato della sua scadenza; per un'area o per la radice il più grave tra quelli che contengono
+    /// (così in cima all'albero si vede subito se c'è qualcosa da controllare).
+    /// </summary>
+    [ObservableProperty]
+    private StatoAvviso _avviso;
+
+    /// <summary>Spiegazione dell'avviso, per il suggerimento che compare passando il mouse sull'icona.</summary>
+    [ObservableProperty]
+    private string _descrizioneAvviso = "";
+
+    /// <summary>Solo per il nodo "Scadenze": quante cartelle sono in scadenza o scadute.</summary>
+    [ObservableProperty]
+    [NotifyPropertyChangedFor(nameof(Testo))]
+    private int _numeroAvvisi;
+
+    /// <summary>Il testo mostrato nell'albero: per "Scadenze" comprende il numero, es. "Scadenze (3)".</summary>
+    public string Testo => Tipo == TipoNodo.Scadenze && NumeroAvvisi > 0 ? $"{Nome} ({NumeroAvvisi})" : Nome;
+
+    // ---------- Contatori ----------
+
+    /// <summary>Aree contenute (per la radice): il nodo "Scadenze" non è un'area.</summary>
+    public IEnumerable<NodoAlberoViewModel> Aree => Figli.Where(f => f.Tipo == TipoNodo.Area);
+
     /// <summary>Cartelle contenute (per la radice e le aree). Serve ai riepiloghi e alle conferme di eliminazione.</summary>
     public int NumeroCartelle => Tipo switch
     {
-        TipoNodo.Radice => Figli.Sum(a => a.Figli.Count),
+        TipoNodo.Radice => Aree.Sum(a => a.Figli.Count),
         TipoNodo.Area => Figli.Count,
         _ => 0
     };
@@ -62,10 +106,11 @@ public partial class NodoAlberoViewModel(
 
     public static string CreaChiave(TipoNodo tipo, int id) => $"{tipo}:{id}";
 
-    // Glifi di Segoe Fluent Icons / Segoe MDL2 Assets: casa, libreria, cartella.
+    // Glifi di Segoe Fluent Icons / Segoe MDL2 Assets: casa, calendario, libreria, cartella.
     public string Icona => Tipo switch
     {
         TipoNodo.Radice => "",
+        TipoNodo.Scadenze => "",
         TipoNodo.Area => "",
         _ => ""
     };

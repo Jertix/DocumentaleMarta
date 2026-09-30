@@ -20,7 +20,7 @@ public class ArchivioService(IDbContextFactory<AppDbContext> dbFactory, IArchivi
                 a.Id, a.Nome, a.PercorsoRelativo, a.Ordine,
                 Cartelle = a.Cartelle.Select(c => new
                 {
-                    c.Id, c.Titolo, c.PercorsoRelativo, c.DataCreazione,
+                    c.Id, c.Titolo, c.PercorsoRelativo, c.DataCreazione, c.DataScadenza, c.Completato,
                     NumeroDocumenti = c.Documenti.Count
                 }).ToList()
             })
@@ -35,7 +35,8 @@ public class ArchivioService(IDbContextFactory<AppDbContext> dbFactory, IArchivi
                 a.Cartelle
                     .OrderBy(c => c.Titolo, OrdineAlfabetico)
                     .ThenBy(c => c.DataCreazione)
-                    .Select(c => new CartellaNodo(c.Id, c.Titolo, c.PercorsoRelativo, c.NumeroDocumenti))
+                    .Select(c => new CartellaNodo(
+                        c.Id, c.Titolo, c.PercorsoRelativo, c.NumeroDocumenti, c.DataScadenza, c.Completato))
                     .ToList()))
             .ToList();
     }
@@ -284,7 +285,8 @@ public class ArchivioService(IDbContextFactory<AppDbContext> dbFactory, IArchivi
                 TitoloCartella = d.Cartella.Titolo,
                 d.Cartella.AreaId,
                 NomeArea = d.Cartella.Area.Nome,
-                Scadenza = d.Cartella.DataScadenza
+                Scadenza = d.Cartella.DataScadenza,
+                d.Cartella.Completato
             })
             .ToListAsync();
 
@@ -292,7 +294,27 @@ public class ArchivioService(IDbContextFactory<AppDbContext> dbFactory, IArchivi
             .OrderByDescending(d => d.DataCaricamento).ThenByDescending(d => d.Id)
             .Select(d => new DocumentoElenco(
                 d.Id, d.NomeFile, d.Estensione, d.Dimensione, d.DataCaricamento, d.PercorsoRelativo,
-                d.CartellaId, d.TitoloCartella, d.AreaId, d.NomeArea, d.Scadenza))
+                d.CartellaId, d.TitoloCartella, d.AreaId, d.NomeArea, d.Scadenza, d.Completato))
+            .ToList();
+    }
+
+    public async Task<IReadOnlyList<CartellaScadenza>> CaricaScadenzeAsync()
+    {
+        await using var db = await dbFactory.CreateDbContextAsync();
+
+        var righe = await db.Cartelle.AsNoTracking()
+            .Where(c => c.DataScadenza != null && !c.Completato)
+            .Select(c => new
+            {
+                c.Id, c.Titolo, c.AreaId, NomeArea = c.Area.Nome,
+                Scadenza = c.DataScadenza!.Value,
+                NumeroDocumenti = c.Documenti.Count
+            })
+            .ToListAsync();
+
+        return righe
+            .OrderBy(c => c.Scadenza).ThenBy(c => c.Titolo, OrdineAlfabetico)
+            .Select(c => new CartellaScadenza(c.Id, c.Titolo, c.AreaId, c.NomeArea, c.Scadenza, c.NumeroDocumenti))
             .ToList();
     }
 

@@ -83,6 +83,7 @@ public partial class App : Application
 
         var collezione = new ServiceCollection();
         collezione.AddSingleton(impostazioni);
+        collezione.AddSingleton(new AlertService(impostazioni));
         collezione.AddSingleton<IArchivioFileService>(new ArchivioFileService(impostazioni.PercorsoRadice));
         collezione.AddSingleton<IDbContextFactory<AppDbContext>>(new AppDbContextFactory(ArchivioDatabase.CreaOpzioni(percorsoDatabase)));
         collezione.AddSingleton<IArchivioService, ArchivioService>();

@@ -30,9 +30,9 @@ public class MainViewModelTests : IDisposable
 
     // L'albero viene ricreato a ogni modifica: i nodi si cercano sempre per nome, mai riusando quelli vecchi.
     private NodoAlberoViewModel Radice => _vm.Radici.Single();
-    private NodoAlberoViewModel Area(string nome) => Radice.Figli.Single(a => a.Nome == nome);
+    private NodoAlberoViewModel Area(string nome) => Radice.Aree.Single(a => a.Nome == nome);
     private NodoAlberoViewModel Cartella(string area, string titolo) => Area(area).Figli.First(c => c.Nome == titolo);
-    private bool ExistsArea(string nome) => Radice.Figli.Any(a => a.Nome == nome);
+    private bool ExistsArea(string nome) => Radice.Aree.Any(a => a.Nome == nome);
 
     private async Task CreaAreaAsync(string nome)
     {
@@ -61,7 +61,7 @@ public class MainViewModelTests : IDisposable
         Assert.True(Radice.IsExpanded);
         Assert.Same(Radice, _vm.NodoSelezionato);
         Assert.True(_vm.RadiceSelezionata);
-        Assert.Empty(Radice.Figli);
+        Assert.Empty(Radice.Aree);
         Assert.Equal("Archivio", _vm.TipoDettaglio);
         Assert.Equal(_radice, _vm.PercorsoDettaglio.TrimEnd('\\'));
     }
@@ -119,7 +119,7 @@ public class MainViewModelTests : IDisposable
 
         await _vm.NuovaAreaCommand.ExecuteAsync(null);
 
-        Assert.Empty(Radice.Figli);
+        Assert.Empty(Radice.Aree);
         Assert.Empty(_dialog.Errori);
     }
 
@@ -134,7 +134,7 @@ public class MainViewModelTests : IDisposable
 
         await CreaAreaAsync(secondo);
 
-        Assert.Single(Radice.Figli);
+        Assert.Single(Radice.Aree);
         Assert.Contains("Esiste già", Assert.Single(_dialog.ErroriValidazione));
     }
 
@@ -145,7 +145,7 @@ public class MainViewModelTests : IDisposable
 
         await CreaAreaAsync("   ");
 
-        Assert.Empty(Radice.Figli);
+        Assert.Empty(Radice.Aree);
         Assert.Single(_dialog.ErroriValidazione);
     }
 
@@ -612,7 +612,7 @@ public class MainViewModelTests : IDisposable
         Assert.Contains("«Fatture»", messaggio);
         Assert.Contains("1 cartella e 1 documento", messaggio);
         Assert.Contains("Cestino", messaggio);
-        Assert.Empty(Radice.Figli);
+        Assert.Empty(Radice.Aree);
         Assert.Same(Radice, _vm.NodoSelezionato);
         Assert.False(Directory.Exists(Fisico("Fatture")));
     }
@@ -685,7 +685,7 @@ public class MainViewModelTests : IDisposable
         await _vm.RinominaCommand.ExecuteAsync(null);
 
         Assert.Contains("non esiste più", Assert.Single(_dialog.Errori));
-        Assert.Empty(Radice.Figli);
+        Assert.Empty(Radice.Aree);
         Assert.Same(Radice, _vm.NodoSelezionato);
     }
 

@@ -8,7 +8,8 @@ using DocumentaleMarta.Core.Servizi;
 namespace DocumentaleMarta.App.ViewModels;
 
 /// <summary>Una riga della griglia di radice o area: un documento con la cartella e l'area a cui appartiene.</summary>
-public partial class DocumentoElencoViewModel(DocumentoElenco dati, bool fileMancante, ElencoDocumentiViewModel elenco) : ObservableObject
+public partial class DocumentoElencoViewModel(
+    DocumentoElenco dati, bool fileMancante, StatoAvviso avviso, ElencoDocumentiViewModel elenco) : ObservableObject
 {
     public int Id { get; } = dati.Id;
     public int CartellaId { get; } = dati.CartellaId;
@@ -26,6 +27,9 @@ public partial class DocumentoElencoViewModel(DocumentoElenco dati, bool fileMan
     public DateTime? Scadenza { get; } = dati.ScadenzaCartella?.ToDateTime(TimeOnly.MinValue);
 
     public string PercorsoRelativo { get; } = dati.PercorsoRelativo;
+
+    /// <summary>Urgenza della scadenza della cartella del documento (la riga si colora di conseguenza).</summary>
+    public StatoAvviso Avviso { get; } = avviso;
 
     [ObservableProperty]
     private bool _fileMancante = fileMancante;
@@ -51,15 +55,19 @@ public class ElencoDocumentiViewModel
     private readonly IArchivioFileService _files;
     private readonly AzioniDocumenti _azioni;
     private readonly int? _areaId;
+    private readonly AlertService? _avvisi;
 
     /// <param name="areaId">L'area da mostrare; null per tutti i documenti dell'archivio.</param>
+    /// <param name="avvisi">Per colorare le righe secondo la scadenza della cartella; senza, le righe restano senza colore.</param>
     public ElencoDocumentiViewModel(
-        IArchivioService archivio, IArchivioFileService files, IDialogService dialog, IShellService shell, int? areaId)
+        IArchivioService archivio, IArchivioFileService files, IDialogService dialog, IShellService shell, int? areaId,
+        AlertService? avvisi = null)
     {
         _archivio = archivio;
         _files = files;
         _azioni = new AzioniDocumenti(archivio, files, dialog, shell);
         _areaId = areaId;
+        _avvisi = avvisi;
     }
 
     /// <summary>La colonna "Area" serve solo quando si vedono i documenti di più aree.</summary>
@@ -89,7 +97,10 @@ public class ElencoDocumentiViewModel
 
         Documenti.Clear();
         for (var i = 0; i < elenco.Count; i++)
-            Documenti.Add(new DocumentoElencoViewModel(elenco[i], mancanti[i], this));
+        {
+            var avviso = _avvisi?.Valuta(elenco[i].ScadenzaCartella, elenco[i].CartellaCompletata) ?? StatoAvviso.Nessuno;
+            Documenti.Add(new DocumentoElencoViewModel(elenco[i], mancanti[i], avviso, this));
+        }
     }
 
     internal void ApriDocumento(DocumentoElencoViewModel documento)

@@ -668,6 +668,84 @@ public class ArchivioServiceTests : IDisposable
         Assert.Empty(await _servizio.CaricaDocumentiAsync(null));
     }
 
+    // ---------- Scadenze ----------
+
+    [Fact]
+    public async Task CaricaAlbero_PortaScadenzaECompletato()
+    {
+        var areaId = await _servizio.CreaAreaAsync("A");
+        await _servizio.CreaCartellaConDatiAsync(areaId, Dati("Con scadenza", scadenza: new DateOnly(2026, 11, 5)), []);
+        await _servizio.CreaCartellaConDatiAsync(areaId, Dati("Completata", scadenza: new DateOnly(2026, 9, 1),
+            completato: true, dataCompletamento: new DateOnly(2026, 8, 30)), []);
+        await _servizio.CreaCartellaConDatiAsync(areaId, Dati("Senza"), []);
+
+        var cartelle = (await _servizio.CaricaAlberoAsync()).Single().Cartelle;
+
+        var conScadenza = cartelle.Single(c => c.Titolo == "Con scadenza");
+        Assert.Equal(new DateOnly(2026, 11, 5), conScadenza.DataScadenza);
+        Assert.False(conScadenza.Completato);
+        Assert.True(cartelle.Single(c => c.Titolo == "Completata").Completato);
+        Assert.Null(cartelle.Single(c => c.Titolo == "Senza").DataScadenza);
+    }
+
+    [Fact]
+    public async Task CaricaDocumenti_PortaLoStatoCompletatoDellaCartella()
+    {
+        var areaId = await _servizio.CreaAreaAsync("A");
+        await _servizio.CreaCartellaConDatiAsync(areaId, Dati("Aperta"), [_tmp.CreaFile("a.txt")]);
+        await _servizio.CreaCartellaConDatiAsync(areaId, Dati("Chiusa", completato: true, dataCompletamento: new DateOnly(2026, 1, 1)),
+            [_tmp.CreaFile("b.txt")]);
+
+        var documenti = await _servizio.CaricaDocumentiAsync(null);
+
+        Assert.False(documenti.Single(d => d.NomeFile == "a.txt").CartellaCompletata);
+        Assert.True(documenti.Single(d => d.NomeFile == "b.txt").CartellaCompletata);
+    }
+
+    [Fact]
+    public async Task CaricaScadenze_SoloCartelleNonCompletateConScadenza_DallaPiuVicina()
+    {
+        var a1 = await _servizio.CreaAreaAsync("Fatture");
+        var a2 = await _servizio.CreaAreaAsync("INPS");
+        await _servizio.CreaCartellaConDatiAsync(a1, Dati("Lontana", scadenza: new DateOnly(2027, 1, 31)), []);
+        await _servizio.CreaCartellaConDatiAsync(a2, Dati("Scaduta", scadenza: new DateOnly(2026, 8, 1)), [_tmp.CreaFile("x.pdf"), _tmp.CreaFile("y.pdf")]);
+        await _servizio.CreaCartellaConDatiAsync(a1, Dati("Vicina", scadenza: new DateOnly(2026, 10, 10)), []);
+        await _servizio.CreaCartellaConDatiAsync(a1, Dati("Finita", scadenza: new DateOnly(2026, 9, 1), completato: true,
+            dataCompletamento: new DateOnly(2026, 8, 30)), []);
+        await _servizio.CreaCartellaConDatiAsync(a1, Dati("Senza scadenza"), []);
+
+        var scadenze = await _servizio.CaricaScadenzeAsync();
+
+        Assert.Equal(["Scaduta", "Vicina", "Lontana"], scadenze.Select(s => s.Titolo));
+        Assert.Equal("INPS", scadenze[0].NomeArea);
+        Assert.Equal(new DateOnly(2026, 8, 1), scadenze[0].DataScadenza);
+        Assert.Equal(2, scadenze[0].NumeroDocumenti);
+        Assert.Equal(a1, scadenze[1].AreaId);
+    }
+
+    [Fact]
+    public async Task CaricaScadenze_AParitaDiDataOrdinaPerTitolo()
+    {
+        var area = await _servizio.CreaAreaAsync("A");
+        var data = new DateOnly(2026, 10, 10);
+        await _servizio.CreaCartellaConDatiAsync(area, Dati("Zeta", scadenza: data), []);
+        await _servizio.CreaCartellaConDatiAsync(area, Dati("alfa", scadenza: data), []);
+
+        Assert.Equal(["alfa", "Zeta"], (await _servizio.CaricaScadenzeAsync()).Select(s => s.Titolo));
+    }
+
+    [Fact]
+    public async Task CaricaScadenze_SpuntandoCompletato_LaCartellaSparisceDallElenco()
+    {
+        var area = await _servizio.CreaAreaAsync("A");
+        var d = await _servizio.CreaCartellaConDatiAsync(area, Dati("P", scadenza: new DateOnly(2026, 10, 10)), []);
+        Assert.Single(await _servizio.CaricaScadenzeAsync());
+
+        await _servizio.AggiornaCartellaAsync(d.Id, d.Dati with { Completato = true, DataCompletamento = new DateOnly(2026, 10, 1) });
+
+        Assert.Empty(await _servizio.CaricaScadenzeAsync());
+    }
+
     // ---------- Supporto ----------
 
     /// <summary>Inserisce un documento nel database e il file corrispondente sul disco. Restituisce il percorso relativo.</summary>

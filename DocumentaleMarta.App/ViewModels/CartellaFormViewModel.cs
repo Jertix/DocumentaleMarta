@@ -20,20 +20,23 @@ public partial class CartellaFormViewModel : CartellaCampiViewModel
     private readonly IDialogService _dialog;
     private readonly IShellService _shell;
     private readonly AzioniDocumenti _azioni;
+    private readonly AlertService? _avvisi;
 
     private DatiCartella _salvati;
     private bool _salvataggioInCorso;
     private bool _salvataggioRichiesto;
     private Task _ultimoSalvataggio = Task.CompletedTask;
 
+    /// <param name="avvisi">Per mostrare accanto alla scadenza quanto manca; senza, il testo della scadenza non compare.</param>
     public CartellaFormViewModel(
         IArchivioService archivio, IArchivioFileService files, IDialogService dialog, IShellService shell,
-        CartellaDettaglio dettaglio)
+        CartellaDettaglio dettaglio, AlertService? avvisi = null)
     {
         _archivio = archivio;
         _files = files;
         _dialog = dialog;
         _shell = shell;
+        _avvisi = avvisi;
         _azioni = new AzioniDocumenti(archivio, files, dialog, shell);
 
         Id = dettaglio.Id;
@@ -46,7 +49,32 @@ public partial class CartellaFormViewModel : CartellaCampiViewModel
             Documenti.Add(new DocumentoViewModel(documento, !_files.Esiste(documento.PercorsoRelativo), this));
 
         Documenti.CollectionChanged += (_, _) => OnPropertyChanged(nameof(TitoloDocumenti));
+        AggiornaAvviso();
         PropertyChanged += OnProprietaCambiata;
+    }
+
+    // ---------- Stato della scadenza ----------
+
+    /// <summary>Urgenza della scadenza mostrata accanto al campo (Nessuno se non c'è, è lontana o la cartella è completata).</summary>
+    [ObservableProperty]
+    private StatoAvviso _statoScadenza;
+
+    /// <summary>"Scade tra 5 giorni", "Scaduta da 3 giorni"... Vuoto se non c'è una scadenza o la cartella è completata.</summary>
+    [ObservableProperty]
+    private string _testoScadenza = "";
+
+    private void AggiornaAvviso()
+    {
+        if (_avvisi is null || Completato || DataScadenza is not { } data)
+        {
+            StatoScadenza = StatoAvviso.Nessuno;
+            TestoScadenza = "";
+            return;
+        }
+
+        var scadenza = DateOnly.FromDateTime(data);
+        StatoScadenza = _avvisi.Valuta(scadenza, completato: false);
+        TestoScadenza = _avvisi.Descrivi(scadenza);
     }
 
     public int Id { get; }
@@ -66,6 +94,9 @@ public partial class CartellaFormViewModel : CartellaCampiViewModel
     /// <summary>Il titolo è stato salvato: titolo e nuovo percorso, per aggiornare il nodo dell'albero.</summary>
     public event Action<string, string>? TitoloSalvato;
 
+    /// <summary>I dati della cartella sono stati salvati: serve all'albero per aggiornare gli avvisi di scadenza.</summary>
+    public event Action<DatiCartella>? DatiSalvati;
+
     /// <summary>Il numero di documenti è cambiato (allegati o eliminati).</summary>
     public event Action<int>? NumeroDocumentiCambiato;
 
@@ -79,6 +110,10 @@ public partial class CartellaFormViewModel : CartellaCampiViewModel
 
     private void OnProprietaCambiata(object? mittente, PropertyChangedEventArgs e)
     {
+        // Il testo della scadenza segue subito ciò che si vede nel form, anche prima del salvataggio.
+        if (e.PropertyName is nameof(DataScadenza) or nameof(Completato))
+            AggiornaAvviso();
+
         if (InCaricamento)
             return;
 
@@ -179,6 +214,7 @@ public partial class CartellaFormViewModel : CartellaCampiViewModel
 
         if (titoloCambiato || percorsoCambiato)
             TitoloSalvato?.Invoke(dettaglio.Dati.Titolo, dettaglio.PercorsoRelativo);
+        DatiSalvati?.Invoke(dettaglio.Dati);
     }
 
     // ---------- Allegati ----------

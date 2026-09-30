@@ -14,6 +14,9 @@ public partial class MainWindow : Window
         DataContext = viewModel;
         Loaded += async (_, _) => await viewModel.InizializzaAsync();
 
+        // Se il PC è rimasto acceso durante la notte, al ritorno nella finestra gli avvisi vanno rifatti per la nuova data.
+        Activated += (_, _) => viewModel.ControllaCambioData();
+
         // I campi del form si salvano quando perdono il cursore: chiudendo la finestra mentre si scrive
         // l'ultima modifica andrebbe persa, quindi si toglie il cursore dal campo prima di chiudere.
         Closing += (_, _) => Keyboard.ClearFocus();

@@ -9,23 +9,49 @@
         d:DataContext="{d:DesignInstance Type=vm:MainViewModel}"
         Title="Documentale" Width="1100" Height="700" MinWidth="760" MinHeight="480">
     <Window.Resources>
-        <BooleanToVisibilityConverter x:Key="BoolToVis"/>
-        <FontFamily x:Key="FontIcone">Segoe Fluent Icons, Segoe MDL2 Assets</FontFamily>
+        <ResourceDictionary>
+            <ResourceDictionary.MergedDictionaries>
+                <ResourceDictionary Source="Colori.xaml"/>
+            </ResourceDictionary.MergedDictionaries>
 
-        <Style TargetType="TreeViewItem">
-            <Setter Property="IsExpanded" Value="{Binding IsExpanded, Mode=TwoWay}"/>
-            <Setter Property="IsSelected" Value="{Binding IsSelected, Mode=TwoWay}"/>
-            <Setter Property="AutomationProperties.Name" Value="{Binding Nome}"/>
-            <EventSetter Event="Selected" Handler="NodoAlbero_Selected"/>
-        </Style>
+            <BooleanToVisibilityConverter x:Key="BoolToVis"/>
+            <FontFamily x:Key="FontIcone">Segoe Fluent Icons, Segoe MDL2 Assets</FontFamily>
 
-        <HierarchicalDataTemplate DataType="{x:Type vm:NodoAlberoViewModel}" ItemsSource="{Binding Figli}">
-            <StackPanel Orientation="Horizontal" Margin="0,2">
-                <TextBlock Text="{Binding Icona}" FontFamily="{StaticResource FontIcone}" FontSize="15"
-                           Margin="0,0,7,0" VerticalAlignment="Center"/>
-                <TextBlock Text="{Binding Nome}" VerticalAlignment="Center"/>
-            </StackPanel>
-        </HierarchicalDataTemplate>
+            <Style TargetType="TreeViewItem">
+                <Setter Property="IsExpanded" Value="{Binding IsExpanded, Mode=TwoWay}"/>
+                <Setter Property="IsSelected" Value="{Binding IsSelected, Mode=TwoWay}"/>
+                <Setter Property="AutomationProperties.Name" Value="{Binding Testo}"/>
+                <EventSetter Event="Selected" Handler="NodoAlbero_Selected"/>
+            </Style>
+
+            <!-- Il triangolo di avviso accanto ai nodi: arancione o rosso secondo la scadenza, assente se non c'è nulla da segnalare -->
+            <Style x:Key="IconaAvvisoAlbero" TargetType="TextBlock">
+                <Setter Property="FontFamily" Value="{StaticResource FontIcone}"/>
+                <Setter Property="Text" Value="&#xE7BA;"/>
+                <Setter Property="Margin" Value="7,0,0,0"/>
+                <Setter Property="VerticalAlignment" Value="Center"/>
+                <Setter Property="Visibility" Value="Collapsed"/>
+                <Style.Triggers>
+                    <DataTrigger Binding="{Binding Avviso}" Value="Arancione">
+                        <Setter Property="Visibility" Value="Visible"/>
+                        <Setter Property="Foreground" Value="{StaticResource IconaArancione}"/>
+                    </DataTrigger>
+                    <DataTrigger Binding="{Binding Avviso}" Value="Rosso">
+                        <Setter Property="Visibility" Value="Visible"/>
+                        <Setter Property="Foreground" Value="{StaticResource IconaRossa}"/>
+                    </DataTrigger>
+                </Style.Triggers>
+            </Style>
+
+            <HierarchicalDataTemplate DataType="{x:Type vm:NodoAlberoViewModel}" ItemsSource="{Binding Figli}">
+                <StackPanel Orientation="Horizontal" Margin="0,2">
+                    <TextBlock Text="{Binding Icona}" FontFamily="{StaticResource FontIcone}" FontSize="15"
+                               Margin="0,0,7,0" VerticalAlignment="Center"/>
+                    <TextBlock Text="{Binding Testo}" VerticalAlignment="Center"/>
+                    <TextBlock Style="{StaticResource IconaAvvisoAlbero}" ToolTip="{Binding DescrizioneAvviso}"/>
+                </StackPanel>
+            </HierarchicalDataTemplate>
+        </ResourceDictionary>
     </Window.Resources>
 
     <DockPanel>
@@ -56,6 +82,7 @@
                 <TreeView.InputBindings>
                     <KeyBinding Key="F2" Command="{Binding RinominaCommand}"/>
                     <KeyBinding Key="Delete" Command="{Binding EliminaCommand}"/>
+                    <KeyBinding Key="F5" Command="{Binding AggiornaCommand}"/>
                 </TreeView.InputBindings>
                 <TreeView.ContextMenu>
                     <ContextMenu DataContext="{Binding PlacementTarget.DataContext, RelativeSource={RelativeSource Self}}">
@@ -68,7 +95,9 @@
                         <MenuItem Header="Elimina" InputGestureText="Canc" Command="{Binding EliminaCommand}"
                                   Visibility="{Binding PuoModificare, Converter={StaticResource BoolToVis}}"/>
                         <Separator Visibility="{Binding PuoModificare, Converter={StaticResource BoolToVis}}"/>
-                        <MenuItem Header="Apri in Esplora file" Command="{Binding ApriInEsploraCommand}"/>
+                        <MenuItem Header="Apri in Esplora file" Command="{Binding ApriInEsploraCommand}"
+                                  Visibility="{Binding HaPercorsoFisico, Converter={StaticResource BoolToVis}}"/>
+                        <MenuItem Header="Aggiorna" InputGestureText="F5" Command="{Binding AggiornaCommand}"/>
                     </ContextMenu>
                 </TreeView.ContextMenu>
             </TreeView>
@@ -78,10 +107,11 @@
 
             <!-- Pannello di destra: riepilogo per radice e aree, form per le cartelle -->
             <Grid Grid.Column="2">
-                <!-- Radice e aree: intestazione con il riepilogo e sotto la griglia dei documenti -->
+                <!-- Radice, aree e "Scadenze": intestazione con il riepilogo e sotto la griglia -->
                 <DockPanel Visibility="{Binding RiepilogoVisibile, Converter={StaticResource BoolToVis}}">
                     <DockPanel DockPanel.Dock="Top" Margin="28,22,28,14">
                         <Button DockPanel.Dock="Right" Content="Apri in Esplora file" Command="{Binding ApriInEsploraCommand}"
+                                Visibility="{Binding HaPercorsoFisico, Converter={StaticResource BoolToVis}}"
                                 VerticalAlignment="Top" Padding="12,4" Margin="16,4,0,0"/>
                         <StackPanel>
                             <TextBlock Text="{Binding TipoDettaglio}" Foreground="#777" FontSize="13"/>
@@ -102,6 +132,18 @@
                             </Style>
                         </viste:ElencoView.Style>
                     </viste:ElencoView>
+
+                    <viste:ScadenzeView DataContext="{Binding ElencoScadenze}" Margin="28,0,28,20">
+                        <viste:ScadenzeView.Style>
+                            <Style TargetType="viste:ScadenzeView">
+                                <Style.Triggers>
+                                    <DataTrigger Binding="{Binding}" Value="{x:Null}">
+                                        <Setter Property="Visibility" Value="Collapsed"/>
+                                    </DataTrigger>
+                                </Style.Triggers>
+                            </Style>
+                        </viste:ScadenzeView.Style>
+                    </viste:ScadenzeView>
                 </DockPanel>
 
                 <viste:CartellaView DataContext="{Binding FormCartella}">
