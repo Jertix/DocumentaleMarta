@@ -14,15 +14,22 @@ public static class TestoEvidenziato
 {
     private static readonly Brush SfondoEvidenza = new SolidColorBrush(Color.FromRgb(0xFF, 0xE0, 0x82));
 
+    /// <summary>Congela il pennello dell'evidenziazione (non cambia mai, e così costa meno).</summary>
     static TestoEvidenziato() => SfondoEvidenza.Freeze();
 
     public static readonly DependencyProperty TestoProperty = DependencyProperty.RegisterAttached(
         "Testo", typeof(string), typeof(TestoEvidenziato), new PropertyMetadata(null, AlCambioDelTesto));
 
+    /// <summary>Legge il testo da evidenziare collegato a un elemento.</summary>
     public static string? GetTesto(DependencyObject oggetto) => (string?)oggetto.GetValue(TestoProperty);
 
+    /// <summary>Collega a un elemento il testo da evidenziare.</summary>
     public static void SetTesto(DependencyObject oggetto, string? valore) => oggetto.SetValue(TestoProperty, valore);
 
+    /// <summary>
+    /// Quando cambia il testo ricostruisce il contenuto del blocco: pezzi normali e pezzi evidenziati (grassetto su fondo
+    /// giallo).
+    /// </summary>
     private static void AlCambioDelTesto(DependencyObject oggetto, DependencyPropertyChangedEventArgs e)
     {
         if (oggetto is not TextBlock blocco)

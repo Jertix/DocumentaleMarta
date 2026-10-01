@@ -10,6 +10,9 @@ namespace DocumentaleMarta.App.ViewModels;
 /// <summary>Un file scelto per essere allegato, non ancora copiato nell'archivio.</summary>
 public class AllegatoInAttesa
 {
+    /// <summary>
+    /// Prepara la riga di un file da allegare: nome e dimensione (vuota se il file non si riesce a leggere).
+    /// </summary>
     public AllegatoInAttesa(string percorso)
     {
         Percorso = percorso;
@@ -38,6 +41,7 @@ public partial class NuovaCartellaViewModel(IDialogService dialog, string nomeAr
 
     public IReadOnlyList<string> PercorsiFile => Allegati.Select(a => a.Percorso).ToList();
 
+    /// <summary>Pulsante «Allega…»: apre la scelta dei file e li aggiunge all'elenco.</summary>
     [RelayCommand]
     private void Allega() => AggiungiAllegati(dialog.SelezionaFile("Allega documenti"));
 
@@ -57,6 +61,7 @@ public partial class NuovaCartellaViewModel(IDialogService dialog, string nomeAr
         AggiornaTitoloAutomatico();
     }
 
+    /// <summary>Toglie un file dall'elenco di quelli da allegare e aggiorna il titolo automatico.</summary>
     [RelayCommand]
     private void Rimuovi(AllegatoInAttesa? allegato)
     {

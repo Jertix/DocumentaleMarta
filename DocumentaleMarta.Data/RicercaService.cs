@@ -6,19 +6,30 @@ using Microsoft.EntityFrameworkCore;
 
 namespace DocumentaleMarta.Data;
 
+/// <summary>
+/// La ricerca nei documenti: nei nomi (file, cartella, descrizione, area) e nel testo letto dai documenti (indice FTS5 di
+/// SQLite), con i filtri della ricerca avanzata.
+/// </summary>
 public class RicercaService(IDbContextFactory<AppDbContext> dbFactory) : IRicercaService
 {
     private const int TerminiMassimi = 10;
     private static readonly CompareInfo Confronto = CultureInfo.InvariantCulture.CompareInfo;
     private const CompareOptions IgnoraMaiuscoleEAccenti = CompareOptions.IgnoreCase | CompareOptions.IgnoreNonSpace;
 
+    /// <summary>Un documento con i dati della sua cartella e della sua area, come lo legge la ricerca.</summary>
     private record Riga(
         int Id, string NomeFile, string Estensione, long Dimensione, DateTime DataCaricamento, string PercorsoRelativo,
         int CartellaId, string TitoloCartella, string? DescrizioneCartella, int AreaId, string NomeArea,
         DateOnly? Scadenza, bool Completata, bool Archiviata);
 
+    /// <summary>Un estratto di testo trovato dalla ricerca per un documento.</summary>
     private record RigaEstratto(long Id, string Estratto);
 
+    /// <summary>
+    /// Cerca nei documenti: applica i filtri, poi per ogni parola cerca nei nomi (file, cartella, descrizione, area) e nel
+    /// testo letto dei documenti; restituisce i risultati più recenti per primi, con l'estratto dove le parole sono state
+    /// trovate.
+    /// </summary>
     public async Task<EsitoRicerca> CercaAsync(string testo, FiltriRicerca? filtri = null, int massimo = 1000)
     {
         filtri ??= new FiltriRicerca();
@@ -88,6 +99,10 @@ public class RicercaService(IDbContextFactory<AppDbContext> dbFactory) : IRicerc
         return new EsitoRicerca(risultati, troncato);
     }
 
+    /// <summary>
+    /// Vero se il documento rispetta i filtri della ricerca avanzata (tipo di file, area, stato della cartella, intervallo
+    /// di scadenza).
+    /// </summary>
     private static bool RispettaIFiltri(Riga riga, FiltriRicerca filtri)
     {
         if (filtri.Categorie != CategoriaFile.Nessuna && !filtri.Categorie.HasFlag(CategorieFile.Di(riga.Estensione)))
@@ -120,6 +135,7 @@ public class RicercaService(IDbContextFactory<AppDbContext> dbFactory) : IRicerc
         var termini = new List<string>();
         var corrente = new StringBuilder();
 
+        // Chiude la parola raccolta finora e la aggiunge all'elenco, se non c'è già (maiuscole e accenti non contano).
         void Chiudi()
         {
             if (corrente.Length == 0)
@@ -142,6 +158,9 @@ public class RicercaService(IDbContextFactory<AppDbContext> dbFactory) : IRicerc
         return termini.Take(TerminiMassimi).ToList();
     }
 
+    /// <summary>
+    /// Dice in quale nome si trova la parola (file, titolo o descrizione della cartella, area); null se in nessuno.
+    /// </summary>
     private static string? DoveNeiNomi(Riga riga, string termine)
     {
         if (Contiene(riga.NomeFile, termine)) return "Nel nome del file";
@@ -151,12 +170,14 @@ public class RicercaService(IDbContextFactory<AppDbContext> dbFactory) : IRicerc
         return null;
     }
 
+    /// <summary>Vero se il testo contiene la parola, senza badare a maiuscole e accenti.</summary>
     private static bool Contiene(string? testo, string termine) =>
         !string.IsNullOrEmpty(testo) && Confronto.IndexOf(testo, termine, IgnoraMaiuscoleEAccenti) >= 0;
 
     /// <summary>Una parola tra virgolette con l'asterisco: "fattu"* trova "fattura". Le virgolette neutralizzano ogni operatore di FTS5.</summary>
     private static string ComeParolaFts(string termine) => $"\"{termine}\"*";
 
+    /// <summary>I documenti il cui testo letto contiene una parola che inizia così.</summary>
     private static async Task<HashSet<long>> DocumentiConParolaAsync(AppDbContext db, string termine) =>
         (await db.Database
             .SqlQueryRaw<long>("SELECT rowid AS Value FROM documenti_fts WHERE documenti_fts MATCH {0}", ComeParolaFts(termine))

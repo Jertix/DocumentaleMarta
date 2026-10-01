@@ -3,12 +3,17 @@ using Microsoft.EntityFrameworkCore;
 
 namespace DocumentaleMarta.Data;
 
+/// <summary>Il database dell'archivio (SQLite): le tabelle delle aree, delle cartelle e dei documenti.</summary>
 public class AppDbContext(DbContextOptions<AppDbContext> options) : DbContext(options)
 {
     public DbSet<Area> Aree => Set<Area>();
     public DbSet<Cartella> Cartelle => Set<Cartella>();
     public DbSet<Documento> Documenti => Set<Documento>();
 
+    /// <summary>
+    /// Descrive al database aree, cartelle e documenti: lunghezze massime, nomi unici, indici di ricerca e cancellazione a
+    /// cascata (eliminando un'area se ne vanno cartelle e documenti).
+    /// </summary>
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
         modelBuilder.Entity<Area>(e =>

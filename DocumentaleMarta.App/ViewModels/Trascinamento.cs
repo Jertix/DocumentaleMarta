@@ -12,6 +12,7 @@ public interface IOrigineDocumento
 /// <summary>Il documento che sta viaggiando durante un trascinamento.</summary>
 public record DocumentoTrascinato(int DocumentoId, int CartellaOrigineId);
 
+/// <summary>Funzioni comuni ai trascinamenti (file da Esplora file, documenti tra le cartelle).</summary>
 public static class Trascinamento
 {
     /// <summary>Il nome con cui i documenti trascinati si trovano nei dati del trascinamento.</summary>
@@ -35,6 +36,9 @@ public static class Trascinamento
         return (file, escluse);
     }
 
+    /// <summary>
+    /// Il messaggio che spiega che le cartelle trascinate non sono state allegate (si allegano solo file).
+    /// </summary>
     public static string MessaggioCartelleEscluse(int cartelle) =>
         cartelle == 1
             ? "Una cartella non è stata allegata: si possono allegare solo file. Se vuoi i file che contiene, aprila e trascina quelli."

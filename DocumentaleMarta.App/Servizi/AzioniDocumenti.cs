@@ -4,6 +4,7 @@ using DocumentaleMarta.Core.Servizi;
 
 namespace DocumentaleMarta.App.Servizi;
 
+/// <summary>Com'è andata la richiesta di eliminare un documento.</summary>
 public enum EsitoEliminazione
 {
     /// <summary>Il documento è stato eliminato.</summary>

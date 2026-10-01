@@ -24,6 +24,7 @@ public interface IOcr
     /// <summary>La lingua con cui si legge il testo (es. "italiano"), se l'OCR è disponibile.</summary>
     string? Lingua { get; }
 
+    /// <summary>Legge il testo di un'immagine o di una scansione.</summary>
     Task<string> RiconosciImmagineAsync(string percorsoFile, CancellationToken cancellation);
 
     /// <summary>Legge le pagine del PDF come immagini e ne riconosce il testo.</summary>
@@ -36,6 +37,7 @@ public class OcrNonDisponibileException(string messaggio) : Exception(messaggio)
 /// <summary>Chi riceve i documenti appena allegati per leggerne il testo in background.</summary>
 public interface IIndicizzatore
 {
+    /// <summary>Mette dei documenti in coda per la lettura del testo.</summary>
     void Accoda(IEnumerable<int> documentiIds);
 }
 

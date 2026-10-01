@@ -2,6 +2,10 @@ using System.Text.Json.Serialization;
 
 namespace DocumentaleMarta.Core.Impostazioni;
 
+/// <summary>
+/// I dati della ditta mostrati in fondo alla finestra e nella finestra «Informazioni» (ragione sociale, codice fiscale,
+/// partita IVA, indirizzo, descrizione dell'attività).
+/// </summary>
 public class DatiAzienda
 {
     public string RagioneSociale { get; set; } = "METAL PROJET DI TEDDE PAOLO E SORRENTINO LUCA SNC";
@@ -12,6 +16,10 @@ public class DatiAzienda
         "Realtà specializzata in fabbricazione di strutture metalliche e di parti di strutture metalliche, con base a Genova.";
 }
 
+/// <summary>
+/// Tutte le impostazioni del programma: dati della ditta, dove sta l'archivio, soglie e riepilogo degli avvisi di scadenza,
+/// cartella e promemoria del backup, tema. Si salvano nel file impostazioni.json.
+/// </summary>
 public class ImpostazioniApp
 {
     public DatiAzienda Azienda { get; set; } = new();

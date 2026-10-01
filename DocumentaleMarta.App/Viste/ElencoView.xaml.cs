@@ -4,8 +4,15 @@ using DocumentaleMarta.App.ViewModels;
 
 namespace DocumentaleMarta.App.Viste;
 
+/// <summary>
+/// La griglia dei documenti di tutto l'archivio, di un'area, dell'archivio completati o i risultati di una ricerca.
+/// </summary>
 public partial class ElencoView : UserControl
 {
+    /// <summary>
+    /// Crea la griglia dei documenti: mostra o nasconde le colonne secondo il contenuto (area, «Trovato», date), rende
+    /// trascinabili le righe e collega il doppio clic che porta alla cartella.
+    /// </summary>
     public ElencoView()
     {
         InitializeComponent();

@@ -17,8 +17,13 @@ public class EstrattorePdf(IOcr? ocr = null) : IEstrattoreTesto
     /// </summary>
     internal const int CaratteriMinimiPerPagina = 15;
 
+    /// <summary>Vero solo per i file PDF.</summary>
     public bool Supporta(string estensione) => estensione == ".pdf";
 
+    /// <summary>
+    /// Legge il testo del PDF; se sembra una scansione (quasi senza testo) lo fa leggere dal riconoscimento del testo e
+    /// tiene il risultato migliore.
+    /// </summary>
     public async Task<string> EstraiAsync(string percorsoFile, CancellationToken cancellation)
     {
         var (testo, pagine) = await Task.Run(() => LeggiTesto(percorsoFile), cancellation);
@@ -40,6 +45,7 @@ public class EstrattorePdf(IOcr? ocr = null) : IEstrattoreTesto
         return riconosciuto.Count(char.IsLetterOrDigit) > caratteri ? riconosciuto : testo;
     }
 
+    /// <summary>Legge il testo di tutte le pagine e dice quante sono.</summary>
     private static (string Testo, int Pagine) LeggiTesto(string percorsoFile)
     {
         // Condivisione in lettura e scrittura: il file può essere aperto in un lettore PDF nello stesso momento.
@@ -54,6 +60,9 @@ public class EstrattorePdf(IOcr? ocr = null) : IEstrattoreTesto
         return (testo.ToString(), documento.NumberOfPages);
     }
 
+    /// <summary>
+    /// Il testo di una pagina, nell'ordine di lettura; se l'analisi fallisce si usano le parole nell'ordine grezzo.
+    /// </summary>
     private static string TestoDellaPagina(UglyToad.PdfPig.Content.Page pagina)
     {
         try

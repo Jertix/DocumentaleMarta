@@ -37,13 +37,16 @@ public static class Ingrandimento
         return new Size(naturale.Width * scala, naturale.Height * scala);
     }
 
+    /// <summary>Lo zoom dopo un passo in avanti (mai oltre il massimo).</summary>
     public static double Aumenta(double zoom) => Limita(Math.Round(zoom * Passo, 4));
 
+    /// <summary>Lo zoom dopo un passo indietro (mai sotto la pagina intera).</summary>
     public static double Diminuisci(double zoom) => Limita(Math.Round(zoom / Passo, 4));
 
     /// <summary>Doppio clic: se si vede la pagina intera si passa al doppio, altrimenti si torna alla pagina intera.</summary>
     public static double AlternaDoppioClic(double zoom) => zoom <= PaginaIntera ? 2.0 : PaginaIntera;
 
+    /// <summary>Tiene lo zoom tra la pagina intera e il massimo.</summary>
     public static double Limita(double zoom) => Math.Clamp(zoom, PaginaIntera, Massimo);
 
     /// <summary>"Pagina intera" oppure la percentuale rispetto alla pagina intera, es. "200%".</summary>

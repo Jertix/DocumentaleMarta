@@ -16,6 +16,10 @@ using Microsoft.Win32;
 
 namespace DocumentaleMarta.App;
 
+/// <summary>
+/// Il programma: all'avvio legge le impostazioni, prepara archivio e database, collega i servizi, applica il tema e apre la
+/// finestra principale.
+/// </summary>
 public partial class App : Application
 {
     private const string Titolo = "Documentale";
@@ -23,6 +27,10 @@ public partial class App : Application
     private ServiceProvider? _servizi;
     private GestoreAspetto? _aspetto;
 
+    /// <summary>
+    /// Avvio del programma: imposta la lingua dei formati, prepara archivio e servizi, applica il tema scelto e apre la
+    /// finestra principale (se qualcosa non va avvisa e chiude).
+    /// </summary>
     protected override void OnStartup(StartupEventArgs e)
     {
         base.OnStartup(e);
@@ -75,6 +83,7 @@ public partial class App : Application
             Dispatcher.BeginInvoke(() => _aspetto?.SistemaCambiato());
     }
 
+    /// <summary>Chiusura del programma: smette di ascoltare i cambi di tema di Windows e libera i servizi.</summary>
     protected override void OnExit(ExitEventArgs e)
     {
         SystemEvents.UserPreferenceChanged -= OnPreferenzeDiWindowsCambiate;
@@ -119,12 +128,19 @@ public partial class App : Application
         return Composizione.Crea(impostazioni, percorsoDatabase, servizioImpostazioni);
     }
 
+    /// <summary>
+    /// Un errore che nessuno ha gestito non deve far chiudere il programma di colpo: lo si mostra all'utente e si va
+    /// avanti.
+    /// </summary>
     private static void OnErroreNonGestito(object sender, DispatcherUnhandledExceptionEventArgs e)
     {
         Errore($"Si è verificato un errore imprevisto.\n\n{e.Exception.Message}");
         e.Handled = true;
     }
 
+    /// <summary>
+    /// Mostra all'utente un messaggio d'errore con il titolo del programma (prima che esistano le finestre vere).
+    /// </summary>
     private static void Errore(string messaggio) =>
         MessageBox.Show(messaggio, Titolo, MessageBoxButton.OK, MessageBoxImage.Error);
 }

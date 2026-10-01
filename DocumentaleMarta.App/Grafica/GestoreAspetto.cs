@@ -8,6 +8,9 @@ namespace DocumentaleMarta.App.Grafica;
 /// <summary>Cambia l'aspetto del programma (tema chiaro o scuro) senza riavviarlo.</summary>
 public interface IAspettoService
 {
+    /// <summary>
+    /// Applica le scelte di aspetto (per ora il tema chiaro o scuro) al programma, subito e senza riavviarlo.
+    /// </summary>
     void Applica(AspettoApp aspetto);
 }
 
@@ -26,6 +29,10 @@ public sealed class OspiteApplicazione(Application applicazione) : IOspiteTema
 {
     public ResourceDictionary Risorse => applicazione.Resources;
 
+    /// <summary>
+    /// Imposta lo stile di Windows 11 chiaro o scuro per tutte le finestre dell'applicazione (anche per quelle che si
+    /// apriranno dopo).
+    /// </summary>
     public void ImpostaTema(bool scuro) =>
 #pragma warning disable WPF0001 // il tema Fluent di .NET 10 è ancora segnato come sperimentale
         applicazione.ThemeMode = scuro ? ThemeMode.Dark : ThemeMode.Light;
@@ -42,6 +49,10 @@ public sealed class OspiteFinestra(Window finestra) : IOspiteTema
 
     public ResourceDictionary Risorse => finestra.Resources;
 
+    /// <summary>
+    /// Cambia lo stile di Windows 11 della finestra: toglie quello vecchio e mette in cima alle risorse quello chiaro o
+    /// scuro.
+    /// </summary>
     public void ImpostaTema(bool scuro)
     {
         var uniti = finestra.Resources.MergedDictionaries;
@@ -61,6 +72,7 @@ public sealed class OspiteNullo : IOspiteTema
 {
     public ResourceDictionary Risorse { get; } = new();
 
+    /// <summary>Non fa niente: serve a chi costruisce i servizi senza avere un'applicazione (nelle prove).</summary>
     public void ImpostaTema(bool scuro)
     {
     }
@@ -69,6 +81,10 @@ public sealed class OspiteNullo : IOspiteTema
 /// <summary>Il tema chiaro o scuro che Windows ha scelto per le applicazioni.</summary>
 public static class TemaDiSistema
 {
+    /// <summary>
+    /// Legge dal registro di Windows se le applicazioni devono usare il tema scuro (vero) o chiaro (falso, anche se non
+    /// riesce a leggerlo).
+    /// </summary>
     public static bool UsaScuro()
     {
         try
@@ -99,6 +115,10 @@ public sealed class GestoreAspetto(IOspiteTema ospite, Func<bool>? sistemaScuro 
     /// <summary>Le ultime scelte applicate.</summary>
     public AspettoApp Corrente => _corrente;
 
+    /// <summary>
+    /// Applica l'aspetto scelto: decide se usare il tema scuro (anche seguendo Windows), sostituisce lo stile di Windows 11
+    /// e rimette i colori del programma. Si può richiamare quante volte si vuole.
+    /// </summary>
     public void Applica(AspettoApp aspetto)
     {
         _corrente = aspetto;

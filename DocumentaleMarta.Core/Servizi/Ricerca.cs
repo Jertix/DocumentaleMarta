@@ -20,6 +20,7 @@ public record EsitoRicerca(IReadOnlyList<RisultatoRicerca> Risultati, bool Tronc
     public static readonly EsitoRicerca Vuoto = new([], false);
 }
 
+/// <summary>Cerca nei documenti dell'archivio, per parole e per filtri.</summary>
 public interface IRicercaService
 {
     /// <summary>

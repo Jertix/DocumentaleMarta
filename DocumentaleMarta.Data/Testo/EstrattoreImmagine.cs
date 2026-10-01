@@ -7,8 +7,13 @@ public class EstrattoreImmagine(IOcr? ocr = null) : IEstrattoreTesto
 {
     private static readonly HashSet<string> Estensioni = [".jpg", ".jpeg", ".png", ".bmp", ".tif", ".tiff", ".gif"];
 
+    /// <summary>Vero per i formati di immagine (JPG, PNG, TIFF...).</summary>
     public bool Supporta(string estensione) => Estensioni.Contains(estensione);
 
+    /// <summary>
+    /// Legge il testo dell'immagine con il riconoscimento del testo; se non è disponibile lo segnala (il documento resterà
+    /// da leggere).
+    /// </summary>
     public Task<string> EstraiAsync(string percorsoFile, CancellationToken cancellation) =>
         ocr is { Disponibile: true }
             ? ocr.RiconosciImmagineAsync(percorsoFile, cancellation)

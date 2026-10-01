@@ -19,6 +19,10 @@ public class AlertService
 {
     private readonly TimeProvider _tempo;
 
+    /// <summary>
+    /// Crea il servizio con le due soglie (arancione e rosso) e se gli avvisi sono attivi; le soglie devono essere coerenti
+    /// (rossa non negativa, arancione maggiore della rossa).
+    /// </summary>
     public AlertService(int sogliaArancioneGiorni, int sogliaRossaGiorni, bool attivo = true, TimeProvider? tempo = null)
     {
         if (sogliaRossaGiorni < 0)
@@ -32,6 +36,7 @@ public class AlertService
         _tempo = tempo ?? TimeProvider.System;
     }
 
+    /// <summary>Crea il servizio con le soglie scelte nelle impostazioni.</summary>
     public AlertService(ImpostazioniApp impostazioni, TimeProvider? tempo = null)
         : this(impostazioni.SogliaArancioneGiorni, impostazioni.SogliaRossaGiorni, impostazioni.AvvisiAttivi, tempo)
     {
@@ -50,6 +55,10 @@ public class AlertService
     /// <summary>Giorni che mancano alla scadenza: negativi se è già passata, 0 se scade oggi.</summary>
     public int Giorni(DateOnly scadenza) => scadenza.DayNumber - Oggi.DayNumber;
 
+    /// <summary>
+    /// Decide l'urgenza di una scadenza: nessuna se gli avvisi sono spenti, se la cartella è completata o non c'è scadenza;
+    /// rossa se è passata o vicina; arancione se è nella soglia arancione.
+    /// </summary>
     public StatoAvviso Valuta(DateOnly? scadenza, bool completato)
     {
         if (!Attivo || completato || scadenza is null)

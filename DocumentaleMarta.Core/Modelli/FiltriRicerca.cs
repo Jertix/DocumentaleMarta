@@ -15,6 +15,10 @@ public enum CategoriaFile
     Altro = 16
 }
 
+/// <summary>
+/// Assegna ogni tipo di file a una categoria della ricerca avanzata (PDF, Word, Excel, immagini, altro), comprese quelle di
+/// OpenOffice e LibreOffice.
+/// </summary>
 public static class CategorieFile
 {
     // I formati di OpenOffice e LibreOffice stanno con i loro equivalenti: i documenti con Word, i fogli con Excel.
@@ -35,6 +39,7 @@ public static class CategorieFile
     }
 }
 
+/// <summary>Lo stato della cartella che la ricerca avanzata può richiedere.</summary>
 public enum StatoCartella
 {
     Qualsiasi = 0,

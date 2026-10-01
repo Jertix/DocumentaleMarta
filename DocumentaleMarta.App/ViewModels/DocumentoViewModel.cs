@@ -26,12 +26,15 @@ public partial class DocumentoViewModel(DocumentoDettaglio dettaglio, bool fileM
     [ObservableProperty]
     private bool _fileMancante = fileMancante;
 
+    /// <summary>Pulsante «Apri documento»: apre il file con il suo programma.</summary>
     [RelayCommand]
     private void Apri() => form.ApriDocumento(this);
 
+    /// <summary>Pulsante «Apri nella cartella»: mostra il file in Esplora file.</summary>
     [RelayCommand]
     private void ApriNellaCartella() => form.MostraDocumentoInEsplora(this);
 
+    /// <summary>Pulsante «Elimina»: elimina il documento dopo la conferma.</summary>
     [RelayCommand]
     private Task EliminaAsync() => form.EliminaDocumentoAsync(this);
 }

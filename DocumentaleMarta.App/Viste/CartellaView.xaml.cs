@@ -4,8 +4,13 @@ using DocumentaleMarta.App.ViewModels;
 
 namespace DocumentaleMarta.App.Viste;
 
+/// <summary>
+/// Il form di una cartella: titolo, descrizione, scadenza, completamento e griglia dei documenti; accetta file trascinati
+/// da Esplora file.
+/// </summary>
 public partial class CartellaView : UserControl
 {
+    /// <summary>Crea il form della cartella e rende trascinabili sull'albero le righe dei suoi documenti.</summary>
     public CartellaView()
     {
         InitializeComponent();
@@ -23,6 +28,7 @@ public partial class CartellaView : UserControl
         e.Handled = true;
     }
 
+    /// <summary>I file trascinati escono dal form: sparisce il riquadro «Rilascia qui».</summary>
     private void Cartella_DragLeave(object sender, DragEventArgs e) =>
         SuggerimentoRilascio.Visibility = Visibility.Collapsed;
 

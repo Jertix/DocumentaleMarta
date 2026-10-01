@@ -23,6 +23,10 @@ public record AspettoApp(TemaApp Tema);
 /// </summary>
 public sealed class EnumTolleranteConverter<T> : JsonConverter<T> where T : struct, Enum
 {
+    /// <summary>
+    /// Legge il valore dal file: accetta il nome scritto come testo (maiuscole non contano); se il valore non esiste o è
+    /// strano usa quello predefinito.
+    /// </summary>
     public override T Read(ref Utf8JsonReader reader, Type tipo, JsonSerializerOptions opzioni)
     {
         if (reader.TokenType == JsonTokenType.String
@@ -34,6 +38,7 @@ public sealed class EnumTolleranteConverter<T> : JsonConverter<T> where T : stru
         return default;
     }
 
+    /// <summary>Scrive il valore nel file come testo leggibile (per esempio «Scuro»).</summary>
     public override void Write(Utf8JsonWriter writer, T valore, JsonSerializerOptions opzioni) =>
         writer.WriteStringValue(valore.ToString());
 }

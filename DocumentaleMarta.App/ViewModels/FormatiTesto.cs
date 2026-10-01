@@ -1,5 +1,6 @@
 namespace DocumentaleMarta.App.ViewModels;
 
+/// <summary>Scrive in modo leggibile i valori mostrati all'utente (per ora le dimensioni dei file).</summary>
 public static class FormatiTesto
 {
     /// <summary>Dimensione leggibile: "850 B", "12,5 KB", "3,2 MB"...</summary>

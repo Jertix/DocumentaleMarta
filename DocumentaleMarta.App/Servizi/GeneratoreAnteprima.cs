@@ -9,6 +9,7 @@ using Windows.Storage.Streams;
 
 namespace DocumentaleMarta.App.Servizi;
 
+/// <summary>Cosa mostra il pannello dell'anteprima.</summary>
 public enum StatoAnteprima
 {
     /// <summary>Nessun documento selezionato.</summary>
@@ -33,7 +34,11 @@ public enum StatoAnteprima
 public record RisultatoAnteprima(
     StatoAnteprima Stato, ImageSource? Immagine = null, int Pagine = 1, string Messaggio = "", string Nota = "")
 {
+    /// <summary>
+    /// Un risultato che dice «per questo file l'anteprima non c'è» (non è un errore) con il motivo da mostrare.
+    /// </summary>
     public static RisultatoAnteprima NonDisponibile(string messaggio) => new(StatoAnteprima.NonDisponibile, Messaggio: messaggio);
+    /// <summary>Un risultato che dice «il file non si riesce a leggere o disegnare» con il motivo da mostrare.</summary>
     public static RisultatoAnteprima InErrore(string messaggio) => new(StatoAnteprima.Errore, Messaggio: messaggio);
 }
 
@@ -71,10 +76,17 @@ public class GeneratoreAnteprima : IGeneratoreAnteprima
     private static readonly HashSet<string> Immagini =
         new(StringComparer.OrdinalIgnoreCase) { ".jpg", ".jpeg", ".png", ".bmp", ".gif", ".tif", ".tiff" };
 
+    /// <summary>
+    /// Vero se per questo tipo di file (PDF, immagini, documenti di OpenOffice/LibreOffice) si può fare l'anteprima.
+    /// </summary>
     public bool Supporta(string estensione) =>
         estensione.Equals(".pdf", StringComparison.OrdinalIgnoreCase) || Immagini.Contains(estensione)
         || FormatiOpenDocument.Contiene(estensione);
 
+    /// <summary>
+    /// Prepara l'anteprima di una pagina: sceglie come disegnare il file in base al tipo, controlla che esista e non sia
+    /// enorme, e trasforma gli errori in messaggi comprensibili.
+    /// </summary>
     public async Task<RisultatoAnteprima> GeneraAsync(
         string percorsoAssoluto, int pagina, CancellationToken annullamento, int larghezzaMassima = LarghezzaMassima)
     {
@@ -131,6 +143,10 @@ public class GeneratoreAnteprima : IGeneratoreAnteprima
     /// <summary>Oltre questa dimensione una "miniatura" non è credibile: si ignora.</summary>
     private const long DimensioneMassimaMiniatura = 20L * 1024 * 1024;
 
+    /// <summary>
+    /// Per i documenti di OpenOffice/LibreOffice legge la miniatura della prima pagina che il file porta con sé, senza
+    /// caricare il documento.
+    /// </summary>
     private static RisultatoAnteprima DisegnaMiniaturaOpenDocument(string percorso, int larghezzaMassima)
     {
         using var flusso = new FileStream(percorso, FileMode.Open, FileAccess.Read, FileShare.ReadWrite | FileShare.Delete);
@@ -149,6 +165,9 @@ public class GeneratoreAnteprima : IGeneratoreAnteprima
         return DisegnaImmagine(miniatura.ToArray(), ".png", 0, larghezzaMassima) with { Nota = NotaMiniatura };
     }
 
+    /// <summary>
+    /// Legge tutto il file in memoria senza tenerlo aperto (si legge anche se un altro programma lo sta usando).
+    /// </summary>
     private static async Task<byte[]> LeggiAsync(string percorso, CancellationToken annullamento)
     {
         // Come per la copia: un file aperto in un altro programma si legge lo stesso.
@@ -159,6 +178,10 @@ public class GeneratoreAnteprima : IGeneratoreAnteprima
         return memoria.ToArray();
     }
 
+    /// <summary>
+    /// Disegna una pagina di un PDF con le funzioni di Windows e la restituisce come immagine, insieme al numero di pagine
+    /// del documento.
+    /// </summary>
     private static async Task<RisultatoAnteprima> DisegnaPdfAsync(
         byte[] byteFile, int pagina, int larghezzaMassima, CancellationToken annullamento)
     {
@@ -188,6 +211,10 @@ public class GeneratoreAnteprima : IGeneratoreAnteprima
         return new RisultatoAnteprima(StatoAnteprima.Pronta, immagine, pagine);
     }
 
+    /// <summary>
+    /// Prepara l'immagine da mostrare: sceglie la pagina (per i TIFF a più pagine), la raddrizza secondo i dati della
+    /// fotocamera e la rimpicciolisce se è più larga del necessario.
+    /// </summary>
     private static RisultatoAnteprima DisegnaImmagine(byte[] byteFile, string estensione, int pagina, int larghezzaMassima)
     {
         using var flusso = new MemoryStream(byteFile);

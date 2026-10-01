@@ -51,6 +51,9 @@ public sealed class IndicizzazioneService(
         _lavoratore = Task.Run(() => CicloAsync(token));
     }
 
+    /// <summary>
+    /// Mette dei documenti in coda per la lettura del testo (quelli già in coda non si ripetono) e avvisa chi ascolta.
+    /// </summary>
     public void Accoda(IEnumerable<int> documentiIds)
     {
         var aggiunti = false;
@@ -104,6 +107,10 @@ public sealed class IndicizzazioneService(
             return _inattivo.Task;
     }
 
+    /// <summary>
+    /// Il lavoratore in background: prende un documento alla volta dalla coda e lo legge; un errore su un documento non
+    /// ferma gli altri.
+    /// </summary>
     private async Task CicloAsync(CancellationToken cancellation)
     {
         try
@@ -135,6 +142,10 @@ public sealed class IndicizzazioneService(
         }
     }
 
+    /// <summary>
+    /// Legge un documento: sceglie il lettore adatto al formato, estrae il testo e lo scrive nell'indice (o segna il
+    /// documento come non supportato, in errore o in attesa del riconoscimento del testo).
+    /// </summary>
     private async Task ElaboraAsync(int id, CancellationToken cancellation)
     {
         await using var db = await dbFactory.CreateDbContextAsync(cancellation);
@@ -201,6 +212,7 @@ public sealed class IndicizzazioneService(
         await transazione.CommitAsync(cancellation);
     }
 
+    /// <summary>Un documento ha finito: lo toglie dalla coda e, se la coda è vuota, avvisa chi aspetta.</summary>
     private void Concludi(int id)
     {
         lock (_blocco)
@@ -213,6 +225,9 @@ public sealed class IndicizzazioneService(
         Cambiato?.Invoke();
     }
 
+    /// <summary>
+    /// Ferma il lavoratore in background (aspettando al massimo qualche secondo); si può chiamare più volte.
+    /// </summary>
     public void Dispose()
     {
         // Si può chiamare più volte (es. dalla chiusura dell'app e dal contenitore dei servizi).
@@ -226,6 +241,7 @@ public sealed class IndicizzazioneService(
         _annullamento?.Dispose();
     }
 
+    /// <summary>Un segnale «la coda è vuota», già scattato o da far scattare più tardi.</summary>
     private static TaskCompletionSource NuovoInattivo(bool giaCompletato)
     {
         var t = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);

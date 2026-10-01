@@ -5,6 +5,10 @@ using DocumentaleMarta.Core.Servizi;
 
 namespace DocumentaleMarta.App.ViewModels;
 
+/// <summary>
+/// I tipi di elemento dell'albero: la radice, il nodo «Scadenze», le aree, le cartelle e i due nodi dell'«Archivio
+/// completati».
+/// </summary>
 public enum TipoNodo
 {
     Radice,
@@ -56,6 +60,10 @@ public partial class NodoAlberoViewModel(
     /// <summary>La cartella è completata: non genera più avvisi e nell'albero ha un'icona e un colore suoi.</summary>
     public bool Completato { get; private set; }
 
+    /// <summary>
+    /// Aggiorna la scadenza e lo stato «completata» della cartella; spuntando «Completato» nel form l'icona cambia subito,
+    /// senza rileggere l'albero.
+    /// </summary>
     public void ImpostaScadenza(DateOnly? dataScadenza, bool completato)
     {
         DataScadenza = dataScadenza;
@@ -73,6 +81,7 @@ public partial class NodoAlberoViewModel(
     /// <summary>La cartella sta nell'"Archivio completati" invece che nella sua area (solo per i nodi cartella).</summary>
     public bool Archiviata { get; private set; }
 
+    /// <summary>Segna la cartella come archiviata (o no).</summary>
     public void ImpostaArchiviata(bool archiviata) => Archiviata = archiviata;
 
     /// <summary>Per le cartelle completate: la spiegazione dell'icona, per il suggerimento che compare passandoci il mouse.</summary>
@@ -157,6 +166,7 @@ public partial class NodoAlberoViewModel(
         _ => Figli.Sum(f => f.NumeroDocumenti)
     };
 
+    /// <summary>Aggiorna il numero di documenti della cartella (dopo averne allegati o eliminati).</summary>
     public void ImpostaNumeroDocumenti(int numero) => _documentiDellaCartella = numero;
 
     [ObservableProperty]
@@ -165,6 +175,7 @@ public partial class NodoAlberoViewModel(
     [ObservableProperty]
     private bool _isSelected;
 
+    /// <summary>Quando il nodo viene selezionato lo comunica a chi governa l'albero.</summary>
     partial void OnIsSelectedChanged(bool value)
     {
         if (value)
@@ -174,6 +185,7 @@ public partial class NodoAlberoViewModel(
     /// <summary>Identifica il nodo tra un caricamento dell'albero e il successivo (gli oggetti vengono ricreati).</summary>
     public string Chiave => CreaChiave(Tipo, Id);
 
+    /// <summary>La chiave che identifica un nodo (tipo e numero), uguale prima e dopo la rilettura dell'albero.</summary>
     public static string CreaChiave(TipoNodo tipo, int id) => $"{tipo}:{id}";
 
     // Glifi di Segoe Fluent Icons / Segoe MDL2 Assets: casa, calendario, libreria, cartella e, per le completate, un cerchio con la spunta.
@@ -194,6 +206,7 @@ public partial class NodoAlberoViewModel(
         _ => IconaCartella
     };
 
+    /// <summary>Questo nodo e tutti quelli sotto di lui, a qualunque profondità.</summary>
     public IEnumerable<NodoAlberoViewModel> ConDiscendenti()
     {
         yield return this;

@@ -18,6 +18,7 @@ public interface IDialogService
     /// <summary>Domanda sì/no su una proposta (non su un'azione distruttiva): la risposta predefinita è Sì.</summary>
     bool Chiedi(string titolo, string messaggio);
 
+    /// <summary>Mostra un messaggio d'errore con il solo pulsante OK.</summary>
     void MostraErrore(string messaggio);
 
     /// <summary>Un messaggio informativo con il solo pulsante OK (per esempio "Backup completato").</summary>

@@ -14,6 +14,7 @@ public interface IArchivioFileService
     /// <summary>Percorso completo di un percorso relativo. Rifiuta i percorsi che escono dalla radice.</summary>
     string PercorsoAssoluto(string percorsoRelativo);
 
+    /// <summary>Vero se esiste il file o la cartella indicati.</summary>
     bool Esiste(string percorsoRelativo);
 
     /// <summary>

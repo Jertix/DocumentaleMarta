@@ -30,6 +30,7 @@ public static class Colori
         (byte)Math.Round(a.G + (b.G - a.G) * verso),
         (byte)Math.Round(a.B + (b.B - a.B) * verso));
 
+    /// <summary>Trasforma un colore scritto come testo esadecimale (es. «#2E7D32») in un colore WPF.</summary>
     public static Color Da(string esadecimale) => (Color)ColorConverter.ConvertFromString(esadecimale);
 }
 
@@ -55,8 +56,10 @@ public static class ColoriTema
     public static ResourceDictionary Crea(bool scuro, Sfumature accento)
     {
         var d = new ResourceDictionary();
+        // Aggiunge un colore al dizionario: quello chiaro o quello scuro, secondo il tema che si sta preparando.
         void Pennello(string chiave, string chiaro, string scuroEsadecimale) =>
             d[chiave] = Congelato(new SolidColorBrush(Colori.Da(scuro ? scuroEsadecimale : chiaro)));
+        // Aggiunge al dizionario un colore già calcolato (per quelli che dipendono dall'accento).
         void PennelloDa(string chiave, Color colore) => d[chiave] = Congelato(new SolidColorBrush(colore));
 
         // Struttura: bordi, sfondi dei pannelli, delle griglie e dello spazio dietro la pagina dell'anteprima.
@@ -96,6 +99,9 @@ public static class ColoriTema
         return d;
     }
 
+    /// <summary>
+    /// Rende il pennello non più modificabile: così costa meno e si può usare da qualsiasi parte del programma.
+    /// </summary>
     private static SolidColorBrush Congelato(SolidColorBrush pennello)
     {
         pennello.Freeze();

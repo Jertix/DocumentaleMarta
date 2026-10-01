@@ -88,6 +88,7 @@ public partial class ImpostazioniViewModel : ObservableObject
     public bool TemaScuro { get => Tema == TemaApp.Scuro; set { if (value) Tema = TemaApp.Scuro; } }
     public bool TemaComeWindows { get => Tema == TemaApp.ComeWindows; set { if (value) Tema = TemaApp.ComeWindows; } }
 
+    /// <summary>Scegliendo un tema nella finestra lo si prova subito sul programma, prima ancora di salvare.</summary>
     partial void OnTemaChanged(TemaApp value) => _anteprimaAspetto?.Invoke(new AspettoApp(value));
 
     /// <summary>I pulsanti "Fai il backup ora" e "Ripristina da un backup…" si vedono solo se c'è il servizio che li esegue.</summary>
@@ -130,6 +131,7 @@ public partial class ImpostazioniViewModel : ObservableObject
 
     public bool PuoSalvare => Errore.Length == 0;
 
+    /// <summary>Dopo ogni modifica ricalcola il messaggio d'errore e se si può salvare.</summary>
     protected override void OnPropertyChanged(PropertyChangedEventArgs e)
     {
         base.OnPropertyChanged(e);
@@ -149,6 +151,10 @@ public partial class ImpostazioniViewModel : ObservableObject
         return Costruisci(arancione, rossa, promemoria);
     }
 
+    /// <summary>
+    /// Crea le impostazioni nuove: una copia di quelle di partenza con i valori della finestra (testi ripuliti dagli spazi,
+    /// cartella vuota = non scelta).
+    /// </summary>
     private ImpostazioniApp Costruisci(int arancione, int rossa, int promemoria)
     {
         var risultato = _partenza.Clona();
@@ -168,6 +174,7 @@ public partial class ImpostazioniViewModel : ObservableObject
         return risultato;
     }
 
+    /// <summary>Legge un numero di giorni scritto dall'utente (solo cifre); falso se non lo è.</summary>
     private static bool TryLeggiGiorni(string? testo, out int giorni) =>
         int.TryParse(testo?.Trim(), NumberStyles.None, CultureInfo.InvariantCulture, out giorni);
 }

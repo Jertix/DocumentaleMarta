@@ -1,5 +1,9 @@
 namespace DocumentaleMarta.Core.Modelli;
 
+/// <summary>
+/// Ogni quanto una cartella si ripete (per esempio le scadenze mensili); alla scadenza il programma propone la cartella
+/// successiva.
+/// </summary>
 public enum Ricorrenza
 {
     Nessuna = 0,
@@ -8,6 +12,7 @@ public enum Ricorrenza
     Annuale = 3
 }
 
+/// <summary>A che punto è la lettura del testo di un documento, per poterlo cercare.</summary>
 public enum StatoIndicizzazione
 {
     DaIndicizzare = 0,

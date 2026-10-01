@@ -98,6 +98,10 @@ public partial class MainViewModel(
     /// <summary>Completa quando l'elenco (documenti o scadenze) della selezione corrente è pronto (serve ai test).</summary>
     public Task CaricamentoElencoCompletato => _caricamentoElenco;
 
+    /// <summary>
+    /// Cambiando l'elemento selezionato nell'albero svuota il pannello di destra e l'anteprima, poi carica quello che
+    /// spetta al nuovo elemento (o, se c'è una ricerca in corso, ne rimostra i risultati).
+    /// </summary>
     partial void OnNodoSelezionatoChanged(NodoAlberoViewModel? value)
     {
         Anteprima?.Svuota(); // il documento che si vedeva era della schermata precedente
@@ -134,6 +138,10 @@ public partial class MainViewModel(
         }
     }
 
+    /// <summary>
+    /// Carica la griglia dei documenti di un nodo: quelli di tutto l'archivio (radice), di un'area, o solo quelli
+    /// archiviati; se nel frattempo l'utente ha scelto altro non mostra nulla.
+    /// </summary>
     private async Task CaricaElencoAsync(NodoAlberoViewModel nodo)
     {
         try
@@ -157,6 +165,7 @@ public partial class MainViewModel(
         }
     }
 
+    /// <summary>Carica l'elenco delle cartelle in scadenza per il nodo «Scadenze».</summary>
     private async Task CaricaScadenzeAsync(NodoAlberoViewModel nodo)
     {
         try
@@ -175,6 +184,10 @@ public partial class MainViewModel(
         }
     }
 
+    /// <summary>
+    /// Carica il form della cartella selezionata e lo collega all'albero (titolo, scadenza, contatori, archiviazione,
+    /// anteprima); se la cartella non esiste più rilegge l'albero.
+    /// </summary>
     private async Task CaricaFormAsync(NodoAlberoViewModel nodo)
     {
         try
@@ -235,6 +248,9 @@ public partial class MainViewModel(
         nodo.IsSelected = true;
     }
 
+    /// <summary>
+    /// È stato eliminato un documento dalla griglia: aggiorna il contatore dei documenti della sua cartella nell'albero.
+    /// </summary>
     private void OnDocumentoEliminato(int cartellaId)
     {
         var nodo = Radici.SelectMany(r => r.ConDiscendenti())
@@ -245,6 +261,10 @@ public partial class MainViewModel(
         OnPropertyChanged(nameof(RiepilogoDettaglio));
     }
 
+    /// <summary>
+    /// Rilegge l'albero dall'archivio (senza aspettare chi lo chiede) mostrando all'utente gli eventuali errori invece di
+    /// perderli.
+    /// </summary>
     private async Task RicaricaSicuraAsync(string? chiaveDaSelezionare = null)
     {
         try { await RicaricaAsync(chiaveDaSelezionare); }
@@ -267,6 +287,7 @@ public partial class MainViewModel(
             };
             return string.Join("  -  ", parti.Where(p => !string.IsNullOrWhiteSpace(p)));
 
+            // Il valore preceduto dal suo prefisso (es. «C.F. 0123…»); vuoto se il valore non c'è.
             static string Se(string valore, string prefisso) =>
                 string.IsNullOrWhiteSpace(valore) ? "" : prefisso + valore;
         }
@@ -457,6 +478,10 @@ public partial class MainViewModel(
         }
     }
 
+    /// <summary>
+    /// Un nodo è stato scelto dall'utente: se c'era una ricerca la chiude, ricorda il nodo come selezionato e deseleziona
+    /// il precedente.
+    /// </summary>
     private void Seleziona(NodoAlberoViewModel nodo)
     {
         if (_caricamentoInCorso)
@@ -532,11 +557,16 @@ public partial class MainViewModel(
             _ = RicaricaSicuraAsync();
     }
 
+    /// <summary>Quante cartelle sono in avviso, divise per urgenza.</summary>
     private readonly record struct ConteggioAvvisi(int Scadute, int InScadenzaRossa, int InScadenzaArancione)
     {
         public int Totale => Scadute + InScadenzaRossa + InScadenzaArancione;
     }
 
+    /// <summary>
+    /// Conta le cartelle in avviso, divise in scadute, in scadenza entro la soglia rossa e in scadenza entro la soglia
+    /// arancione.
+    /// </summary>
     private ConteggioAvvisi ContaAvvisi()
     {
         int scadute = 0, rosse = 0, arancioni = 0;
@@ -571,6 +601,10 @@ public partial class MainViewModel(
         return righe;
     }
 
+    /// <summary>
+    /// La frase per il suggerimento delle icone di avviso («2 cartelle con scadenze da controllare»); vuota se non c'è
+    /// niente da segnalare.
+    /// </summary>
     private static string DescrizioneRiassuntivaAvvisi(int cartelle) => cartelle switch
     {
         0 => "",
@@ -595,6 +629,7 @@ public partial class MainViewModel(
             VaiAlleScadenze();
     }
 
+    /// <summary>Seleziona nell'albero il nodo «Scadenze».</summary>
     private void VaiAlleScadenze()
     {
         if (Radice?.Figli.FirstOrDefault(f => f.Tipo == TipoNodo.Scadenze) is { } nodo)
@@ -676,6 +711,10 @@ public partial class MainViewModel(
     /// <summary>Completa quando l'ultima ricerca avviata ha mostrato i suoi risultati (serve ai test).</summary>
     public Task RicercaCompletata => _ricerca;
 
+    /// <summary>
+    /// Quando si scrive nel campo di ricerca la ricerca riparte (dopo una breve pausa, per non cercare a ogni lettera); se
+    /// il campo e i filtri sono vuoti si torna alla schermata dell'elemento selezionato.
+    /// </summary>
     partial void OnTestoRicercaChanged(string value)
     {
         if (_sopprimiRicerca)
@@ -705,15 +744,21 @@ public partial class MainViewModel(
         return _ricerca = EseguiRicercaAsync(TestoRicerca.Trim(), TimeSpan.Zero);
     }
 
+    /// <summary>Svuota il campo di ricerca (pulsante «✕»).</summary>
     [RelayCommand]
     private void PulisciRicerca() => TestoRicerca = "";
 
+    /// <summary>Interrompe la ricerca che sta lavorando, se c'è (conta solo la più recente).</summary>
     private void AnnullaRicercaInCorso()
     {
         _ricercaInCorso?.Cancel();
         _ricercaInCorso = null;
     }
 
+    /// <summary>
+    /// Esegue la ricerca (dopo l'attesa indicata) con le parole e i filtri scelti e mostra i risultati nella griglia, a
+    /// meno che nel frattempo ne sia partita una più recente.
+    /// </summary>
     private async Task EseguiRicercaAsync(string testo, TimeSpan attesa)
     {
         if (ricerca is null)
@@ -783,6 +828,10 @@ public partial class MainViewModel(
             CaricaPannello(NodoSelezionato);
     }
 
+    /// <summary>
+    /// La frase sopra i risultati: quanti documenti sono stati trovati, per quali parole e con quali filtri, e se ce ne
+    /// sono altri non mostrati.
+    /// </summary>
     private string RiepilogoRicerca(ElencoDocumentiViewModel risultati)
     {
         var parole = string.IsNullOrWhiteSpace(risultati.TestoRicerca) ? "" : $" per «{risultati.TestoRicerca}»";
@@ -814,6 +863,10 @@ public partial class MainViewModel(
     private bool _indicizzazioneSeguita;
     private SynchronizationContext? _contestoInterfaccia;
 
+    /// <summary>
+    /// Comincia ad ascoltare lo stato della lettura dei documenti in background e lo mostra nella barra in fondo alla
+    /// finestra.
+    /// </summary>
     private void SeguiIndicizzazione()
     {
         if (monitor is null || _indicizzazioneSeguita)
@@ -832,6 +885,10 @@ public partial class MainViewModel(
         AggiornaIndicizzazione();
     }
 
+    /// <summary>
+    /// Scrive nella barra in fondo il messaggio sulla lettura dei documenti (quanti in coda, quale si sta leggendo, quanti
+    /// aspettano il riconoscimento del testo); vuoto se non c'è nulla da dire.
+    /// </summary>
     private void AggiornaIndicizzazione()
     {
         if (monitor is null)
@@ -862,6 +919,7 @@ public partial class MainViewModel(
 
     // ---------- Comandi ----------
 
+    /// <summary>Chiede il nome di una nuova area e la crea (con la sua cartella su disco), poi la seleziona.</summary>
     [RelayCommand]
     private async Task NuovaAreaAsync()
     {
@@ -878,6 +936,10 @@ public partial class MainViewModel(
         });
     }
 
+    /// <summary>
+    /// Mostra la finestra «Nuova cartella» e la crea con i documenti scelti (chiedendo conferma per i duplicati); se la
+    /// creazione fallisce la finestra si riapre con gli stessi dati.
+    /// </summary>
     [RelayCommand(CanExecute = nameof(PuoCreareCartella))]
     private async Task NuovaCartellaAsync()
     {
@@ -911,6 +973,7 @@ public partial class MainViewModel(
         }
     }
 
+    /// <summary>Rinomina l'area o la cartella selezionata (con il controllo del nuovo nome) e rilegge l'albero.</summary>
     [RelayCommand(CanExecute = nameof(PuoModificare))]
     private async Task RinominaAsync()
     {
@@ -938,6 +1001,10 @@ public partial class MainViewModel(
         });
     }
 
+    /// <summary>
+    /// Elimina l'area o la cartella selezionata dopo la conferma (i file vanno nel Cestino di Windows) e seleziona
+    /// l'elemento sopra.
+    /// </summary>
     [RelayCommand(CanExecute = nameof(PuoModificare))]
     private async Task EliminaAsync()
     {
@@ -960,6 +1027,7 @@ public partial class MainViewModel(
         });
     }
 
+    /// <summary>Apre in Esplora file la cartella su disco del nodo selezionato (o avvisa se non esiste).</summary>
     [RelayCommand(CanExecute = nameof(HaPercorsoFisico))]
     private void ApriInEsplora()
     {
@@ -1185,12 +1253,14 @@ public partial class MainViewModel(
     /// <summary>Il promemoria si vede, a meno che l'utente lo abbia rimandato (fino alla prossima apertura del programma).</summary>
     public bool PromemoriaBackupVisibile => !_promemoriaBackupRimandato && TestoPromemoriaBackup.Length > 0;
 
+    /// <summary>Rinfresca il testo e la visibilità del promemoria del backup.</summary>
     private void AggiornaPromemoriaBackup()
     {
         OnPropertyChanged(nameof(TestoPromemoriaBackup));
         OnPropertyChanged(nameof(PromemoriaBackupVisibile));
     }
 
+    /// <summary>Nasconde il promemoria del backup fino alla prossima apertura del programma («Più tardi»).</summary>
     [RelayCommand]
     private void RimandaPromemoriaBackup()
     {
@@ -1414,6 +1484,9 @@ public partial class MainViewModel(
     /// <summary>Riporta l'avanzamento sul thread dell'interfaccia (i file vengono copiati in background).</summary>
     private sealed class ProgressoSuInterfaccia(Action<int> aggiorna, SynchronizationContext? contesto) : IProgress<int>
     {
+        /// <summary>
+        /// Riceve il numero di file copiati dal backup (che lavora in background) e lo passa al thread dell'interfaccia.
+        /// </summary>
         public void Report(int valore)
         {
             if (contesto is null)
@@ -1458,6 +1531,10 @@ public partial class MainViewModel(
 
     private NodoAlberoViewModel? Radice => Radici.FirstOrDefault();
 
+    /// <summary>
+    /// Controlla il nome di un'area: valido, non troppo lungo e non già usato da un'altra area. Restituisce il motivo se
+    /// non va bene, altrimenti null.
+    /// </summary>
     private string? ErroreNomeArea(string testo, NodoAlberoViewModel? escludi)
     {
         if (ValidazioneNomi.Errore(testo, ValidazioneNomi.LunghezzaMassimaArea) is { } errore)
@@ -1469,6 +1546,10 @@ public partial class MainViewModel(
         return giaUsato ? $"Esiste già un'area chiamata «{nome}»." : null;
     }
 
+    /// <summary>
+    /// Il testo della conferma prima di eliminare: cosa si elimina, quante cartelle e documenti contiene (anche archiviati)
+    /// e che i file vanno nel Cestino.
+    /// </summary>
     private static string MessaggioEliminazione(NodoAlberoViewModel nodo)
     {
         var contenuto = new List<string>();
@@ -1488,9 +1569,11 @@ public partial class MainViewModel(
         return testo + "\n\nI file vengono spostati nel Cestino di Windows.";
     }
 
+    /// <summary>Scrive un numero con la parola al singolare o al plurale («1 file», «3 file»).</summary>
     private static string Conta(int numero, string singolare, string plurale) =>
         $"{numero} {(numero == 1 ? singolare : plurale)}";
 
+    /// <summary>Scrive un numero di giorni con la parola giusta («1 giorno», «30 giorni»).</summary>
     private static string Giorni(int numero) => Conta(numero, "giorno", "giorni");
 
     /// <summary>Esegue un'operazione trasformando gli errori prevedibili in messaggi per l'utente.</summary>

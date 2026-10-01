@@ -46,12 +46,15 @@ public partial class DocumentoElencoViewModel(
     [ObservableProperty]
     private bool _fileMancante = fileMancante;
 
+    /// <summary>Pulsante «Apri documento»: apre il file con il suo programma.</summary>
     [RelayCommand]
     private void Apri() => elenco.ApriDocumento(this);
 
+    /// <summary>Pulsante «Apri nella cartella»: mostra il file in Esplora file.</summary>
     [RelayCommand]
     private void ApriNellaCartella() => elenco.MostraDocumentoInEsplora(this);
 
+    /// <summary>Pulsante «Elimina»: elimina il documento dopo la conferma.</summary>
     [RelayCommand]
     private Task EliminaAsync() => elenco.EliminaDocumentoAsync(this);
 
@@ -155,6 +158,10 @@ public class ElencoDocumentiViewModel
     /// <summary>Un documento non esiste più nell'archivio: la griglia e l'albero sono vecchi e vanno riletti.</summary>
     public event Action? RicaricaRichiesta;
 
+    /// <summary>
+    /// Riempie la griglia: i documenti dell'archivio o dell'area, quelli archiviati, oppure i risultati della ricerca;
+    /// controlla in background quali file mancano e colora le righe secondo la scadenza.
+    /// </summary>
     public async Task CaricaAsync()
     {
         List<(DocumentoElenco Documento, string? Trovato)> righe;
@@ -184,6 +191,9 @@ public class ElencoDocumentiViewModel
         }
     }
 
+    /// <summary>
+    /// Apre il documento con il suo programma, se il file c'è ancora (altrimenti segna la riga come mancante).
+    /// </summary>
     internal void ApriDocumento(DocumentoElencoViewModel documento)
     {
         documento.FileMancante = !_azioni.FileEsiste(documento.PercorsoRelativo);
@@ -191,6 +201,7 @@ public class ElencoDocumentiViewModel
             _azioni.Apri(documento.PercorsoRelativo, documento.Tipo);
     }
 
+    /// <summary>Mostra il file del documento in Esplora file, se c'è ancora.</summary>
     internal void MostraDocumentoInEsplora(DocumentoElencoViewModel documento)
     {
         documento.FileMancante = !_azioni.FileEsiste(documento.PercorsoRelativo);
@@ -198,6 +209,10 @@ public class ElencoDocumentiViewModel
             _azioni.MostraInEsplora(documento.PercorsoRelativo);
     }
 
+    /// <summary>
+    /// Elimina il documento (dopo la conferma) e lo toglie dalla griglia, avvisando l'albero per i contatori; se non
+    /// esisteva già più chiede di rileggere.
+    /// </summary>
     internal async Task EliminaDocumentoAsync(DocumentoElencoViewModel documento)
     {
         switch (await _azioni.EliminaAsync(documento.Id, documento.NomeFile))
@@ -214,6 +229,7 @@ public class ElencoDocumentiViewModel
         }
     }
 
+    /// <summary>Chiede di selezionare nell'albero la cartella che contiene il documento.</summary>
     internal void VaiAllaCartella(DocumentoElencoViewModel documento) =>
         VaiAllaCartellaRichiesto?.Invoke(documento.CartellaId);
 }

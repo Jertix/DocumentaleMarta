@@ -3,6 +3,7 @@ namespace DocumentaleMarta.App.Servizi;
 /// <summary>Interazioni con Windows (Esplora file, programma associato al tipo di file).</summary>
 public interface IShellService
 {
+    /// <summary>Apre Esplora file dentro la cartella indicata.</summary>
     void ApriCartella(string percorso);
 
     /// <summary>Apre il file con il programma predefinito di Windows per quel tipo.</summary>

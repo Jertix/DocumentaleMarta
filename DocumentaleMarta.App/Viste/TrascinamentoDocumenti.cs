@@ -9,11 +9,14 @@ namespace DocumentaleMarta.App.Viste;
 /// <summary>Cosa c'è dentro a un trascinamento: file da Esplora file oppure un documento dell'archivio.</summary>
 public static class DatiTrascinati
 {
+    /// <summary>Vero se il trascinamento contiene file di Esplora file.</summary>
     public static bool HaFile(IDataObject dati) => dati.GetDataPresent(DataFormats.FileDrop);
 
+    /// <summary>I percorsi dei file contenuti nel trascinamento (vuoto se non ce ne sono).</summary>
     public static IReadOnlyList<string> File(IDataObject dati) =>
         HaFile(dati) ? dati.GetData(DataFormats.FileDrop) as string[] ?? [] : [];
 
+    /// <summary>Il documento dell'archivio contenuto nel trascinamento, se c'è.</summary>
     public static DocumentoTrascinato? Documento(IDataObject dati) =>
         dati.GetDataPresent(Trascinamento.FormatoDocumento) ? dati.GetData(Trascinamento.FormatoDocumento) as DocumentoTrascinato : null;
 }
@@ -24,8 +27,10 @@ public static class BersaglioTrascinamento
     public static readonly DependencyProperty AttivoProperty = DependencyProperty.RegisterAttached(
         "Attivo", typeof(bool), typeof(BersaglioTrascinamento), new PropertyMetadata(false));
 
+    /// <summary>Legge se il nodo è il bersaglio evidenziato del trascinamento.</summary>
     public static bool GetAttivo(DependencyObject oggetto) => (bool)oggetto.GetValue(AttivoProperty);
 
+    /// <summary>Evidenzia (o no) il nodo come bersaglio del trascinamento.</summary>
     public static void SetAttivo(DependencyObject oggetto, bool valore) => oggetto.SetValue(AttivoProperty, valore);
 }
 

@@ -13,6 +13,7 @@ public static class ArchivioDatabase
     public static string PercorsoDatabase(string percorsoRadice) =>
         Path.Combine(percorsoRadice, CartellaDati, NomeFileDatabase);
 
+    /// <summary>Le impostazioni di collegamento al database SQLite nel percorso indicato.</summary>
     public static DbContextOptions<AppDbContext> CreaOpzioni(string percorsoDatabase)
     {
         var connessione = new SqliteConnectionStringBuilder { DataSource = percorsoDatabase }.ToString();

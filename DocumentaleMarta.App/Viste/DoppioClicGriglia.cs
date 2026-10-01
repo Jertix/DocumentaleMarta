@@ -18,6 +18,9 @@ public static class DoppioClicGriglia
         griglia.AddHandler(UIElement.MouseDownEvent, new MouseButtonEventHandler((_, e) => Gestisci(e, azione)), handledEventsToo: true);
     }
 
+    /// <summary>
+    /// Se il doppio clic è su una riga (non su un pulsante né sull'intestazione) esegue l'azione con i dati di quella riga.
+    /// </summary>
     private static void Gestisci<TRiga>(MouseButtonEventArgs e, Action<TRiga> azione) where TRiga : class
     {
         if (e.ChangedButton != MouseButton.Left || e.ClickCount != 2)

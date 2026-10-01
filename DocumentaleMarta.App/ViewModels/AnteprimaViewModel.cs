@@ -88,6 +88,7 @@ public partial class AnteprimaViewModel(
 
     public string TestoPagina => $"Pagina {PaginaCorrente} di {NumeroPagine}";
 
+    /// <summary>Cambiando lo stato dell'anteprima i pulsanti per sfogliare le pagine possono comparire o sparire.</summary>
     partial void OnStatoChanged(StatoAnteprima value) => OnPropertyChanged(nameof(HaPagine));
 
     /// <summary>Mostra l'anteprima del documento (null = nessuno selezionato), a partire dalla pagina indicata (la prima è la 0).</summary>
@@ -119,6 +120,10 @@ public partial class AnteprimaViewModel(
     /// <summary>Nessun documento da mostrare (è cambiata la schermata a sinistra).</summary>
     public void Svuota() => Mostra(null);
 
+    /// <summary>
+    /// Aprendo il pannello dell'anteprima si prepara l'immagine del documento selezionato; chiudendolo si interrompe il
+    /// lavoro in corso.
+    /// </summary>
     partial void OnVisibileChanged(bool value)
     {
         if (value)
@@ -130,24 +135,32 @@ public partial class AnteprimaViewModel(
     private bool PuoTornareIndietro => PaginaCorrente > 1;
     private bool PuoAndareAvanti => PaginaCorrente < NumeroPagine;
 
+    /// <summary>Passa alla pagina precedente del documento.</summary>
     [RelayCommand(CanExecute = nameof(PuoTornareIndietro))]
     private void PaginaPrecedente() => VaiAllaPagina(_pagina - 1);
 
+    /// <summary>Passa alla pagina successiva del documento.</summary>
     [RelayCommand(CanExecute = nameof(PuoAndareAvanti))]
     private void PaginaSuccessiva() => VaiAllaPagina(_pagina + 1);
 
+    /// <summary>Va alla pagina indicata (senza uscire dalle pagine che esistono) e ne prepara l'immagine.</summary>
     private void VaiAllaPagina(int pagina)
     {
         _pagina = Math.Clamp(pagina, 0, NumeroPagine - 1);
         Avvia();
     }
 
+    /// <summary>Interrompe la preparazione dell'anteprima in corso, se c'è.</summary>
     private void Annulla()
     {
         _annullamento?.Cancel();
         _annullamento = null;
     }
 
+    /// <summary>
+    /// Fa partire la preparazione dell'immagine del documento corrente (interrompendo quella precedente); se non c'è un
+    /// documento o il pannello è chiuso non fa nulla.
+    /// </summary>
     private void Avvia()
     {
         Annulla();
@@ -169,6 +182,10 @@ public partial class AnteprimaViewModel(
         _lavoro = GeneraAsync(_documento, _pagina, annullamento.Token);
     }
 
+    /// <summary>
+    /// Prepara l'immagine di una pagina: aspetta un attimo (per non lavorare a ogni clic), controlla che il file ci sia, la
+    /// fa disegnare in background e la mostra, a meno che nel frattempo l'utente non abbia scelto altro.
+    /// </summary>
     private async Task GeneraAsync(IDocumentoAnteprima documento, int pagina, CancellationToken annullamento)
     {
         try
@@ -206,6 +223,9 @@ public partial class AnteprimaViewModel(
         }
     }
 
+    /// <summary>
+    /// Aggiorna in blocco tutto ciò che il pannello mostra: immagine, nota, messaggio, titolo, pagine e stato.
+    /// </summary>
     private void Imposta(StatoAnteprima stato, string messaggio, ImageSource? immagine, string titolo, int pagine, string nota = "")
     {
         Immagine = immagine;

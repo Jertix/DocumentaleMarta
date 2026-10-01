@@ -33,6 +33,10 @@ public sealed class OcrWindows : IOcr
         : "Windows non ha il riconoscimento del testo (OCR) per l'italiano. Per attivarlo: Impostazioni → Ora e lingua → " +
           "Lingua e area geografica → Italiano → Opzioni lingua → Riconoscimento del testo.";
 
+    /// <summary>
+    /// Legge il testo di un'immagine o di una scansione (anche di tutte le pagine di un TIFF, fino a un massimo) con il
+    /// riconoscimento di Windows.
+    /// </summary>
     public async Task<string> RiconosciImmagineAsync(string percorsoFile, CancellationToken cancellation)
     {
         var motore = Motore();
@@ -54,6 +58,10 @@ public sealed class OcrWindows : IOcr
         return testo.ToString();
     }
 
+    /// <summary>
+    /// Legge il testo di un PDF fatto di scansioni: disegna ogni pagina come immagine e la fa leggere al riconoscimento di
+    /// Windows (fino a un massimo di pagine).
+    /// </summary>
     public async Task<string> RiconosciPdfAsync(string percorsoFile, CancellationToken cancellation)
     {
         var motore = Motore();
@@ -81,6 +89,10 @@ public sealed class OcrWindows : IOcr
         return testo.ToString();
     }
 
+    /// <summary>
+    /// Il motore di riconoscimento del testo; se Windows non lo ha per l'italiano, segnala l'errore con le istruzioni per
+    /// attivarlo.
+    /// </summary>
     private OcrEngine Motore() =>
         _motore.Value ?? throw new OcrNonDisponibileException(MotivoNonDisponibile!);
 

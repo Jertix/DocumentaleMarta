@@ -12,6 +12,10 @@ public class ArchivioService(
     private static readonly StringComparer OrdineAlfabetico =
         StringComparer.Create(CultureInfo.GetCultureInfo("it-IT"), ignoreCase: true);
 
+    /// <summary>
+    /// Legge dal database l'albero: le aree con le loro cartelle (numero di documenti, scadenza, completata, archiviata),
+    /// in ordine alfabetico italiano.
+    /// </summary>
     public async Task<IReadOnlyList<AreaNodo>> CaricaAlberoAsync()
     {
         await using var db = await dbFactory.CreateDbContextAsync();
@@ -45,6 +49,10 @@ public class ArchivioService(
 
     // ---------- Aree ----------
 
+    /// <summary>
+    /// Crea un'area: controlla il nome, crea la cartella sul disco e la riga nel database (se il database fallisce toglie
+    /// la cartella). Restituisce il suo numero.
+    /// </summary>
     public async Task<int> CreaAreaAsync(string nome)
     {
         nome = Valida(nome, ValidazioneNomi.LunghezzaMassimaArea);
@@ -68,6 +76,10 @@ public class ArchivioService(
         }
     }
 
+    /// <summary>
+    /// Rinomina un'area: rinomina la cartella sul disco e aggiorna i percorsi di tutte le sue cartelle e documenti; se il
+    /// database fallisce rimette il vecchio nome.
+    /// </summary>
     public async Task RinominaAreaAsync(int areaId, string nuovoNome)
     {
         nuovoNome = Valida(nuovoNome, ValidazioneNomi.LunghezzaMassimaArea);
@@ -104,6 +116,7 @@ public class ArchivioService(
         }
     }
 
+    /// <summary>Elimina un'area con tutte le sue cartelle e i suoi documenti (la cartella va nel Cestino).</summary>
     public async Task EliminaAreaAsync(int areaId)
     {
         await using var db = await dbFactory.CreateDbContextAsync();
@@ -115,6 +128,9 @@ public class ArchivioService(
 
     // ---------- Cartelle ----------
 
+    /// <summary>
+    /// Crea una cartella vuota dentro un'area (cartella sul disco e riga nel database) e restituisce il suo numero.
+    /// </summary>
     public async Task<int> CreaCartellaAsync(int areaId, string titolo)
     {
         titolo = Valida(titolo, ValidazioneNomi.LunghezzaMassimaTitolo);
@@ -144,6 +160,7 @@ public class ArchivioService(
         }
     }
 
+    /// <summary>Cambia il titolo di una cartella (e quindi il nome della cartella sul disco).</summary>
     public async Task RinominaCartellaAsync(int cartellaId, string nuovoTitolo)
     {
         var attuale = await CaricaCartellaAsync(cartellaId)
@@ -151,12 +168,17 @@ public class ArchivioService(
         await AggiornaCartellaAsync(cartellaId, attuale.Dati with { Titolo = nuovoTitolo });
     }
 
+    /// <summary>Legge una cartella con tutti i suoi dati e documenti; null se non esiste più.</summary>
     public async Task<CartellaDettaglio?> CaricaCartellaAsync(int cartellaId)
     {
         await using var db = await dbFactory.CreateDbContextAsync();
         return await LeggiDettaglioAsync(db, cartellaId);
     }
 
+    /// <summary>
+    /// Crea in un colpo solo una cartella con i suoi dati (scadenza, ricorrenza...) e i documenti da allegare; se qualcosa
+    /// fallisce disfa tutto (file copiati e cartella).
+    /// </summary>
     public async Task<CartellaDettaglio> CreaCartellaConDatiAsync(
         int areaId, DatiCartella dati, IReadOnlyList<string> fileDaAllegare)
     {
@@ -197,6 +219,10 @@ public class ArchivioService(
         }
     }
 
+    /// <summary>
+    /// Salva i dati modificati di una cartella; se il titolo cambia rinomina la cartella sul disco e aggiorna i percorsi
+    /// dei documenti (rimettendo tutto com'era se il database fallisce).
+    /// </summary>
     public async Task<CartellaDettaglio> AggiornaCartellaAsync(int cartellaId, DatiCartella dati)
     {
         var titolo = Valida(dati.Titolo, ValidazioneNomi.LunghezzaMassimaTitolo);
@@ -231,6 +257,10 @@ public class ArchivioService(
         return (await LeggiDettaglioAsync(db, cartellaId))!;
     }
 
+    /// <summary>
+    /// Copia dei file nella cartella e li registra come documenti (poi li mette in coda per la lettura del testo); se
+    /// qualcosa fallisce toglie le copie già fatte.
+    /// </summary>
     public async Task<IReadOnlyList<DocumentoDettaglio>> AllegaDocumentiAsync(int cartellaId, IReadOnlyList<string> percorsiFile)
     {
         await using var db = await dbFactory.CreateDbContextAsync();
@@ -258,6 +288,10 @@ public class ArchivioService(
         }
     }
 
+    /// <summary>
+    /// Dice quali dei file indicati hanno lo stesso contenuto di documenti già archiviati (anche con nomi diversi) e dove
+    /// si trovano.
+    /// </summary>
     public async Task<IReadOnlyList<DuplicatoTrovato>> TrovaDuplicatiAsync(IReadOnlyList<string> percorsiFile)
     {
         if (percorsiFile.Count == 0)
@@ -300,6 +334,7 @@ public class ArchivioService(
             .ToList();
     }
 
+    /// <summary>Elimina un documento dal database e il suo file nel Cestino.</summary>
     public async Task EliminaDocumentoAsync(int documentoId)
     {
         await using var db = await dbFactory.CreateDbContextAsync();
@@ -309,6 +344,7 @@ public class ArchivioService(
         await EliminaConCestinoAsync(db, documento, documento.PercorsoRelativo, cartella: false);
     }
 
+    /// <summary>Elimina una cartella con i suoi documenti (la cartella va nel Cestino).</summary>
     public async Task EliminaCartellaAsync(int cartellaId)
     {
         await using var db = await dbFactory.CreateDbContextAsync();
@@ -318,6 +354,10 @@ public class ArchivioService(
         await EliminaConCestinoAsync(db, cartella, cartella.PercorsoRelativo);
     }
 
+    /// <summary>
+    /// Sposta un documento in un'altra cartella: aggiorna il database e sposta il file, in una transazione (se lo
+    /// spostamento del file fallisce il database resta com'era).
+    /// </summary>
     public async Task SpostaDocumentoAsync(int documentoId, int cartellaDestinazioneId)
     {
         await using var db = await dbFactory.CreateDbContextAsync();
@@ -355,12 +395,18 @@ public class ArchivioService(
         await transazione.CommitAsync();
     }
 
+    /// <summary>L'elenco dei documenti di tutto l'archivio o di un'area, archiviati compresi.</summary>
     public Task<IReadOnlyList<DocumentoElenco>> CaricaDocumentiAsync(int? areaId) => CaricaElencoAsync(areaId, soloArchiviate: false);
 
+    /// <summary>L'elenco dei soli documenti delle cartelle archiviate (di tutte le aree o di una).</summary>
     public Task<IReadOnlyList<DocumentoElenco>> CaricaDocumentiArchiviatiAsync(int? areaId) => CaricaElencoAsync(areaId, soloArchiviate: true);
 
     // ---------- Archivio completati ----------
 
+    /// <summary>
+    /// Mette una cartella completata nell'«Archivio completati» (non sposta nessun file); le cartelle non completate si
+    /// rifiutano.
+    /// </summary>
     public async Task ArchiviaCartellaAsync(int cartellaId)
     {
         await using var db = await dbFactory.CreateDbContextAsync();
@@ -376,6 +422,7 @@ public class ArchivioService(
         await db.SaveChangesAsync();
     }
 
+    /// <summary>Toglie una cartella dall'«Archivio completati» e la rimette nella sua area.</summary>
     public async Task RipristinaCartellaAsync(int cartellaId)
     {
         await using var db = await dbFactory.CreateDbContextAsync();
@@ -389,6 +436,9 @@ public class ArchivioService(
         await db.SaveChangesAsync();
     }
 
+    /// <summary>
+    /// Archivia in un colpo tutte le cartelle completate (di tutte le aree o di una) e restituisce quante sono.
+    /// </summary>
     public async Task<int> ArchiviaCompletateAsync(int? areaId)
     {
         await using var db = await dbFactory.CreateDbContextAsync();
@@ -426,6 +476,10 @@ public class ArchivioService(
             .ToList();
     }
 
+    /// <summary>
+    /// Le cartelle non completate con una scadenza, dalla più vicina; quali segnalare lo decide poi il servizio degli
+    /// avvisi.
+    /// </summary>
     public async Task<IReadOnlyList<CartellaScadenza>> CaricaScadenzeAsync()
     {
         await using var db = await dbFactory.CreateDbContextAsync();
@@ -448,6 +502,10 @@ public class ArchivioService(
 
     // ---------- Supporto ----------
 
+    /// <summary>
+    /// Controlla un nome o un titolo (non vuoto, non troppo lungo, senza caratteri vietati) e lo restituisce senza spazi ai
+    /// lati; altrimenti segnala l'errore.
+    /// </summary>
     private static string Valida(string? testo, int lunghezzaMassima) =>
         ValidazioneNomi.Errore(testo, lunghezzaMassima) is { } errore
             ? throw new ArchivioException(errore)
@@ -490,6 +548,7 @@ public class ArchivioService(
         }
     }
 
+    /// <summary>Crea la riga del database per un file appena copiato, da leggere (indicizzare) in background.</summary>
     private static Documento NuovoDocumento(FileArchiviato copia) => new()
     {
         NomeFile = copia.NomeFile,
@@ -501,6 +560,7 @@ public class ArchivioService(
         StatoIndicizzazione = StatoIndicizzazione.DaIndicizzare
     };
 
+    /// <summary>Trasforma un documento del database nei dati che il programma mostra.</summary>
     private static DocumentoDettaglio ADettaglio(Documento d) =>
         new(d.Id, d.NomeFile, d.Estensione, d.Dimensione, d.DataCaricamento, d.PercorsoRelativo);
 
@@ -522,6 +582,9 @@ public class ArchivioService(
             cartella.Archiviata = false;
     }
 
+    /// <summary>
+    /// Legge dal database una cartella con i suoi documenti in ordine di caricamento; null se non esiste.
+    /// </summary>
     private static async Task<CartellaDettaglio?> LeggiDettaglioAsync(AppDbContext db, int cartellaId)
     {
         var c = await db.Cartelle.AsNoTracking()

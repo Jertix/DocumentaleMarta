@@ -12,11 +12,14 @@ public class EstrattoreOfficeOpenXml : IEstrattoreTesto
 {
     private static readonly HashSet<string> Estensioni = [".docx", ".xlsx", ".pptx"];
 
+    /// <summary>Vero per .docx, .xlsx e .pptx.</summary>
     public bool Supporta(string estensione) => Estensioni.Contains(estensione);
 
+    /// <summary>Legge il testo del file in background.</summary>
     public Task<string> EstraiAsync(string percorsoFile, CancellationToken cancellation) =>
         Task.Run(() => Estrai(percorsoFile), cancellation);
 
+    /// <summary>Apre il file (anche se è aperto in Office) e sceglie la lettura secondo il formato.</summary>
     private static string Estrai(string percorsoFile)
     {
         // Condivisione in lettura e scrittura: il file può essere aperto in Office nello stesso momento.
@@ -31,6 +34,7 @@ public class EstrattoreOfficeOpenXml : IEstrattoreTesto
         };
     }
 
+    /// <summary>Il testo di un documento Word: intestazioni, corpo e piè di pagina.</summary>
     private static string EstraiWord(Stream stream)
     {
         using var documento = WordprocessingDocument.Open(stream, isEditable: false);
@@ -48,6 +52,7 @@ public class EstrattoreOfficeOpenXml : IEstrattoreTesto
         return testo.ToString();
     }
 
+    /// <summary>Aggiunge al testo i paragrafi non vuoti.</summary>
     private static void AggiungiParagrafi(StringBuilder testo, IEnumerable<Paragraph>? paragrafi)
     {
         if (paragrafi is null)
@@ -60,6 +65,7 @@ public class EstrattoreOfficeOpenXml : IEstrattoreTesto
         }
     }
 
+    /// <summary>Il testo di un foglio Excel: i nomi dei fogli e il contenuto delle celle.</summary>
     private static string EstraiExcel(Stream stream)
     {
         using var documento = SpreadsheetDocument.Open(stream, isEditable: false);
@@ -86,6 +92,7 @@ public class EstrattoreOfficeOpenXml : IEstrattoreTesto
         return testo.ToString();
     }
 
+    /// <summary>Il valore di una cella: il testo condiviso, il testo scritto nella cella o il valore.</summary>
     private static string? ValoreCella(Cell cella, List<string> condivise)
     {
         if (cella.DataType?.Value == CellValues.SharedString
@@ -97,6 +104,7 @@ public class EstrattoreOfficeOpenXml : IEstrattoreTesto
         return cella.CellValue?.Text;
     }
 
+    /// <summary>Il testo di una presentazione PowerPoint: i paragrafi di ogni diapositiva.</summary>
     private static string EstraiPowerPoint(Stream stream)
     {
         using var documento = PresentationDocument.Open(stream, isEditable: false);

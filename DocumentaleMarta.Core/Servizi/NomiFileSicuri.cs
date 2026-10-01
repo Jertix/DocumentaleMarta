@@ -78,6 +78,9 @@ public static class NomiFileSicuri
         }
     }
 
+    /// <summary>
+    /// Sostituisce con un trattino basso i caratteri che Windows non ammette nei nomi di file e cartelle.
+    /// </summary>
     private static string Sostituisci(string? testo)
     {
         if (string.IsNullOrEmpty(testo))
@@ -89,6 +92,7 @@ public static class NomiFileSicuri
         return sb.ToString();
     }
 
+    /// <summary>L'elenco dei caratteri vietati nei nomi (quelli di Windows più alcuni che creano confusione).</summary>
     private static char[] BuildCaratteriNonValidi()
     {
         var caratteri = new HashSet<char>(Path.GetInvalidFileNameChars());

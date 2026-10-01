@@ -19,6 +19,10 @@ public partial class AnteprimaIngranditaDialog : Window
     private double _offsetOrizzontaleIniziale;
     private double _offsetVerticaleIniziale;
 
+    /// <summary>
+    /// Apre la finestra grande a pagina intera: la dimensiona sullo schermo, la collega al modello della pagina e, alla
+    /// chiusura, ferma il disegno in corso.
+    /// </summary>
     public AnteprimaIngranditaDialog(AnteprimaViewModel modello)
     {
         InitializeComponent();
@@ -44,6 +48,7 @@ public partial class AnteprimaIngranditaDialog : Window
     /// <summary>Lo zoom attuale (1 = pagina intera).</summary>
     public double Zoom => _zoom;
 
+    /// <summary>Quando cambia il titolo del documento aggiorna il titolo della finestra.</summary>
     private void ModelloCambiato(object? mittente, PropertyChangedEventArgs e)
     {
         if (e.PropertyName == nameof(AnteprimaViewModel.Titolo))
@@ -60,11 +65,13 @@ public partial class AnteprimaIngranditaDialog : Window
         Scorrimento.ScrollToHome();
     }
 
+    /// <summary>Scrive nel titolo della finestra il nome del documento (o un titolo generico se non c'è).</summary>
     private void AggiornaTitolo() =>
         Title = string.IsNullOrWhiteSpace(_modello.Titolo) ? "Anteprima ingrandita" : $"{_modello.Titolo}  —  anteprima ingrandita";
 
     // ---------- Dimensioni e zoom ----------
 
+    /// <summary>Cambiando la dimensione della finestra la pagina si riadatta.</summary>
     private void Scorrimento_SizeChanged(object sender, SizeChangedEventArgs e) => AggiornaDimensioni();
 
     /// <summary>Rimette l'immagine alla dimensione che spetta: la pagina intera nella finestra, per lo zoom scelto.</summary>
@@ -82,6 +89,9 @@ public partial class AnteprimaIngranditaDialog : Window
         Immagine.Height = dimensioni.Height;
     }
 
+    /// <summary>
+    /// Cambia lo zoom restando sul punto che si sta guardando (il centro dell'area visibile) e aggiorna pulsanti e testo.
+    /// </summary>
     private void ImpostaZoom(double nuovo)
     {
         nuovo = Ingrandimento.Limita(nuovo);
@@ -100,6 +110,9 @@ public partial class AnteprimaIngranditaDialog : Window
         AggiornaStatoZoom();
     }
 
+    /// <summary>
+    /// Aggiorna il testo dello zoom, i pulsanti (+, −, «Pagina intera» si spengono ai limiti) e il cursore sulla pagina.
+    /// </summary>
     private void AggiornaStatoZoom()
     {
         TestoZoom.Text = Ingrandimento.Testo(_zoom);
@@ -109,10 +122,13 @@ public partial class AnteprimaIngranditaDialog : Window
         Pagina.Cursor = _zoom > Ingrandimento.PaginaIntera ? Cursors.Hand : Cursors.Arrow;
     }
 
+    /// <summary>Pulsante «+»: ingrandisce un passo.</summary>
     private void Piu_Click(object sender, RoutedEventArgs e) => ImpostaZoom(Ingrandimento.Aumenta(_zoom));
 
+    /// <summary>Pulsante «−»: rimpicciolisce un passo.</summary>
     private void Meno_Click(object sender, RoutedEventArgs e) => ImpostaZoom(Ingrandimento.Diminuisci(_zoom));
 
+    /// <summary>Pulsante «Pagina intera»: torna a vedere tutta la pagina.</summary>
     private void PaginaIntera_Click(object sender, RoutedEventArgs e) => ImpostaZoom(Ingrandimento.PaginaIntera);
 
     // ---------- Mouse ----------
@@ -138,6 +154,7 @@ public partial class AnteprimaIngranditaDialog : Window
         }
     }
 
+    /// <summary>Se si sta trascinando la pagina ingrandita la sposta seguendo il mouse.</summary>
     private void Pagina_MouseMove(object sender, MouseEventArgs e)
     {
         if (_inizioTrascinamento is not { } inizio || e.LeftButton != MouseButtonState.Pressed)
@@ -148,8 +165,10 @@ public partial class AnteprimaIngranditaDialog : Window
         Scorrimento.ScrollToVerticalOffset(_offsetVerticaleIniziale - (posizione.Y - inizio.Y));
     }
 
+    /// <summary>Rilasciando il pulsante del mouse finisce il trascinamento della pagina.</summary>
     private void Pagina_MouseLeftButtonUp(object sender, MouseButtonEventArgs e) => FineTrascinamento();
 
+    /// <summary>Termina il trascinamento della pagina: rilascia il mouse e rimette il cursore giusto.</summary>
     private void FineTrascinamento()
     {
         if (_inizioTrascinamento is null)
@@ -160,6 +179,7 @@ public partial class AnteprimaIngranditaDialog : Window
         AggiornaStatoZoom(); // rimette il cursore
     }
 
+    /// <summary>Passa la rotellina del mouse al calcolo dello zoom (Ctrl + rotellina).</summary>
     private void Finestra_PreviewMouseWheel(object sender, MouseWheelEventArgs e) =>
         e.Handled = GestisciRotellina(e.Delta, Keyboard.Modifiers);
 
@@ -175,6 +195,7 @@ public partial class AnteprimaIngranditaDialog : Window
 
     // ---------- Tastiera ----------
 
+    /// <summary>Passa i tasti premuti alla gestione della tastiera della finestra.</summary>
     private void Finestra_PreviewKeyDown(object sender, KeyEventArgs e) =>
         e.Handled = GestisciTasto(e.Key, Keyboard.Modifiers);
 

@@ -72,6 +72,10 @@ public partial class CartellaFormViewModel : CartellaCampiViewModel
     [ObservableProperty]
     private string _testoScadenza = "";
 
+    /// <summary>
+    /// Ricalcola l'urgenza e la frase della scadenza («Scade tra 5 giorni»...) mostrate accanto alla data; vuote se non c'è
+    /// scadenza o la cartella è completata.
+    /// </summary>
     private void AggiornaAvviso()
     {
         if (_avvisi is null || Completato || DataScadenza is not { } data)
@@ -116,6 +120,10 @@ public partial class CartellaFormViewModel : CartellaCampiViewModel
     /// <summary>La cartella è stata archiviata o ripristinata (o riaperta, e quindi tolta dall'archivio): l'albero va rifatto.</summary>
     public event Action? ArchiviataCambiato;
 
+    /// <summary>
+    /// Mette la cartella completata nell'«Archivio completati» (prima aspetta che finisca il salvataggio della spunta
+    /// «Completato»).
+    /// </summary>
     [RelayCommand]
     private async Task ArchiviaAsync()
     {
@@ -124,9 +132,14 @@ public partial class CartellaFormViewModel : CartellaCampiViewModel
         await CambiaArchiviazioneAsync(() => _archivio.ArchiviaCartellaAsync(Id), archiviata: true);
     }
 
+    /// <summary>Toglie la cartella dall'«Archivio completati» e la rimette nella sua area.</summary>
     [RelayCommand]
     private Task RipristinaAsync() => CambiaArchiviazioneAsync(() => _archivio.RipristinaCartellaAsync(Id), archiviata: false);
 
+    /// <summary>
+    /// Esegue l'archiviazione o il ripristino; se riesce lo ricorda e avvisa l'albero, se la cartella non c'è più mostra
+    /// l'errore e chiede di rileggere l'archivio.
+    /// </summary>
     private async Task CambiaArchiviazioneAsync(Func<Task> operazione, bool archiviata)
     {
         try
@@ -149,6 +162,9 @@ public partial class CartellaFormViewModel : CartellaCampiViewModel
     /// <summary>È cambiato il documento selezionato (null = nessuno).</summary>
     public event Action<IDocumentoAnteprima?>? DocumentoSelezionatoCambiato;
 
+    /// <summary>
+    /// Avvisa chi ascolta che è stata selezionata un'altra riga della griglia (per mostrarne l'anteprima).
+    /// </summary>
     partial void OnDocumentoSelezionatoChanged(DocumentoViewModel? value) => DocumentoSelezionatoCambiato?.Invoke(value);
 
     /// <summary>Il titolo è stato salvato: titolo e nuovo percorso, per aggiornare il nodo dell'albero.</summary>
@@ -168,6 +184,10 @@ public partial class CartellaFormViewModel : CartellaCampiViewModel
 
     // ---------- Salvataggio automatico ----------
 
+    /// <summary>
+    /// Reagisce alle modifiche dell'utente: aggiorna subito il testo della scadenza e, se è cambiato un campo della
+    /// cartella, avvia il salvataggio automatico.
+    /// </summary>
     private void OnProprietaCambiata(object? mittente, PropertyChangedEventArgs e)
     {
         // Il testo della scadenza segue subito ciò che si vede nel form, anche prima del salvataggio.
@@ -184,6 +204,10 @@ public partial class CartellaFormViewModel : CartellaCampiViewModel
             _ultimoSalvataggio = SalvaAsync();
     }
 
+    /// <summary>
+    /// Salva senza mai lanciare due salvataggi insieme: se arriva una modifica mentre si sta salvando, a fine lavoro si
+    /// salva ancora.
+    /// </summary>
     private async Task SalvaAsync()
     {
         // Più modifiche ravvicinate (es. "Completato" e la sua data) non lanciano salvataggi in parallelo:
@@ -209,6 +233,10 @@ public partial class CartellaFormViewModel : CartellaCampiViewModel
         }
     }
 
+    /// <summary>
+    /// Salva i campi modificati: rifiuta il titolo vuoto, aggiorna l'archivio, e se la cartella viene completata propone la
+    /// successiva; gli errori si mostrano all'utente.
+    /// </summary>
     private async Task SalvaUnaVoltaAsync()
     {
         var dati = Dati;
@@ -260,6 +288,10 @@ public partial class CartellaFormViewModel : CartellaCampiViewModel
         _salvataggioRichiesto = titoloEraCambiato && Dati != _salvati;
     }
 
+    /// <summary>
+    /// Dopo un salvataggio aggiorna il form con i dati dell'archivio (compreso il nuovo percorso dei documenti se la
+    /// cartella è stata rinominata) e avvisa l'albero.
+    /// </summary>
     private void ApplicaDettaglio(CartellaDettaglio dettaglio)
     {
         var titoloCambiato = dettaglio.Dati.Titolo != _salvati.Titolo;
@@ -381,6 +413,7 @@ public partial class CartellaFormViewModel : CartellaCampiViewModel
         }
     }
 
+    /// <summary>Apre la cartella dei documenti in Esplora file (o avvisa se non esiste sul disco).</summary>
     [RelayCommand]
     private void ApriCartella()
     {
@@ -395,6 +428,9 @@ public partial class CartellaFormViewModel : CartellaCampiViewModel
 
     // ---------- Azioni sulle righe della griglia ----------
 
+    /// <summary>
+    /// Apre il documento con il suo programma, se il file c'è ancora (altrimenti segna la riga come mancante).
+    /// </summary>
     internal void ApriDocumento(DocumentoViewModel documento)
     {
         // La riga si aggiorna: se il file è sparito la prossima volta si vede subito.
@@ -403,6 +439,7 @@ public partial class CartellaFormViewModel : CartellaCampiViewModel
             _azioni.Apri(documento.PercorsoRelativo, documento.Tipo);
     }
 
+    /// <summary>Mostra il file del documento in Esplora file, se c'è ancora.</summary>
     internal void MostraDocumentoInEsplora(DocumentoViewModel documento)
     {
         documento.FileMancante = !_azioni.FileEsiste(documento.PercorsoRelativo);
@@ -410,6 +447,10 @@ public partial class CartellaFormViewModel : CartellaCampiViewModel
             _azioni.MostraInEsplora(documento.PercorsoRelativo);
     }
 
+    /// <summary>
+    /// Elimina il documento (dopo la conferma) e lo toglie dalla griglia; se non esisteva già più chiede di rileggere
+    /// l'archivio.
+    /// </summary>
     internal async Task EliminaDocumentoAsync(DocumentoViewModel documento)
     {
         switch (await _azioni.EliminaAsync(documento.Id, documento.NomeFile))

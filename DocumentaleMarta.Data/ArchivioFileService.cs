@@ -10,6 +10,10 @@ public class ArchivioFileService(string percorsoRadice, bool usaCestino = true) 
 {
     public string PercorsoRadice { get; } = Path.GetFullPath(percorsoRadice);
 
+    /// <summary>
+    /// Trasforma un percorso relativo all'archivio nel percorso completo sul disco, rifiutando quelli che uscirebbero dalla
+    /// cartella radice.
+    /// </summary>
     public string PercorsoAssoluto(string percorsoRelativo)
     {
         var radice = Path.TrimEndingDirectorySeparator(PercorsoRadice);
@@ -23,12 +27,17 @@ public class ArchivioFileService(string percorsoRadice, bool usaCestino = true) 
         return completo;
     }
 
+    /// <summary>Vero se nell'archivio esiste il file o la cartella indicati.</summary>
     public bool Esiste(string percorsoRelativo)
     {
         var p = PercorsoAssoluto(percorsoRelativo);
         return File.Exists(p) || Directory.Exists(p);
     }
 
+    /// <summary>
+    /// Crea una cartella dentro un'altra (con un nome ripulito dai caratteri non ammessi da Windows e reso unico se esiste
+    /// già) e restituisce il suo percorso relativo.
+    /// </summary>
     public string CreaCartella(string padreRelativo, string nome)
     {
         var pulito = NomiFileSicuri.PulisciNomeCartella(nome);
@@ -49,6 +58,10 @@ public class ArchivioFileService(string percorsoRadice, bool usaCestino = true) 
         return percorso;
     }
 
+    /// <summary>
+    /// Rinomina una cartella sul disco (nome ripulito e reso unico) e restituisce il nuovo percorso relativo; cambiare solo
+    /// le maiuscole non è un conflitto.
+    /// </summary>
     public string RinominaCartella(string percorsoRelativo, string nuovoNome)
     {
         var origine = PercorsoSottocartella(percorsoRelativo);
@@ -73,6 +86,9 @@ public class ArchivioFileService(string percorsoRadice, bool usaCestino = true) 
         return Path.Combine(padreRelativo, nomeFinale);
     }
 
+    /// <summary>
+    /// Elimina una cartella con tutto il suo contenuto, mandandola nel Cestino di Windows (mai cancellazione definitiva).
+    /// </summary>
     public void EliminaCartella(string percorsoRelativo)
     {
         var percorso = PercorsoSottocartella(percorsoRelativo);
@@ -85,6 +101,7 @@ public class ArchivioFileService(string percorsoRadice, bool usaCestino = true) 
             Directory.Delete(percorso, recursive: true);
     }
 
+    /// <summary>Toglie una cartella solo se è vuota (serve a ripulire dopo un'operazione fallita).</summary>
     public void RimuoviCartellaVuota(string percorsoRelativo)
     {
         var percorso = PercorsoSottocartella(percorsoRelativo);
@@ -92,6 +109,10 @@ public class ArchivioFileService(string percorsoRadice, bool usaCestino = true) 
             Directory.Delete(percorso);
     }
 
+    /// <summary>
+    /// Copia un file dentro una cartella dell'archivio (l'originale non si tocca) con un nome unico, senza lasciare file a
+    /// metà se la copia fallisce; calcola anche l'impronta del contenuto.
+    /// </summary>
     public FileArchiviato CopiaFile(string percorsoSorgente, string cartellaRelativa)
     {
         if (!File.Exists(percorsoSorgente))
@@ -123,6 +144,9 @@ public class ArchivioFileService(string percorsoRadice, bool usaCestino = true) 
         return new FileArchiviato(Path.Combine(cartellaRelativa, nomeFinale), nomeFinale, info.Length, CalcolaHash(destinazione));
     }
 
+    /// <summary>
+    /// Sposta un file in un'altra cartella dell'archivio (con un nome unico) e restituisce il suo nuovo percorso relativo.
+    /// </summary>
     public string SpostaFile(string percorsoRelativo, string cartellaDestinazioneRelativa)
     {
         var origine = PercorsoAssoluto(percorsoRelativo);
@@ -137,6 +161,7 @@ public class ArchivioFileService(string percorsoRadice, bool usaCestino = true) 
         return Path.Combine(cartellaDestinazioneRelativa, nomeFinale);
     }
 
+    /// <summary>Elimina un file mandandolo nel Cestino di Windows.</summary>
     public void EliminaFile(string percorsoRelativo)
     {
         var percorso = PercorsoAssoluto(percorsoRelativo);
@@ -149,6 +174,9 @@ public class ArchivioFileService(string percorsoRadice, bool usaCestino = true) 
             File.Delete(percorso);
     }
 
+    /// <summary>
+    /// Cancella davvero un file appena copiato (serve a disfare una copia quando l'operazione poi fallisce).
+    /// </summary>
     public void RimuoviFileCopiato(string percorsoRelativo)
     {
         var percorso = PercorsoAssoluto(percorsoRelativo);
@@ -156,6 +184,10 @@ public class ArchivioFileService(string percorsoRadice, bool usaCestino = true) 
             File.Delete(percorso);
     }
 
+    /// <summary>
+    /// Calcola l'impronta (SHA-256) del contenuto di un file: due file uguali hanno la stessa impronta, anche con nomi
+    /// diversi.
+    /// </summary>
     public string CalcolaHash(string percorsoAssoluto)
     {
         // Come nella copia: un file aperto in Word o nel lettore PDF si legge lo stesso.

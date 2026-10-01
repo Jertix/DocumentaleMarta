@@ -11,8 +11,10 @@ public class EstrattoreTestoSemplice : IEstrattoreTesto
 
     private static readonly HashSet<string> Estensioni = [".txt", ".csv"];
 
+    /// <summary>Vero per .txt e .csv.</summary>
     public bool Supporta(string estensione) => Estensioni.Contains(estensione);
 
+    /// <summary>Legge il testo del file (solo i primi megabyte se è enorme) e lo decodifica.</summary>
     public async Task<string> EstraiAsync(string percorsoFile, CancellationToken cancellation)
     {
         await using var stream = new FileStream(percorsoFile, FileMode.Open, FileAccess.Read, FileShare.ReadWrite);

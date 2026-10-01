@@ -65,6 +65,7 @@ public abstract partial class CartellaCampiViewModel : ObservableObject
         DataCompletamento = value ? DataCompletamento ?? DateTime.Today : null;
     }
 
+    /// <summary>Toglie la data di scadenza dalla cartella.</summary>
     [RelayCommand]
     private void CancellaScadenza() => DataScadenza = null;
 
@@ -76,6 +77,10 @@ public abstract partial class CartellaCampiViewModel : ObservableObject
         Completato ? ADateOnly(DataCompletamento) : null,
         DataScadenza is null ? Ricorrenza.Nessuna : Ricorrenza);
 
+    /// <summary>
+    /// Riempie i campi con i dati già salvati, senza che il cambio conti come una modifica dell'utente (quindi senza far
+    /// partire il salvataggio automatico).
+    /// </summary>
     protected void Carica(DatiCartella dati)
     {
         InCaricamento = true;
@@ -102,7 +107,11 @@ public abstract partial class CartellaCampiViewModel : ObservableObject
         finally { InCaricamento = false; }
     }
 
+    /// <summary>Converte la data scelta nel calendario del form (con l'ora) nella sola data usata dall'archivio.</summary>
     private static DateOnly? ADateOnly(DateTime? data) => data is { } d ? DateOnly.FromDateTime(d) : null;
 
+    /// <summary>
+    /// Converte la sola data dell'archivio in una data con l'ora (mezzanotte) per il calendario del form.
+    /// </summary>
     private static DateTime? ADateTime(DateOnly? data) => data is { } d ? d.ToDateTime(TimeOnly.MinValue) : null;
 }

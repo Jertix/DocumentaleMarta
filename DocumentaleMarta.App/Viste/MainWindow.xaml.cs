@@ -7,8 +7,16 @@ using DocumentaleMarta.App.ViewModels;
 
 namespace DocumentaleMarta.App.Viste;
 
+/// <summary>
+/// La finestra principale: barra degli strumenti con la ricerca, albero a sinistra, contenuto al centro (elenco o form) e
+/// anteprima a destra.
+/// </summary>
 public partial class MainWindow : Window
 {
+    /// <summary>
+    /// Crea la finestra principale: carica l'archivio all'apertura, collega Ctrl+F alla ricerca, rifà gli avvisi se è
+    /// cambiato il giorno, salva l'ultima modifica alla chiusura e adatta la colonna dell'albero ai nomi lunghi.
+    /// </summary>
     public MainWindow(MainViewModel viewModel)
     {
         InitializeComponent();
@@ -186,6 +194,7 @@ public partial class MainWindow : Window
             nodo.BringIntoView();
     }
 
+    /// <summary>Risale dall'elemento su cui è il mouse fino al nodo dell'albero che lo contiene.</summary>
     private static TreeViewItem? TrovaNodo(DependencyObject? origine) => AlberoVisuale.Antenato<TreeViewItem>(origine);
 
     // ---------- Trascinamento sull'albero ----------
@@ -215,8 +224,13 @@ public partial class MainWindow : Window
         e.Handled = true;
     }
 
+    /// <summary>Il trascinamento esce dall'albero: si toglie l'evidenziazione del nodo.</summary>
     private void Albero_DragLeave(object sender, DragEventArgs e) => Evidenzia(null);
 
+    /// <summary>
+    /// Qualcosa è stato rilasciato su una cartella dell'albero: i file di Esplora file si allegano alla cartella, un
+    /// documento di una griglia si sposta lì.
+    /// </summary>
     private async void Albero_Drop(object sender, DragEventArgs e)
     {
         Evidenzia(null);
@@ -232,6 +246,9 @@ public partial class MainWindow : Window
             await modello.SpostaDocumentoAsync(documento.DocumentoId, cartella.Id);
     }
 
+    /// <summary>
+    /// Evidenzia il nodo su cui si sta per rilasciare qualcosa (e toglie l'evidenziazione al precedente).
+    /// </summary>
     private void Evidenzia(TreeViewItem? nodo)
     {
         if (ReferenceEquals(_bersaglioEvidenziato, nodo))

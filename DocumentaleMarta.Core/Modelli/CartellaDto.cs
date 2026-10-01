@@ -10,6 +10,10 @@ public record DatiCartella(
     DateOnly? DataCompletamento,
     Ricorrenza Ricorrenza = Ricorrenza.Nessuna);
 
+/// <summary>
+/// Un documento di una cartella, come lo mostra la griglia (nome, tipo, dimensione, data di caricamento e dove si trova
+/// nell'archivio).
+/// </summary>
 public record DocumentoDettaglio(
     int Id,
     string NomeFile,
@@ -18,6 +22,7 @@ public record DocumentoDettaglio(
     DateTime DataCaricamento,
     string PercorsoRelativo);
 
+/// <summary>Una cartella con tutti i suoi dati, i suoi documenti e se è nell'«Archivio completati».</summary>
 public record CartellaDettaglio(
     int Id,
     int AreaId,

@@ -28,11 +28,18 @@ public class EstrattoreOpenDocument : IEstrattoreTesto
         IgnoreProcessingInstructions = true
     };
 
+    /// <summary>
+    /// Vero per i formati di OpenOffice e LibreOffice (documenti, fogli, presentazioni, disegni e modelli).
+    /// </summary>
     public bool Supporta(string estensione) => FormatiOpenDocument.Contiene(estensione);
 
+    /// <summary>Legge il testo del file in background.</summary>
     public Task<string> EstraiAsync(string percorsoFile, CancellationToken cancellation) =>
         Task.Run(() => Estrai(percorsoFile, cancellation), cancellation);
 
+    /// <summary>
+    /// Apre il file ZIP: salta i documenti cifrati e legge prima intestazioni e piè di pagina e poi il corpo.
+    /// </summary>
     private static string Estrai(string percorsoFile, CancellationToken cancellation)
     {
         // Condivisione in lettura e scrittura: il file può essere aperto in LibreOffice nello stesso momento.
@@ -55,6 +62,9 @@ public class EstrattoreOpenDocument : IEstrattoreTesto
         return testo.ToString();
     }
 
+    /// <summary>
+    /// Vero se il documento è protetto da password (il suo contenuto è cifrato e non c'è testo da leggere).
+    /// </summary>
     private static bool ECifrato(ZipArchive archivio)
     {
         if (archivio.GetEntry("META-INF/manifest.xml") is not { } manifest || manifest.Length > 5 * 1024 * 1024)
@@ -64,6 +74,10 @@ public class EstrattoreOpenDocument : IEstrattoreTesto
         return lettore.ReadToEnd().Contains("encryption-data", StringComparison.Ordinal);
     }
 
+    /// <summary>
+    /// Legge a flusso un file XML del documento raccogliendo il testo dei paragrafi e dei titoli (e i nomi dei fogli di
+    /// calcolo).
+    /// </summary>
     private static void LeggiTesto(ZipArchiveEntry voce, StringBuilder uscita, CancellationToken cancellation)
     {
         if (voce.Length > DimensioneMassimaXml)
@@ -106,6 +120,10 @@ public class EstrattoreOpenDocument : IEstrattoreTesto
         }
     }
 
+    /// <summary>
+    /// All'inizio di un elemento di testo apre un nuovo paragrafo oppure aggiunge spazi, tabulazioni e a capo al paragrafo
+    /// corrente.
+    /// </summary>
     private static void InizioElementoTesto(XmlReader lettore, Stack<StringBuilder> paragrafi)
     {
         var nome = lettore.LocalName;
@@ -136,5 +154,6 @@ public class EstrattoreOpenDocument : IEstrattoreTesto
         }
     }
 
+    /// <summary>Vero per i paragrafi e i titoli.</summary>
     private static bool EParagrafo(string nomeLocale) => nomeLocale is "p" or "h";
 }

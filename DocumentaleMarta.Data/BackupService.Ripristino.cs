@@ -5,15 +5,21 @@ using Microsoft.EntityFrameworkCore;
 
 namespace DocumentaleMarta.Data;
 
+/// <summary>La parte del servizio di backup che legge un backup e lo ripristina in una cartella nuova, senza toccare l'archivio attuale.</summary>
 public partial class BackupService
 {
     private const string VoceDatabase = ArchivioDatabase.CartellaDati + "/" + ArchivioDatabase.NomeFileDatabase;
 
     // ---------- Leggere un backup ----------
 
+    /// <summary>
+    /// Legge un backup senza estrarlo: controlla che sia un backup di Documentale e dice di quando è e quanti file
+    /// contiene.
+    /// </summary>
     public Task<InfoBackup> LeggiBackupAsync(string percorsoZip, CancellationToken annullamento = default) =>
         Task.Run(() => LeggiBackup(percorsoZip), annullamento);
 
+    /// <summary>Apre lo ZIP, cerca il database, conta i file e ne ricava la data del backup.</summary>
     private static InfoBackup LeggiBackup(string percorsoZip)
     {
         using var archivio = ApriBackup(percorsoZip);
@@ -27,6 +33,7 @@ public partial class BackupService
         return new InfoBackup(percorsoZip, data, voci.Count, voci.Sum(e => e.Length));
     }
 
+    /// <summary>Apre il file ZIP traducendo gli errori (file mancante, non è uno ZIP) in messaggi chiari.</summary>
     private static ZipArchive ApriBackup(string percorsoZip)
     {
         try
@@ -45,6 +52,10 @@ public partial class BackupService
 
     // ---------- Ripristinare ----------
 
+    /// <summary>
+    /// Ripristina un backup in una cartella nuova o vuota: lo controlla, estrae i file, verifica il database e i documenti;
+    /// se qualcosa fallisce non lascia nulla a metà.
+    /// </summary>
     public async Task<EsitoRipristino> RipristinaAsync(
         string percorsoZip, string cartellaDestinazione, IProgress<int>? avanzamento = null, CancellationToken annullamento = default)
     {
@@ -102,6 +113,9 @@ public partial class BackupService
         return completo;
     }
 
+    /// <summary>
+    /// Estrae tutte le voci dello ZIP nella destinazione (saltando le istruzioni) e restituisce quanti file ha creato.
+    /// </summary>
     private static int Estrai(string percorsoZip, string destinazione, IProgress<int>? avanzamento, CancellationToken annullamento)
     {
         try
@@ -185,6 +199,9 @@ public partial class BackupService
         }
     }
 
+    /// <summary>
+    /// Dopo un ripristino fallito toglie quello che si era estratto (la cartella, se l'aveva creata il ripristino).
+    /// </summary>
     private static void PulisciDestinazione(string destinazione, bool eraNuova)
     {
         try
@@ -207,8 +224,10 @@ public partial class BackupService
         }
     }
 
+    /// <summary>Vero se la voce dello ZIP è una cartella.</summary>
     private static bool EDirectory(ZipArchiveEntry voce) => voce.FullName.EndsWith('/') || voce.FullName.EndsWith('\\');
 
+    /// <summary>Confronta due nomi di voci dello ZIP senza badare a maiuscole e al tipo di barra.</summary>
     private static bool StessaVoce(string a, string b) =>
         a.Replace('\\', '/').Equals(b, StringComparison.OrdinalIgnoreCase);
 }

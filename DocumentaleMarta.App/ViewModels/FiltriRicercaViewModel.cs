@@ -13,6 +13,7 @@ public record AreaOpzione(int? Id, string Nome)
     public static readonly AreaOpzione Tutte = new(null, "Tutte le aree");
 }
 
+/// <summary>Le scelte del menu «Stato delle cartelle» nella ricerca avanzata.</summary>
 public enum StatoRicerca
 {
     Qualsiasi,
@@ -94,6 +95,10 @@ public partial class FiltriRicercaViewModel : ObservableObject
     /// <summary>Scatta dopo ogni modifica dei filtri (non durante un azzeramento o un aggiornamento delle aree).</summary>
     public event Action? Cambiati;
 
+    /// <summary>
+    /// Dopo ogni modifica di un filtro aggiorna i valori calcolati (tipi di file, numero di filtri attivi, testo del
+    /// pulsante) e avvisa che la ricerca va rifatta.
+    /// </summary>
     protected override void OnPropertyChanged(PropertyChangedEventArgs e)
     {
         base.OnPropertyChanged(e);
@@ -145,6 +150,7 @@ public partial class FiltriRicercaViewModel : ObservableObject
         return new FiltriRicerca(Categorie, Area.Id, stato, dal, al, CercaNelContenuto);
     }
 
+    /// <summary>Comando «Azzera filtri»: toglie tutti i filtri e avvisa che la ricerca va rifatta.</summary>
     [RelayCommand]
     private void Azzera() => Azzera(notifica: true);
 
@@ -198,7 +204,9 @@ public partial class FiltriRicercaViewModel : ObservableObject
             Cambiati?.Invoke(); // l'area scelta non c'è più: senza quel filtro la ricerca cambia
     }
 
+    /// <summary>La più recente tra due date (se la prima non c'è vale la seconda).</summary>
     private static DateOnly Massimo(DateOnly? a, DateOnly b) => a is { } x && x > b ? x : b;
 
+    /// <summary>La meno recente tra due date (se la prima non c'è vale la seconda).</summary>
     private static DateOnly Minimo(DateOnly? a, DateOnly b) => a is { } x && x < b ? x : b;
 }

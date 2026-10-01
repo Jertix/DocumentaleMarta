@@ -11,6 +11,10 @@ public class DuplicatiViewModel
     /// <summary>Quante copie già archiviate si elencano per file; le altre si riassumono ("e altre 2").</summary>
     private const int CopieMostratePerFile = 3;
 
+    /// <summary>
+    /// Prepara i testi della finestra: l'intestazione (quanti file sono già nell'archivio), la domanda, l'elenco con la
+    /// posizione delle copie, e se si può offrire di saltare i duplicati.
+    /// </summary>
     public DuplicatiViewModel(IReadOnlyList<DuplicatoTrovato> duplicati, int totaleFile)
     {
         var tutti = duplicati.Count >= totaleFile;
@@ -38,6 +42,9 @@ public class DuplicatiViewModel
     /// <summary>Se tutti i file sono duplicati, "salta" e "annulla" sono la stessa cosa: resta un solo pulsante.</summary>
     public string TestoRifiuto => PuoSaltare ? "Annulla" : "Non allegare";
 
+    /// <summary>
+    /// Il testo «Già in: Area › Cartella; ...» con le prime copie di un file (le altre si riassumono con «e altre N»).
+    /// </summary>
     private static string Dove(IReadOnlyList<DocumentoGiaArchiviato> copie)
     {
         var righe = copie.Take(CopieMostratePerFile).Select(c => $"{c.NomeArea} › {c.TitoloCartella}").ToList();

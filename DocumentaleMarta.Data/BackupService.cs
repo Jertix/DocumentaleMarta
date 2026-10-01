@@ -15,6 +15,10 @@ public partial class BackupService(
 
     private const int BufferCopia = 81920;
 
+    /// <summary>
+    /// Crea il backup: controlla la cartella di destinazione, fa una copia coerente del database, scrive un file ZIP con
+    /// tutto l'archivio (prima in un file temporaneo, poi lo rinomina) e ripulisce i file di lavoro.
+    /// </summary>
     public async Task<EsitoBackup> CreaBackupAsync(
         string cartellaDestinazione, IProgress<int>? avanzamento = null, CancellationToken annullamento = default)
     {
@@ -80,6 +84,10 @@ public partial class BackupService(
         await db.Database.ExecuteSqlRawAsync("VACUUM INTO {0}", [destinazione], annullamento);
     }
 
+    /// <summary>
+    /// Scrive lo ZIP: le cartelle vuote, tutti i file dell'archivio (tranne il database vivo), la copia coerente del
+    /// database e il file di istruzioni; poi lo riapre per verificarlo. Restituisce quanti file ha messo.
+    /// </summary>
     private int ScriviZip(string percorsoZip, string copiaDatabase, DateTime ora, IProgress<int>? avanzamento, CancellationToken annullamento)
     {
         var radice = Path.TrimEndingDirectorySeparator(files.PercorsoRadice);
@@ -154,9 +162,11 @@ public partial class BackupService(
         }
     }
 
+    /// <summary>Il nome che un file ha dentro lo ZIP: il percorso relativo all'archivio con la barra normale.</summary>
     private static string NomeVoce(string radice, string percorso) =>
         Path.GetRelativePath(radice, percorso).Replace(Path.DirectorySeparatorChar, '/');
 
+    /// <summary>Vero se il percorso è la cartella indicata o sta al suo interno.</summary>
     private static bool EDentro(string percorso, string cartella) =>
         percorso.Equals(cartella, StringComparison.OrdinalIgnoreCase)
         || percorso.StartsWith(cartella + Path.DirectorySeparatorChar, StringComparison.OrdinalIgnoreCase);
@@ -166,12 +176,14 @@ public partial class BackupService(
         Path.GetDirectoryName(file)!.Equals(cartellaDati, StringComparison.OrdinalIgnoreCase)
         && Path.GetFileName(file).StartsWith(ArchivioDatabase.NomeFileDatabase, StringComparison.OrdinalIgnoreCase);
 
+    /// <summary>Cancella un file di lavoro; se non ci riesce non importa.</summary>
     private static void Elimina(string percorso)
     {
         try { File.Delete(percorso); }
         catch (Exception ex) when (ex is IOException or UnauthorizedAccessException) { }
     }
 
+    /// <summary>Il testo del file di istruzioni che si mette nello ZIP: cosa contiene e come ripristinarlo.</summary>
     private static string TestoLeggimi(DateTime ora) => string.Join("\r\n",
         "Backup di Documentale",
         $"Creato il {ora:dd/MM/yyyy} alle {ora:HH:mm}.",

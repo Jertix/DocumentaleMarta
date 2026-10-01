@@ -52,6 +52,10 @@ public class ImpostazioniService(string? percorsoFile = null)
         }
     }
 
+    /// <summary>
+    /// Scrive le impostazioni nel file (creando la cartella se serve): prima in un file temporaneo e poi lo sostituisce,
+    /// così un arresto a metà non lascia un file rovinato.
+    /// </summary>
     public void Salva(ImpostazioniApp impostazioni)
     {
         var cartella = Path.GetDirectoryName(PercorsoFile);

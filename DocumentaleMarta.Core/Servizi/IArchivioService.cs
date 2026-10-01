@@ -8,11 +8,13 @@ namespace DocumentaleMarta.Core.Servizi;
 /// </summary>
 public interface IArchivioService
 {
+    /// <summary>Legge l'albero: le aree con le loro cartelle.</summary>
     Task<IReadOnlyList<AreaNodo>> CaricaAlberoAsync();
 
     /// <exception cref="ArchivioException">Nome non valido o già usato da un'altra area.</exception>
     Task<int> CreaAreaAsync(string nome);
 
+    /// <summary>Rinomina un'area (e la sua cartella sul disco).</summary>
     Task RinominaAreaAsync(int areaId, string nuovoNome);
 
     /// <summary>Elimina l'area con tutte le sue cartelle e documenti. I file vanno nel Cestino.</summary>
@@ -21,6 +23,7 @@ public interface IArchivioService
     /// <summary>Crea una cartella. Il titolo può ripetersi (es. scadenze mensili): la cartella fisica prende un suffisso.</summary>
     Task<int> CreaCartellaAsync(int areaId, string titolo);
 
+    /// <summary>Cambia il titolo di una cartella (e il nome della sua cartella sul disco).</summary>
     Task RinominaCartellaAsync(int cartellaId, string nuovoTitolo);
 
     /// <summary>Elimina la cartella con i suoi documenti. I file vanno nel Cestino.</summary>

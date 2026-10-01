@@ -3,10 +3,14 @@ using DocumentaleMarta.App.ViewModels;
 
 namespace DocumentaleMarta.App.Viste;
 
+/// <summary>
+/// La finestra «Nuova cartella»: titolo, descrizione, scadenza, ricorrenza e documenti da allegare (anche trascinati).
+/// </summary>
 public partial class NuovaCartellaDialog : Window
 {
     private readonly NuovaCartellaViewModel _modello;
 
+    /// <summary>Crea la finestra «Nuova cartella» collegata ai suoi dati.</summary>
     public NuovaCartellaDialog(NuovaCartellaViewModel modello)
     {
         InitializeComponent();
@@ -21,6 +25,7 @@ public partial class NuovaCartellaDialog : Window
         e.Handled = true;
     }
 
+    /// <summary>File rilasciati sulla finestra: si aggiungono all'elenco da allegare.</summary>
     private void Finestra_Drop(object sender, DragEventArgs e)
     {
         if (DatiTrascinati.HaFile(e.Data))
@@ -28,6 +33,7 @@ public partial class NuovaCartellaDialog : Window
         e.Handled = true;
     }
 
+    /// <summary>Pulsante «Crea»: conferma e chiude la finestra solo se i dati sono validi.</summary>
     private void Crea_Click(object sender, RoutedEventArgs e)
     {
         if (_modello.Convalida())

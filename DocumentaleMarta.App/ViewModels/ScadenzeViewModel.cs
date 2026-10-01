@@ -32,6 +32,10 @@ public class ScadenzeViewModel(IArchivioService archivio, AlertService avvisi)
     /// <summary>L'utente vuole vedere una cartella: serve selezionarla nell'albero (id cartella).</summary>
     public event Action<int>? VaiAllaCartellaRichiesto;
 
+    /// <summary>
+    /// Riempie l'elenco con le cartelle che richiedono attenzione: il database dà tutte quelle con una scadenza, il
+    /// servizio degli avvisi sceglie quali segnalare.
+    /// </summary>
     public async Task CaricaAsync()
     {
         var scadenze = await archivio.CaricaScadenzeAsync();
