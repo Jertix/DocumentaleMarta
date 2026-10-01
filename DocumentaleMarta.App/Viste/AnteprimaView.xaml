@@ -12,7 +12,7 @@
         <FontFamily x:Key="FontIcone">Segoe Fluent Icons, Segoe MDL2 Assets</FontFamily>
 
         <Style x:Key="TestoCentrale" TargetType="TextBlock">
-            <Setter Property="Foreground" Value="#777"/>
+            <Setter Property="Foreground" Value="{DynamicResource TestoTenue}"/>
             <Setter Property="TextWrapping" Value="Wrap"/>
             <Setter Property="TextAlignment" Value="Center"/>
             <Setter Property="HorizontalAlignment" Value="Center"/>
@@ -21,7 +21,7 @@
         </Style>
     </UserControl.Resources>
 
-    <Border Background="#F7F7F7" BorderBrush="#D0D0D0" BorderThickness="1,0,0,0">
+    <Border Background="{DynamicResource SfondoPannello}" BorderBrush="{DynamicResource Bordo}" BorderThickness="1,0,0,0">
         <DockPanel Margin="12,12,12,10">
             <DockPanel DockPanel.Dock="Top">
                 <!-- Il doppio clic sull'immagine fa lo stesso; il pulsante serve a chi non lo sa -->
@@ -29,7 +29,7 @@
                         FontFamily="{StaticResource FontIcone}" Width="28" Height="24" Padding="0"
                         ToolTip="Ingrandisci (o fai doppio clic sull'anteprima)" AutomationProperties.Name="Ingrandisci l'anteprima"
                         Visibility="{Binding HaImmagine, Converter={StaticResource BoolToVis}}"/>
-                <TextBlock Text="Anteprima" Foreground="#777" FontSize="12" VerticalAlignment="Center"/>
+                <TextBlock Text="Anteprima" Foreground="{DynamicResource TestoTenue}" FontSize="12" VerticalAlignment="Center"/>
             </DockPanel>
             <TextBlock DockPanel.Dock="Top" Text="{Binding Titolo}" ToolTip="{Binding Titolo}" FontWeight="SemiBold"
                        TextTrimming="CharacterEllipsis" Margin="0,2,0,8"/>
@@ -37,20 +37,20 @@
             <!-- Sfoglia le pagine (PDF e TIFF a più pagine) -->
             <Grid DockPanel.Dock="Bottom" Margin="0,8,0,0" Visibility="{Binding HaPagine, Converter={StaticResource BoolToVis}}">
                 <Button Command="{Binding PaginaPrecedenteCommand}" Content="&#xE76B;" FontFamily="{StaticResource FontIcone}"
-                        HorizontalAlignment="Left" Width="34" Height="28" ToolTip="Pagina precedente"
+                        HorizontalAlignment="Left" Width="34" Height="28" Padding="0" ToolTip="Pagina precedente"
                         AutomationProperties.Name="Pagina precedente"/>
-                <TextBlock Text="{Binding TestoPagina}" HorizontalAlignment="Center" VerticalAlignment="Center" Foreground="#444"/>
+                <TextBlock Text="{Binding TestoPagina}" HorizontalAlignment="Center" VerticalAlignment="Center" Foreground="{DynamicResource TestoSecondario}"/>
                 <Button Command="{Binding PaginaSuccessivaCommand}" Content="&#xE76C;" FontFamily="{StaticResource FontIcone}"
-                        HorizontalAlignment="Right" Width="34" Height="28" ToolTip="Pagina successiva"
+                        HorizontalAlignment="Right" Width="34" Height="28" Padding="0" ToolTip="Pagina successiva"
                         AutomationProperties.Name="Pagina successiva"/>
             </Grid>
 
             <!-- Una precisazione sotto l'immagine, per esempio che è solo una miniatura -->
-            <TextBlock DockPanel.Dock="Bottom" Text="{Binding Nota}" Foreground="#888" FontSize="11" TextWrapping="Wrap"
+            <TextBlock DockPanel.Dock="Bottom" Text="{Binding Nota}" Foreground="{DynamicResource TestoTenue}" FontSize="11" TextWrapping="Wrap"
                        Margin="0,6,0,0" Visibility="{Binding HaNota, Converter={StaticResource BoolToVis}}"/>
 
             <Grid>
-                <Border Background="White" BorderBrush="#D8D8D8" BorderThickness="1" Cursor="Hand"
+                <Border Background="White" BorderBrush="{DynamicResource Bordo}" BorderThickness="1" Cursor="Hand"
                         MouseLeftButtonDown="Immagine_MouseLeftButtonDown"
                         ToolTip="Doppio clic per ingrandire"
                         Visibility="{Binding HaImmagine, Converter={StaticResource BoolToVis}}">

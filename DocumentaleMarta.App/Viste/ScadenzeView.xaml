@@ -9,20 +9,17 @@
              d:DesignWidth="780" d:DesignHeight="360">
     <UserControl.Resources>
         <ResourceDictionary>
-            <ResourceDictionary.MergedDictionaries>
-                <ResourceDictionary Source="Colori.xaml"/>
-            </ResourceDictionary.MergedDictionaries>
-
             <FontFamily x:Key="FontIcone">Segoe Fluent Icons, Segoe MDL2 Assets</FontFamily>
 
             <!-- Sfondo della riga secondo l'urgenza della scadenza -->
-            <Style x:Key="RigaScadenza" TargetType="DataGridRow">
+            <Style x:Key="RigaScadenza" TargetType="DataGridRow" BasedOn="{StaticResource {x:Type DataGridRow}}">
+                <Setter Property="Background" Value="{DynamicResource SfondoSuperficie}"/>
                 <Style.Triggers>
                     <DataTrigger Binding="{Binding Avviso}" Value="Arancione">
-                        <Setter Property="Background" Value="{StaticResource SfondoArancione}"/>
+                        <Setter Property="Background" Value="{DynamicResource SfondoArancione}"/>
                     </DataTrigger>
                     <DataTrigger Binding="{Binding Avviso}" Value="Rosso">
-                        <Setter Property="Background" Value="{StaticResource SfondoRosso}"/>
+                        <Setter Property="Background" Value="{DynamicResource SfondoRosso}"/>
                     </DataTrigger>
                 </Style.Triggers>
             </Style>
@@ -38,10 +35,10 @@
                 <Setter Property="FontWeight" Value="SemiBold"/>
                 <Style.Triggers>
                     <DataTrigger Binding="{Binding Avviso}" Value="Arancione">
-                        <Setter Property="Foreground" Value="{StaticResource TestoArancione}"/>
+                        <Setter Property="Foreground" Value="{DynamicResource TestoArancione}"/>
                     </DataTrigger>
                     <DataTrigger Binding="{Binding Avviso}" Value="Rosso">
-                        <Setter Property="Foreground" Value="{StaticResource TestoRosso}"/>
+                        <Setter Property="Foreground" Value="{DynamicResource TestoRosso}"/>
                     </DataTrigger>
                 </Style.Triggers>
             </Style>
@@ -51,10 +48,10 @@
                 <Setter Property="Text" Value="&#xE7BA;"/>
                 <Setter Property="HorizontalAlignment" Value="Center"/>
                 <Setter Property="VerticalAlignment" Value="Center"/>
-                <Setter Property="Foreground" Value="{StaticResource IconaArancione}"/>
+                <Setter Property="Foreground" Value="{DynamicResource IconaArancione}"/>
                 <Style.Triggers>
                     <DataTrigger Binding="{Binding Avviso}" Value="Rosso">
-                        <Setter Property="Foreground" Value="{StaticResource IconaRossa}"/>
+                        <Setter Property="Foreground" Value="{DynamicResource IconaRossa}"/>
                     </DataTrigger>
                 </Style.Triggers>
             </Style>
@@ -65,7 +62,7 @@
         <DataGrid x:Name="Griglia" ItemsSource="{Binding Righe}" AutoGenerateColumns="False" IsReadOnly="True"
                   CanUserAddRows="False" CanUserDeleteRows="False" CanUserResizeRows="False"
                   HeadersVisibility="Column" GridLinesVisibility="Horizontal"
-                  HorizontalGridLinesBrush="#E4E4E4" BorderBrush="#D0D0D0" Background="White"
+                  HorizontalGridLinesBrush="{DynamicResource BordoLeggero}" BorderBrush="{DynamicResource Bordo}" Background="{DynamicResource SfondoSuperficie}"
                   SelectionMode="Single" SelectionUnit="FullRow" RowHeaderWidth="0" RowHeight="36"
                   RowStyle="{StaticResource RigaScadenza}">
             <DataGrid.Columns>
@@ -84,7 +81,7 @@
                                     ElementStyle="{StaticResource CellaTesto}"/>
                 <DataGridTextColumn Header="Quando" Binding="{Binding Quando}" SortMemberPath="DataScadenza" Width="140"
                                     ElementStyle="{StaticResource CellaQuando}"/>
-                <DataGridTextColumn Header="Documenti" Binding="{Binding NumeroDocumenti}" Width="80"
+                <DataGridTextColumn Header="Documenti" Binding="{Binding NumeroDocumenti}" Width="100"
                                     ElementStyle="{StaticResource CellaTesto}"/>
                 <DataGridTemplateColumn Header="Azioni" Width="Auto" MinWidth="130" CanUserSort="False">
                     <DataGridTemplateColumn.CellTemplate>
@@ -98,7 +95,7 @@
         </DataGrid>
 
         <!-- Nessuna scadenza -->
-        <TextBlock Text="{Binding TestoVuoto}" Foreground="#888"
+        <TextBlock Text="{Binding TestoVuoto}" Foreground="{DynamicResource TestoTenue}"
                    HorizontalAlignment="Center" VerticalAlignment="Center" Margin="0,30,0,0"
                    IsHitTestVisible="False">
             <TextBlock.Style>

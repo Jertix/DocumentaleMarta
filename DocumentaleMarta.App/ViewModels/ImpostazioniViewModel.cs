@@ -25,13 +25,18 @@ public enum AzioneDaImpostazioni
 public partial class ImpostazioniViewModel : ObservableObject
 {
     private readonly ImpostazioniApp _partenza;
+    private readonly Action<AspettoApp>? _anteprimaAspetto;
 
     /// <param name="backupDisponibile">C'è il servizio che fa backup e ripristino: solo allora la finestra offre i due pulsanti.</param>
-    public ImpostazioniViewModel(ImpostazioniApp attuali, string percorsoFile, bool backupDisponibile = false)
+    /// <param name="anteprimaAspetto">Chiamata a ogni scelta di aspetto: il programma si vede subito con i colori scelti, prima ancora di salvare.</param>
+    public ImpostazioniViewModel(ImpostazioniApp attuali, string percorsoFile, bool backupDisponibile = false,
+        Action<AspettoApp>? anteprimaAspetto = null)
     {
         _partenza = attuali.Clona();
         PercorsoFile = percorsoFile;
         BackupDisponibile = backupDisponibile;
+        _anteprimaAspetto = anteprimaAspetto;
+        _tema = attuali.Tema;
 
         _ragioneSociale = attuali.Azienda.RagioneSociale;
         _codiceFiscale = attuali.Azienda.CodiceFiscale;
@@ -67,7 +72,20 @@ public partial class ImpostazioniViewModel : ObservableObject
     /// <summary>Dopo quanti giorni dall'ultimo backup il programma lo ricorda, come testo.</summary>
     [ObservableProperty] private string _promemoriaBackup;
 
+    /// <summary>Chiaro, scuro o come Windows.</summary>
+    [ObservableProperty]
+    [NotifyPropertyChangedFor(nameof(TemaChiaro), nameof(TemaScuro), nameof(TemaComeWindows))]
+    private TemaApp _tema;
+
+    // Un pulsante di scelta per ogni tema (ognuno si lega a una proprietà vero/falso).
+    public bool TemaChiaro { get => Tema == TemaApp.Chiaro; set { if (value) Tema = TemaApp.Chiaro; } }
+    public bool TemaScuro { get => Tema == TemaApp.Scuro; set { if (value) Tema = TemaApp.Scuro; } }
+    public bool TemaComeWindows { get => Tema == TemaApp.ComeWindows; set { if (value) Tema = TemaApp.ComeWindows; } }
+
+    partial void OnTemaChanged(TemaApp value) => _anteprimaAspetto?.Invoke(new AspettoApp(value));
+
     /// <summary>I pulsanti "Fai il backup ora" e "Ripristina da un backup…" si vedono solo se c'è il servizio che li esegue.</summary>
+
     public bool BackupDisponibile { get; }
 
     /// <summary>
@@ -140,6 +158,7 @@ public partial class ImpostazioniViewModel : ObservableObject
         risultato.SogliaRossaGiorni = rossa;
         risultato.CartellaBackup = string.IsNullOrWhiteSpace(CartellaBackup) ? null : CartellaBackup.Trim();
         risultato.BackupPromemoriaGiorni = promemoria;
+        risultato.Tema = Tema;
         return risultato;
     }
 

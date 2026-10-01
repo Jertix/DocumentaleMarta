@@ -3,6 +3,7 @@ using System.IO;
 using System.Windows;
 using System.Windows.Markup;
 using System.Windows.Threading;
+using DocumentaleMarta.App.Grafica;
 using DocumentaleMarta.App.Servizi;
 using DocumentaleMarta.App.ViewModels;
 using DocumentaleMarta.App.Viste;
@@ -11,6 +12,7 @@ using DocumentaleMarta.Core.Servizi;
 using DocumentaleMarta.Data;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Win32;
 
 namespace DocumentaleMarta.App;
 
@@ -19,6 +21,7 @@ public partial class App : Application
     private const string Titolo = "Documentale";
 
     private ServiceProvider? _servizi;
+    private GestoreAspetto? _aspetto;
 
     protected override void OnStartup(StartupEventArgs e)
     {
@@ -38,6 +41,12 @@ public partial class App : Application
         }
 
         _servizi = servizi;
+
+        // Prima di creare qualsiasi finestra: così nascono già con i colori scelti. Se Windows cambia tema e si segue Windows, ci si adegua.
+        _aspetto = servizi.GetRequiredService<GestoreAspetto>();
+        _aspetto.Applica(servizi.GetRequiredService<ImpostazioniApp>().Aspetto);
+        SystemEvents.UserPreferenceChanged += OnPreferenzeDiWindowsCambiate;
+
         AvviaIndicizzazione(servizi);
         MainWindow = servizi.GetRequiredService<MainWindow>();
         MainWindow.Show();
@@ -59,8 +68,16 @@ public partial class App : Application
         });
     }
 
+    /// <summary>Windows avvisa da un altro thread: si passa a quello del programma.</summary>
+    private void OnPreferenzeDiWindowsCambiate(object? mittente, UserPreferenceChangedEventArgs e)
+    {
+        if (e.Category is UserPreferenceCategory.General or UserPreferenceCategory.Color or UserPreferenceCategory.VisualStyle)
+            Dispatcher.BeginInvoke(() => _aspetto?.SistemaCambiato());
+    }
+
     protected override void OnExit(ExitEventArgs e)
     {
+        SystemEvents.UserPreferenceChanged -= OnPreferenzeDiWindowsCambiate;
         _servizi?.Dispose();
         base.OnExit(e);
     }

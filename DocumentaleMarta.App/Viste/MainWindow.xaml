@@ -12,14 +12,13 @@
     <Window.Resources>
         <ResourceDictionary>
             <ResourceDictionary.MergedDictionaries>
-                <ResourceDictionary Source="Colori.xaml"/>
                 <ResourceDictionary Source="Icone.xaml"/>
             </ResourceDictionary.MergedDictionaries>
 
             <BooleanToVisibilityConverter x:Key="BoolToVis"/>
             <FontFamily x:Key="FontIcone">Segoe Fluent Icons, Segoe MDL2 Assets</FontFamily>
 
-            <Style TargetType="TreeViewItem">
+            <Style TargetType="TreeViewItem" BasedOn="{StaticResource {x:Type TreeViewItem}}">
                 <Setter Property="IsExpanded" Value="{Binding IsExpanded, Mode=TwoWay}"/>
                 <Setter Property="IsSelected" Value="{Binding IsSelected, Mode=TwoWay}"/>
                 <Setter Property="AutomationProperties.Name" Value="{Binding NomeAccessibile}"/>
@@ -27,15 +26,16 @@
                 <Style.Triggers>
                     <!-- Il nodo su cui si sta per rilasciare un documento o dei file -->
                     <Trigger Property="viste:BersaglioTrascinamento.Attivo" Value="True">
-                        <Setter Property="Background" Value="#CFE6F8"/>
+                        <Setter Property="Background" Value="{DynamicResource SfondoAccentoLeggero}"/>
                     </Trigger>
                 </Style.Triggers>
             </Style>
 
             <!-- Piccoli pulsanti quadrati con un'icona, per la barra in alto -->
-            <Style x:Key="PulsanteBarra" TargetType="Button">
+            <Style x:Key="PulsanteBarra" TargetType="Button" BasedOn="{StaticResource {x:Type Button}}">
                 <Setter Property="Width" Value="32"/>
                 <Setter Property="Height" Value="28"/>
+                <Setter Property="Padding" Value="0"/>
                 <Setter Property="FontFamily" Value="{StaticResource FontIcone}"/>
                 <Setter Property="FontSize" Value="15"/>
             </Style>
@@ -50,11 +50,11 @@
                 <Style.Triggers>
                     <DataTrigger Binding="{Binding Avviso}" Value="Arancione">
                         <Setter Property="Visibility" Value="Visible"/>
-                        <Setter Property="Foreground" Value="{StaticResource IconaArancione}"/>
+                        <Setter Property="Foreground" Value="{DynamicResource IconaArancione}"/>
                     </DataTrigger>
                     <DataTrigger Binding="{Binding Avviso}" Value="Rosso">
                         <Setter Property="Visibility" Value="Visible"/>
-                        <Setter Property="Foreground" Value="{StaticResource IconaRossa}"/>
+                        <Setter Property="Foreground" Value="{DynamicResource IconaRossa}"/>
                     </DataTrigger>
                 </Style.Triggers>
             </Style>
@@ -72,7 +72,7 @@
                             <Condition Binding="{Binding Completato}" Value="True"/>
                             <Condition Binding="{Binding IsSelected}" Value="False"/>
                         </MultiDataTrigger.Conditions>
-                        <Setter Property="Foreground" Value="{StaticResource IconaCompletata}"/>
+                        <Setter Property="Foreground" Value="{DynamicResource IconaCompletata}"/>
                     </MultiDataTrigger>
                 </Style.Triggers>
             </Style>
@@ -86,7 +86,7 @@
                             <Condition Binding="{Binding Completato}" Value="True"/>
                             <Condition Binding="{Binding IsSelected}" Value="False"/>
                         </MultiDataTrigger.Conditions>
-                        <Setter Property="Foreground" Value="{StaticResource TestoCompletata}"/>
+                        <Setter Property="Foreground" Value="{DynamicResource TestoCompletata}"/>
                     </MultiDataTrigger>
                 </Style.Triggers>
             </Style>
@@ -103,24 +103,24 @@
 
     <DockPanel>
         <!-- Piè di pagina: dati della ditta, letti dal file delle impostazioni -->
-        <Border DockPanel.Dock="Bottom" Background="#F3F3F3" BorderBrush="#D0D0D0" BorderThickness="0,1,0,0" Padding="12,6">
+        <Border DockPanel.Dock="Bottom" Background="{DynamicResource SfondoPannello}" BorderBrush="{DynamicResource Bordo}" BorderThickness="0,1,0,0" Padding="12,6">
             <DockPanel>
                 <!-- Backup in corso (vuoto quando non c'è) -->
-                <TextBlock DockPanel.Dock="Right" Text="{Binding TestoBackup}" Foreground="#1F5F99" FontSize="12"
+                <TextBlock DockPanel.Dock="Right" Text="{Binding TestoBackup}" Foreground="{DynamicResource TestoAccento}" FontSize="12"
                            Margin="16,0,0,0" FontWeight="SemiBold"/>
                 <!-- Stato della lettura dei documenti in background (vuoto quando non c'è nulla da dire) -->
                 <TextBlock DockPanel.Dock="Right" Text="{Binding TestoIndicizzazione}" ToolTip="{Binding DettaglioIndicizzazione}"
-                           Foreground="#555" FontSize="12" Margin="16,0,0,0" TextTrimming="CharacterEllipsis"/>
+                           Foreground="{DynamicResource TestoSecondario}" FontSize="12" Margin="16,0,0,0" TextTrimming="CharacterEllipsis"/>
                 <!-- Il logo della ditta accanto ai suoi dati -->
                 <Image DockPanel.Dock="Left" Source="{StaticResource IconaAzienda}" Width="20" Height="20" Margin="0,0,8,0"
                        ToolTip="{Binding DescrizioneAzienda}" VerticalAlignment="Center"/>
                 <TextBlock Text="{Binding TestoAzienda}" ToolTip="{Binding DescrizioneAzienda}"
-                           Foreground="#555" FontSize="12" TextTrimming="CharacterEllipsis" VerticalAlignment="Center"/>
+                           Foreground="{DynamicResource TestoSecondario}" FontSize="12" TextTrimming="CharacterEllipsis" VerticalAlignment="Center"/>
             </DockPanel>
         </Border>
 
         <!-- Barra degli strumenti -->
-        <Border DockPanel.Dock="Top" Padding="8,6" BorderBrush="#D0D0D0" BorderThickness="0,0,0,1">
+        <Border DockPanel.Dock="Top" Padding="8,6" BorderBrush="{DynamicResource Bordo}" BorderThickness="0,0,0,1">
             <DockPanel>
                 <!-- Ricerca: cerca in nome file, titolo e descrizione della cartella, area e testo dei documenti -->
                 <StackPanel DockPanel.Dock="Right" Orientation="Horizontal"
@@ -134,7 +134,7 @@
                                 <KeyBinding Key="Escape" Command="{Binding PulisciRicercaCommand}"/>
                             </TextBox.InputBindings>
                         </TextBox>
-                        <TextBlock Text="Cerca nei documenti…" Foreground="#999" Margin="9,0,0,0"
+                        <TextBlock Text="Cerca nei documenti…" Foreground="{DynamicResource TestoTenue}" Margin="9,0,0,0"
                                    VerticalAlignment="Center" IsHitTestVisible="False">
                             <TextBlock.Style>
                                 <Style TargetType="TextBlock">
@@ -148,7 +148,7 @@
                             </TextBlock.Style>
                         </TextBlock>
                         <Button Content="&#x2715;" Command="{Binding PulisciRicercaCommand}" ToolTip="Svuota la ricerca"
-                                Width="22" Height="22" Margin="0,0,3,0" HorizontalAlignment="Right" VerticalAlignment="Center"
+                                Width="22" Height="22" Padding="0" Margin="0,0,3,0" HorizontalAlignment="Right" VerticalAlignment="Center"
                                 Background="Transparent" BorderThickness="0"
                                 Visibility="{Binding TestoRicercaAttivo, Converter={StaticResource BoolToVis}}"/>
                     </Grid>
@@ -177,24 +177,24 @@
         </Border>
 
         <!-- Promemoria del backup: compare solo se è passato troppo tempo -->
-        <Border DockPanel.Dock="Top" Padding="12,6" Background="#FFF4CE" BorderBrush="#E6D08A" BorderThickness="0,0,0,1"
+        <Border DockPanel.Dock="Top" Padding="12,6" Background="{DynamicResource SfondoPromemoria}" BorderBrush="{DynamicResource BordoPromemoria}" BorderThickness="0,0,0,1"
                 Visibility="{Binding PromemoriaBackupVisibile, Converter={StaticResource BoolToVis}}">
             <DockPanel>
                 <Button DockPanel.Dock="Right" Content="Più tardi" Command="{Binding RimandaPromemoriaBackupCommand}"
                         Padding="12,2" Margin="8,0,0,0"/>
                 <Button DockPanel.Dock="Right" Content="Fai il backup ora" Command="{Binding EseguiBackupCommand}" Padding="12,2"/>
-                <TextBlock Text="&#xE7BA;" FontFamily="{StaticResource FontIcone}" Foreground="#9A6700" FontSize="15"
+                <TextBlock Text="&#xE7BA;" FontFamily="{StaticResource FontIcone}" Foreground="{DynamicResource IconaPromemoria}" FontSize="15"
                            VerticalAlignment="Center" Margin="0,0,8,0"/>
                 <TextBlock Text="{Binding TestoPromemoriaBackup}" VerticalAlignment="Center" TextTrimming="CharacterEllipsis"/>
             </DockPanel>
         </Border>
 
         <!-- Ricerca avanzata: i filtri si applicano subito, insieme alle parole scritte nel campo -->
-        <Border DockPanel.Dock="Top" Padding="12,8,12,10" Background="#FAFAFA" BorderBrush="#D0D0D0" BorderThickness="0,0,0,1"
+        <Border DockPanel.Dock="Top" Padding="12,8,12,10" Background="{DynamicResource SfondoPannello}" BorderBrush="{DynamicResource Bordo}" BorderThickness="0,0,0,1"
                 Visibility="{Binding PannelloFiltriAperto, Converter={StaticResource BoolToVis}}">
             <WrapPanel>
                 <StackPanel Margin="0,0,28,0">
-                    <TextBlock Text="Tipo di file" Foreground="#666" FontSize="12" Margin="0,0,0,3"/>
+                    <TextBlock Text="Tipo di file" Foreground="{DynamicResource TestoSecondario}" FontSize="12" Margin="0,0,0,3"/>
                     <StackPanel Orientation="Horizontal" Height="24">
                         <CheckBox Content="PDF" IsChecked="{Binding Filtri.Pdf}" Margin="0,0,12,0" VerticalContentAlignment="Center"/>
                         <CheckBox Content="Word" IsChecked="{Binding Filtri.Word}" Margin="0,0,12,0" VerticalContentAlignment="Center"
@@ -208,23 +208,23 @@
                 </StackPanel>
 
                 <StackPanel Margin="0,0,20,0">
-                    <TextBlock Text="Area" Foreground="#666" FontSize="12" Margin="0,0,0,3"/>
+                    <TextBlock Text="Area" Foreground="{DynamicResource TestoSecondario}" FontSize="12" Margin="0,0,0,3"/>
                     <ComboBox Width="170" ItemsSource="{Binding Filtri.Aree}" SelectedItem="{Binding Filtri.Area}"
                               DisplayMemberPath="Nome"/>
                 </StackPanel>
 
                 <StackPanel Margin="0,0,20,0">
-                    <TextBlock Text="Stato delle cartelle" Foreground="#666" FontSize="12" Margin="0,0,0,3"/>
+                    <TextBlock Text="Stato delle cartelle" Foreground="{DynamicResource TestoSecondario}" FontSize="12" Margin="0,0,0,3"/>
                     <ComboBox Width="150" ItemsSource="{Binding Filtri.Stati}" SelectedItem="{Binding Filtri.Stato}"
                               DisplayMemberPath="Testo" ToolTip="{Binding SuggerimentoStatoRicerca}"/>
                 </StackPanel>
 
                 <StackPanel Margin="0,0,20,0">
-                    <TextBlock Text="Scadenza dal … al" Foreground="#666" FontSize="12" Margin="0,0,0,3"/>
+                    <TextBlock Text="Scadenza dal … al" Foreground="{DynamicResource TestoSecondario}" FontSize="12" Margin="0,0,0,3"/>
                     <StackPanel Orientation="Horizontal">
-                        <DatePicker Width="118" SelectedDate="{Binding Filtri.ScadenzaDal}"/>
+                        <DatePicker Width="140" SelectedDate="{Binding Filtri.ScadenzaDal}"/>
                         <TextBlock Text="–" VerticalAlignment="Center" Margin="6,0"/>
-                        <DatePicker Width="118" SelectedDate="{Binding Filtri.ScadenzaAl}"/>
+                        <DatePicker Width="140" SelectedDate="{Binding Filtri.ScadenzaAl}"/>
                     </StackPanel>
                 </StackPanel>
 
@@ -283,7 +283,7 @@
             </TreeView>
 
             <GridSplitter x:Name="Divisore" Grid.Column="1" Width="5" HorizontalAlignment="Center" VerticalAlignment="Stretch"
-                          Background="#E4E4E4" ShowsPreview="False" DragCompleted="Divisore_DragCompleted"/>
+                          Background="{DynamicResource SfondoDivisore}" ShowsPreview="False" DragCompleted="Divisore_DragCompleted"/>
 
             <!-- Pannello di destra: riepilogo per radice e aree, form per le cartelle -->
             <Grid Grid.Column="2">
@@ -294,10 +294,10 @@
                                 Visibility="{Binding HaPercorsoFisico, Converter={StaticResource BoolToVis}}"
                                 VerticalAlignment="Top" Padding="12,4" Margin="16,4,0,0"/>
                         <StackPanel>
-                            <TextBlock Text="{Binding TipoDettaglio}" Foreground="#777" FontSize="13"/>
+                            <TextBlock Text="{Binding TipoDettaglio}" Foreground="{DynamicResource TestoTenue}" FontSize="13"/>
                             <TextBlock Text="{Binding TitoloDettaglio}" FontSize="26" FontWeight="SemiBold" TextWrapping="Wrap" Margin="0,2,0,0"/>
-                            <TextBlock Text="{Binding RiepilogoDettaglio}" Foreground="#444" Margin="0,8,0,0"/>
-                            <TextBlock Text="{Binding PercorsoDettaglio}" Foreground="#777" FontSize="12" TextWrapping="Wrap" Margin="0,2,0,0"/>
+                            <TextBlock Text="{Binding RiepilogoDettaglio}" Foreground="{DynamicResource TestoSecondario}" Margin="0,8,0,0"/>
+                            <TextBlock Text="{Binding PercorsoDettaglio}" Foreground="{DynamicResource TestoTenue}" FontSize="12" TextWrapping="Wrap" Margin="0,2,0,0"/>
                         </StackPanel>
                     </DockPanel>
 

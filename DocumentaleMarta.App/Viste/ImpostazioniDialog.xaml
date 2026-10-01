@@ -6,16 +6,16 @@
         xmlns:vm="clr-namespace:DocumentaleMarta.App.ViewModels"
         mc:Ignorable="d"
         d:DataContext="{d:DesignInstance Type=vm:ImpostazioniViewModel}"
-        Title="Impostazioni" Width="580" SizeToContent="Height" MaxHeight="780" ResizeMode="NoResize"
+        Title="Impostazioni" Width="640" SizeToContent="Height" MaxHeight="780" ResizeMode="NoResize"
         WindowStartupLocation="CenterOwner" ShowInTaskbar="False" Icon="/DocumentaleMarta.App;component/Risorse/Documentale.ico">
     <Window.Resources>
         <BooleanToVisibilityConverter x:Key="BoolToVis"/>
         <Style x:Key="Etichetta" TargetType="TextBlock">
-            <Setter Property="Foreground" Value="#555"/>
+            <Setter Property="Foreground" Value="{DynamicResource TestoSecondario}"/>
             <Setter Property="VerticalAlignment" Value="Center"/>
             <Setter Property="Margin" Value="0,0,12,0"/>
         </Style>
-        <Style TargetType="GroupBox">
+        <Style TargetType="GroupBox" BasedOn="{StaticResource {x:Type GroupBox}}">
             <Setter Property="Padding" Value="12,8,12,10"/>
             <Setter Property="Margin" Value="0,0,0,12"/>
         </Style>
@@ -28,7 +28,7 @@
                 <ColumnDefinition Width="*"/>
                 <ColumnDefinition Width="Auto"/>
             </Grid.ColumnDefinitions>
-            <TextBlock Text="{Binding Errore}" Foreground="#C42B1C" TextWrapping="Wrap" VerticalAlignment="Center" Margin="0,0,12,0"/>
+            <TextBlock Text="{Binding Errore}" Foreground="{DynamicResource TestoRosso}" TextWrapping="Wrap" VerticalAlignment="Center" Margin="0,0,12,0"/>
             <StackPanel Grid.Column="1" Orientation="Horizontal">
                 <Button Content="Salva" Width="90" Padding="0,4" IsDefault="True" IsEnabled="{Binding PuoSalvare}" Click="Salva_Click"/>
                 <Button Content="Annulla" Width="90" Padding="0,4" Margin="8,0,0,0" IsCancel="True"/>
@@ -37,6 +37,21 @@
 
         <ScrollViewer VerticalScrollBarVisibility="Auto">
             <StackPanel Margin="20,18,20,0">
+                <!-- Aspetto: la scelta si vede subito; con «Annulla» il programma torna com'era -->
+                <GroupBox Header="Aspetto">
+                    <StackPanel>
+                        <TextBlock Text="Tema" Style="{StaticResource Etichetta}" Margin="0,0,0,6"/>
+                        <StackPanel Orientation="Horizontal">
+                            <RadioButton GroupName="Tema" Content="Chiaro" IsChecked="{Binding TemaChiaro}" Margin="0,0,20,0"/>
+                            <RadioButton GroupName="Tema" Content="Scuro" IsChecked="{Binding TemaScuro}" Margin="0,0,20,0"/>
+                            <RadioButton GroupName="Tema" Content="Come Windows" IsChecked="{Binding TemaComeWindows}"
+                                         ToolTip="Segue la scelta di Windows (chiaro o scuro) e cambia insieme a lei"/>
+                        </StackPanel>
+                        <TextBlock Foreground="{DynamicResource TestoTenue}" FontSize="12" TextWrapping="Wrap" Margin="0,6,0,0"
+                                   Text="La scelta si vede subito. Con «Annulla» il programma torna come prima."/>
+                    </StackPanel>
+                </GroupBox>
+
                 <GroupBox Header="Avvisi di scadenza">
                     <StackPanel>
                         <CheckBox Content="Attiva gli avvisi di scadenza (icone, colori e nodo «Scadenze»)" IsChecked="{Binding AvvisiAttivi}"/>
@@ -103,13 +118,13 @@
 
                 <GroupBox Header="Backup">
                     <StackPanel>
-                        <TextBlock Text="Cartella in cui salvare i backup" Foreground="#555" Margin="0,0,0,2"/>
+                        <TextBlock Text="Cartella in cui salvare i backup" Foreground="{DynamicResource TestoSecondario}" Margin="0,0,0,2"/>
                         <DockPanel>
                             <Button DockPanel.Dock="Right" Content="Scegli…" Padding="12,3" Margin="6,0,0,0" Click="ScegliCartellaBackup_Click"/>
                             <TextBox Text="{Binding CartellaBackup, UpdateSourceTrigger=PropertyChanged}" Padding="4,3"
                                      AutomationProperties.Name="Cartella dei backup"/>
                         </DockPanel>
-                        <TextBlock Foreground="#888" FontSize="12" TextWrapping="Wrap" Margin="0,4,0,0"
+                        <TextBlock Foreground="{DynamicResource TestoTenue}" FontSize="12" TextWrapping="Wrap" Margin="0,4,0,0"
                                    Text="Meglio un altro disco (una chiavetta o un disco esterno): così, se il PC si rompe, i backup si salvano. Non può stare dentro la cartella dell'archivio."/>
 
                         <StackPanel Orientation="Horizontal" Margin="0,12,0,0">
@@ -118,7 +133,7 @@
                                      HorizontalContentAlignment="Right" MaxLength="4" AutomationProperties.Name="Giorni per il promemoria del backup"/>
                             <TextBlock Text="giorni dall'ultimo" Margin="8,0,0,0" VerticalAlignment="Center"/>
                         </StackPanel>
-                        <TextBlock Text="{Binding UltimoBackupTesto}" Foreground="#555" Margin="0,8,0,0"/>
+                        <TextBlock Text="{Binding UltimoBackupTesto}" Foreground="{DynamicResource TestoSecondario}" Margin="0,8,0,0"/>
 
                         <!-- Backup e ripristino: salvano prima le impostazioni, poi eseguono l'operazione nella finestra principale -->
                         <StackPanel Orientation="Horizontal" Margin="0,12,0,0"
@@ -130,7 +145,7 @@
                                     IsEnabled="{Binding PuoSalvare}"
                                     ToolTip="Salva le impostazioni e poi ripristina l'archivio da un file di backup: non tocca l'archivio attuale"/>
                         </StackPanel>
-                        <TextBlock Foreground="#888" FontSize="12" TextWrapping="Wrap" Margin="0,4,0,0"
+                        <TextBlock Foreground="{DynamicResource TestoTenue}" FontSize="12" TextWrapping="Wrap" Margin="0,4,0,0"
                                    Visibility="{Binding BackupDisponibile, Converter={StaticResource BoolToVis}}"
                                    Text="I due pulsanti salvano prima le impostazioni e poi eseguono l'operazione. Il ripristino non tocca l'archivio attuale."/>
                     </StackPanel>
@@ -147,13 +162,13 @@
                             <TextBox Grid.Column="1" Text="{Binding NomeRadice, UpdateSourceTrigger=PropertyChanged}" Padding="4,3"/>
                         </Grid>
 
-                        <TextBlock Text="Cartella dell'archivio" Foreground="#555" Margin="0,12,0,2"/>
-                        <TextBox Text="{Binding PercorsoRadice, Mode=OneWay}" IsReadOnly="True" Background="#F5F5F5" Padding="4,3"/>
-                        <TextBlock Foreground="#888" FontSize="12" TextWrapping="Wrap" Margin="0,4,0,0"
+                        <TextBlock Text="Cartella dell'archivio" Foreground="{DynamicResource TestoSecondario}" Margin="0,12,0,2"/>
+                        <TextBox Text="{Binding PercorsoRadice, Mode=OneWay}" IsReadOnly="True" Background="{DynamicResource SfondoPannello}" Padding="4,3"/>
+                        <TextBlock Foreground="{DynamicResource TestoTenue}" FontSize="12" TextWrapping="Wrap" Margin="0,4,0,0"
                                    Text="Per spostare l'archivio chiudi il programma, sposta la cartella e cambia «PercorsoRadice» nel file delle impostazioni."/>
 
-                        <TextBlock Text="File delle impostazioni" Foreground="#555" Margin="0,10,0,2"/>
-                        <TextBox Text="{Binding PercorsoFile, Mode=OneWay}" IsReadOnly="True" Background="#F5F5F5" Padding="4,3"/>
+                        <TextBlock Text="File delle impostazioni" Foreground="{DynamicResource TestoSecondario}" Margin="0,10,0,2"/>
+                        <TextBox Text="{Binding PercorsoFile, Mode=OneWay}" IsReadOnly="True" Background="{DynamicResource SfondoPannello}" Padding="4,3"/>
                     </StackPanel>
                 </GroupBox>
             </StackPanel>

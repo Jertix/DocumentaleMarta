@@ -11,17 +11,14 @@
              DragLeave="Cartella_DragLeave" Drop="Cartella_Drop">
     <UserControl.Resources>
         <ResourceDictionary>
-        <ResourceDictionary.MergedDictionaries>
-            <ResourceDictionary Source="Colori.xaml"/>
-        </ResourceDictionary.MergedDictionaries>
-
         <BooleanToVisibilityConverter x:Key="BoolToVis"/>
         <FontFamily x:Key="FontIcone">Segoe Fluent Icons, Segoe MDL2 Assets</FontFamily>
 
         <!-- Pulsanti compatti: icona e, al passaggio del mouse, la descrizione (come nelle griglie di radice e aree) -->
-        <Style x:Key="PulsanteIcona" TargetType="Button">
+        <Style x:Key="PulsanteIcona" TargetType="Button" BasedOn="{StaticResource {x:Type Button}}">
             <Setter Property="Width" Value="32"/>
             <Setter Property="Height" Value="26"/>
+            <Setter Property="Padding" Value="0"/>
             <Setter Property="Margin" Value="2,0"/>
             <Setter Property="FontFamily" Value="{StaticResource FontIcone}"/>
             <Setter Property="FontSize" Value="14"/>
@@ -31,28 +28,28 @@
         <Style x:Key="TestoScadenza" TargetType="TextBlock">
             <Setter Property="VerticalAlignment" Value="Center"/>
             <Setter Property="Margin" Value="14,0,0,0"/>
-            <Setter Property="Foreground" Value="#777"/>
+            <Setter Property="Foreground" Value="{DynamicResource TestoTenue}"/>
             <Style.Triggers>
                 <DataTrigger Binding="{Binding StatoScadenza}" Value="Arancione">
-                    <Setter Property="Foreground" Value="{StaticResource TestoArancione}"/>
+                    <Setter Property="Foreground" Value="{DynamicResource TestoArancione}"/>
                     <Setter Property="FontWeight" Value="SemiBold"/>
                 </DataTrigger>
                 <DataTrigger Binding="{Binding StatoScadenza}" Value="Rosso">
-                    <Setter Property="Foreground" Value="{StaticResource TestoRosso}"/>
+                    <Setter Property="Foreground" Value="{DynamicResource TestoRosso}"/>
                     <Setter Property="FontWeight" Value="SemiBold"/>
                 </DataTrigger>
             </Style.Triggers>
         </Style>
 
         <Style x:Key="Etichetta" TargetType="TextBlock">
-            <Setter Property="Foreground" Value="#555"/>
+            <Setter Property="Foreground" Value="{DynamicResource TestoSecondario}"/>
             <Setter Property="VerticalAlignment" Value="Center"/>
             <Setter Property="Margin" Value="0,0,12,0"/>
         </Style>
 
         <!-- Testo d'errore: sparisce quando è vuoto -->
         <Style x:Key="TestoErrore" TargetType="TextBlock">
-            <Setter Property="Foreground" Value="#C42B1C"/>
+            <Setter Property="Foreground" Value="{DynamicResource TestoRosso}"/>
             <Setter Property="TextWrapping" Value="Wrap"/>
             <Style.Triggers>
                 <DataTrigger Binding="{Binding Errore}" Value="">
@@ -61,10 +58,11 @@
             </Style.Triggers>
         </Style>
 
-        <Style x:Key="RigaDocumento" TargetType="DataGridRow">
+        <Style x:Key="RigaDocumento" TargetType="DataGridRow" BasedOn="{StaticResource {x:Type DataGridRow}}">
+            <Setter Property="Background" Value="{DynamicResource SfondoSuperficie}"/>
             <Style.Triggers>
                 <DataTrigger Binding="{Binding FileMancante}" Value="True">
-                    <Setter Property="Foreground" Value="#B42318"/>
+                    <Setter Property="Foreground" Value="{DynamicResource TestoRosso}"/>
                 </DataTrigger>
             </Style.Triggers>
         </Style>
@@ -95,10 +93,10 @@
                     ToolTip="Mette la cartella completata in «Archivio completati»: non sposta nessun file"
                     Visibility="{Binding PuoArchiviare, Converter={StaticResource BoolToVis}}"/>
             <StackPanel Orientation="Horizontal" VerticalAlignment="Center">
-                <TextBlock Foreground="#777" FontSize="13">
+                <TextBlock Foreground="{DynamicResource TestoTenue}" FontSize="13">
                     <Run Text="Cartella in "/><Run Text="{Binding NomeArea, Mode=OneWay}"/>
                 </TextBlock>
-                <TextBlock Text="·  archiviata in «Archivio completati»" Foreground="#2E7D32" FontSize="13" Margin="8,0,0,0"
+                <TextBlock Text="·  archiviata in «Archivio completati»" Foreground="{DynamicResource IconaCompletata}" FontSize="13" Margin="8,0,0,0"
                            Visibility="{Binding Archiviata, Converter={StaticResource BoolToVis}}"/>
             </StackPanel>
         </DockPanel>
@@ -132,7 +130,7 @@
             <TextBlock Grid.Row="2" Text="Scadenza" Style="{StaticResource Etichetta}" Margin="0,10,12,0"/>
             <StackPanel Grid.Row="2" Grid.Column="1" Orientation="Horizontal" Margin="0,10,0,0">
                 <DatePicker SelectedDate="{Binding DataScadenza}" Width="150"/>
-                <Button Content="✕" Command="{Binding CancellaScadenzaCommand}" Margin="6,0,0,0" Width="26"
+                <Button Content="✕" Command="{Binding CancellaScadenzaCommand}" Margin="6,0,0,0" Width="26" Padding="0"
                         ToolTip="Rimuovi la scadenza"/>
                 <TextBlock Text="{Binding TestoScadenza}" Style="{StaticResource TestoScadenza}"/>
             </StackPanel>
@@ -142,7 +140,7 @@
                 <ComboBox ItemsSource="{Binding OpzioniRicorrenza}" DisplayMemberPath="Testo" SelectedValuePath="Valore"
                           SelectedValue="{Binding Ricorrenza}" IsEnabled="{Binding HaScadenza}" Width="150"
                           ToolTip="Serve una scadenza: quando completi la cartella ti propone la successiva"/>
-                <TextBlock Style="{StaticResource TestoScadenza}" Foreground="#777"
+                <TextBlock Style="{StaticResource TestoScadenza}" Foreground="{DynamicResource TestoTenue}"
                            Text="Completandola ti propone la cartella successiva."
                            Visibility="{Binding SiRipete, Converter={StaticResource BoolToVis}}"/>
             </StackPanel>
@@ -156,14 +154,14 @@
 
             <StackPanel Grid.Row="5" Grid.Column="1" Margin="0,8,0,0">
                 <TextBlock Text="{Binding Errore}" Style="{StaticResource TestoErrore}"/>
-                <TextBlock Text="Le modifiche vengono salvate automaticamente." Foreground="#888" FontSize="12"/>
+                <TextBlock Text="Le modifiche vengono salvate automaticamente." Foreground="{DynamicResource TestoTenue}" FontSize="12"/>
             </StackPanel>
         </Grid>
 
         <!-- Barra dei documenti -->
         <DockPanel Grid.Row="2" Margin="0,18,0,8">
             <StackPanel DockPanel.Dock="Right" Orientation="Horizontal">
-                <TextBlock Text="Copia in corso…" Foreground="#555" VerticalAlignment="Center" Margin="0,0,12,0"
+                <TextBlock Text="Copia in corso…" Foreground="{DynamicResource TestoSecondario}" VerticalAlignment="Center" Margin="0,0,12,0"
                            Visibility="{Binding AllegaCommand.IsRunning, Converter={StaticResource BoolToVis}}"/>
                 <Button Content="Allega…" Command="{Binding AllegaCommand}" Padding="14,4"/>
                 <Button Content="Apri in Esplora file" Command="{Binding ApriCartellaCommand}" Padding="12,4" Margin="8,0,0,0"/>
@@ -176,7 +174,7 @@
             <DataGrid x:Name="Griglia" ItemsSource="{Binding Documenti}" AutoGenerateColumns="False" IsReadOnly="True"
                       CanUserAddRows="False" CanUserDeleteRows="False" CanUserResizeRows="False"
                       HeadersVisibility="Column" GridLinesVisibility="Horizontal"
-                      HorizontalGridLinesBrush="#E4E4E4" BorderBrush="#D0D0D0" Background="White"
+                      HorizontalGridLinesBrush="{DynamicResource BordoLeggero}" BorderBrush="{DynamicResource Bordo}" Background="{DynamicResource SfondoSuperficie}"
                       SelectionMode="Single" SelectionUnit="FullRow" RowHeaderWidth="0" RowHeight="36"
                       SelectedItem="{Binding DocumentoSelezionato, Mode=TwoWay}"
                       RowStyle="{StaticResource RigaDocumento}">
@@ -184,7 +182,7 @@
                     <DataGridTemplateColumn Width="30">
                         <DataGridTemplateColumn.CellTemplate>
                             <DataTemplate>
-                                <TextBlock Text="&#xE7BA;" FontFamily="Segoe Fluent Icons, Segoe MDL2 Assets" Foreground="#B42318"
+                                <TextBlock Text="&#xE7BA;" FontFamily="Segoe Fluent Icons, Segoe MDL2 Assets" Foreground="{DynamicResource TestoRosso}"
                                            HorizontalAlignment="Center" VerticalAlignment="Center"
                                            ToolTip="Il file non si trova più nell'archivio"
                                            Visibility="{Binding FileMancante, Converter={StaticResource BoolToVis}}"/>
@@ -195,9 +193,9 @@
                                         ElementStyle="{StaticResource CellaTesto}"/>
                     <DataGridTextColumn Header="Tipo" Binding="{Binding Tipo}" Width="55"
                                         ElementStyle="{StaticResource CellaTesto}"/>
-                    <DataGridTextColumn Header="Dimensione" Binding="{Binding DimensioneTesto}" Width="85"
+                    <DataGridTextColumn Header="Dimensione" Binding="{Binding DimensioneTesto}" Width="100"
                                         ElementStyle="{StaticResource CellaTesto}"/>
-                    <DataGridTextColumn Header="Caricato il" Binding="{Binding DataCaricamento, StringFormat='dd/MM/yyyy HH:mm'}" Width="115"
+                    <DataGridTextColumn Header="Caricato il" Binding="{Binding DataCaricamento, StringFormat='dd/MM/yyyy HH:mm'}" Width="140"
                                         ElementStyle="{StaticResource CellaTesto}"/>
                     <DataGridTemplateColumn Header="Azioni" Width="Auto" MinWidth="110" CanUserSort="False">
                         <DataGridTemplateColumn.CellTemplate>
@@ -217,7 +215,7 @@
             </DataGrid>
 
             <!-- Elenco vuoto -->
-            <TextBlock Text="Nessun documento. Usa «Allega…» per aggiungerne." Foreground="#888"
+            <TextBlock Text="Nessun documento. Usa «Allega…» per aggiungerne." Foreground="{DynamicResource TestoTenue}"
                        HorizontalAlignment="Center" VerticalAlignment="Center" Margin="0,30,0,0"
                        IsHitTestVisible="False">
                 <TextBlock.Style>
@@ -235,8 +233,8 @@
 
         <!-- Appare mentre si trascinano dei file sopra il form -->
         <Border x:Name="SuggerimentoRilascio" Grid.RowSpan="4" Margin="-12,-8" Visibility="Collapsed" IsHitTestVisible="False"
-                Background="#E8F3FC" BorderBrush="#2F80C4" BorderThickness="2" CornerRadius="6" Opacity="0.94">
-            <TextBlock Text="Rilascia qui i file per allegarli a questa cartella" FontSize="20" Foreground="#1F5F99"
+                Background="{DynamicResource SfondoAccentoLeggero}" BorderBrush="{DynamicResource BordoAccento}" BorderThickness="2" CornerRadius="6" Opacity="0.94">
+            <TextBlock Text="Rilascia qui i file per allegarli a questa cartella" FontSize="20" Foreground="{DynamicResource TestoAccento}"
                        HorizontalAlignment="Center" VerticalAlignment="Center" TextWrapping="Wrap" TextAlignment="Center"/>
         </Border>
     </Grid>

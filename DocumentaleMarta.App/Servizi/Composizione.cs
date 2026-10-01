@@ -1,3 +1,5 @@
+using System.Windows;
+using DocumentaleMarta.App.Grafica;
 using DocumentaleMarta.App.ViewModels;
 using DocumentaleMarta.App.Viste;
 using DocumentaleMarta.Core.Impostazioni;
@@ -38,6 +40,11 @@ public static class Composizione
         collezione.AddSingleton<IIndicizzatore>(p => p.GetRequiredService<IndicizzazioneService>());
         collezione.AddSingleton<IMonitorIndicizzazione>(p => p.GetRequiredService<IndicizzazioneService>());
         collezione.AddSingleton<IRicercaService, RicercaService>();
+
+        // L'aspetto (tema chiaro o scuro) vale per tutto il programma; senza un'applicazione (nelle prove) non fa nulla.
+        collezione.AddSingleton(_ => new GestoreAspetto(
+            Application.Current is { } applicazione ? new OspiteApplicazione(applicazione) : new OspiteNullo()));
+        collezione.AddSingleton<IAspettoService>(p => p.GetRequiredService<GestoreAspetto>());
 
         collezione.AddSingleton<IDialogService, DialogService>();
         collezione.AddSingleton<IShellService, ShellService>();

@@ -23,6 +23,11 @@
     <None Include="FileVeri\**" CopyToOutputDirectory="PreserveNewest" />
   </ItemGroup>
 
+  <!-- I file XAML del programma, per controllare che non restino colori scritti a mano (devono seguire il tema) -->
+  <ItemGroup>
+    <None Include="..\DocumentaleMarta.App\Viste\*.xaml" Link="XamlApp\%(Filename)%(Extension)" CopyToOutputDirectory="PreserveNewest" />
+  </ItemGroup>
+
   <ItemGroup>
     <ProjectReference Include="..\DocumentaleMarta.Core\DocumentaleMarta.Core.csproj" />
     <ProjectReference Include="..\DocumentaleMarta.Data\DocumentaleMarta.Data.csproj" />

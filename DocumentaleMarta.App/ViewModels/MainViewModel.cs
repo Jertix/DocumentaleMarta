@@ -5,6 +5,7 @@ using System.Reflection;
 using System.Runtime.InteropServices;
 using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
+using DocumentaleMarta.App.Grafica;
 using DocumentaleMarta.App.Servizi;
 using DocumentaleMarta.Core.Impostazioni;
 using DocumentaleMarta.Core.Servizi;
@@ -19,6 +20,7 @@ namespace DocumentaleMarta.App.ViewModels;
 /// <param name="servizioImpostazioni">Salva le modifiche della finestra "Impostazioni"; senza, la finestra non compare.</param>
 /// <param name="servizioBackup">Fa il backup dell'archivio; senza, il pulsante "Backup" e il promemoria non compaiono.</param>
 /// <param name="generatoreAnteprima">Disegna l'anteprima dei documenti selezionati; senza, il pannello non compare.</param>
+/// <param name="aspetto">Cambia i colori del programma; senza, la scelta dell'aspetto nelle impostazioni si salva ma non si vede.</param>
 public partial class MainViewModel(
     IArchivioService archivio,
     IArchivioFileService files,
@@ -31,7 +33,8 @@ public partial class MainViewModel(
     IOcr? ocr = null,
     ImpostazioniService? servizioImpostazioni = null,
     IBackupService? servizioBackup = null,
-    IGeneratoreAnteprima? generatoreAnteprima = null) : ObservableObject
+    IGeneratoreAnteprima? generatoreAnteprima = null,
+    IAspettoService? aspetto = null) : ObservableObject
 {
     // Non è readonly: cambiando le soglie nelle impostazioni il servizio viene ricreato con i valori nuovi.
     private AlertService _avvisi = avvisi ?? new AlertService(impostazioni);
@@ -1061,39 +1064,48 @@ public partial class MainViewModel(
         if (servizioImpostazioni is null)
             return;
 
-        var modello = new ImpostazioniViewModel(impostazioni, servizioImpostazioni.PercorsoFile, BackupDisponibile);
-        while (dialog.MostraImpostazioni(modello))
+        // L'aspetto si prova mentre la finestra è aperta; a fine lavoro vale quello delle impostazioni (nuove se salvate, vecchie se annullate).
+        var modello = new ImpostazioniViewModel(impostazioni, servizioImpostazioni.PercorsoFile, BackupDisponibile, aspetto is null ? null : aspetto.Applica);
+        try
         {
-            // Un'azione chiesta prima di un salvataggio fallito non vale per la riapertura della finestra.
-            var azione = modello.AzioneRichiesta;
-            modello.AzioneRichiesta = AzioneDaImpostazioni.Nessuna;
-
-            var nuove = modello.Costruisci();
-            try
+            while (dialog.MostraImpostazioni(modello))
             {
-                servizioImpostazioni.Salva(nuove);
-            }
-            catch (Exception ex) when (ex is IOException or UnauthorizedAccessException)
-            {
-                dialog.MostraErrore(
-                    $"Non è stato possibile salvare le impostazioni: {ex.Message}\n\nFile: {servizioImpostazioni.PercorsoFile}");
-                continue;
-            }
+                // Un'azione chiesta prima di un salvataggio fallito non vale per la riapertura della finestra.
+                var azione = modello.AzioneRichiesta;
+                modello.AzioneRichiesta = AzioneDaImpostazioni.Nessuna;
 
-            impostazioni.CopiaDa(nuove);
-            await EseguiAsync(ApplicaImpostazioniAsync);
+                var nuove = modello.Costruisci();
+                try
+                {
+                    servizioImpostazioni.Salva(nuove);
+                }
+                catch (Exception ex) when (ex is IOException or UnauthorizedAccessException)
+                {
+                    dialog.MostraErrore(
+                        $"Non è stato possibile salvare le impostazioni: {ex.Message}\n\nFile: {servizioImpostazioni.PercorsoFile}");
+                    continue;
+                }
 
-            // Le impostazioni sono salvate e applicate (anche la cartella dei backup appena scelta): ora l'operazione richiesta.
-            switch (azione)
-            {
-                case AzioneDaImpostazioni.Backup:
-                    await EseguiBackupCommand.ExecuteAsync(null);
-                    break;
-                case AzioneDaImpostazioni.Ripristino:
-                    await RipristinaDaBackupCommand.ExecuteAsync(null);
-                    break;
+                impostazioni.CopiaDa(nuove);
+                aspetto?.Applica(impostazioni.Aspetto);
+                await EseguiAsync(ApplicaImpostazioniAsync);
+
+                // Le impostazioni sono salvate e applicate (anche la cartella dei backup appena scelta): ora l'operazione richiesta.
+                switch (azione)
+                {
+                    case AzioneDaImpostazioni.Backup:
+                        await EseguiBackupCommand.ExecuteAsync(null);
+                        break;
+                    case AzioneDaImpostazioni.Ripristino:
+                        await RipristinaDaBackupCommand.ExecuteAsync(null);
+                        break;
+                }
+                return;
             }
-            return;
+        }
+        finally
+        {
+            aspetto?.Applica(impostazioni.Aspetto);
         }
     }
 

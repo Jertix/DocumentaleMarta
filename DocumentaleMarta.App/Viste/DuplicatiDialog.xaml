@@ -14,16 +14,16 @@
 
     <StackPanel Margin="24,20,24,18">
         <TextBlock Text="{Binding Intestazione}" FontSize="16" FontWeight="SemiBold" TextWrapping="Wrap"/>
-        <TextBlock Text="Hanno lo stesso contenuto di documenti che hai già archiviato." Foreground="#666"
+        <TextBlock Text="Hanno lo stesso contenuto di documenti che hai già archiviato." Foreground="{DynamicResource TestoSecondario}"
                    TextWrapping="Wrap" Margin="0,4,0,10"/>
 
-        <ListBox ItemsSource="{Binding Righe}" MaxHeight="260" BorderBrush="#D0D0D0" HorizontalContentAlignment="Stretch"
+        <ListBox ItemsSource="{Binding Righe}" MaxHeight="260" BorderBrush="{DynamicResource Bordo}" HorizontalContentAlignment="Stretch"
                  ScrollViewer.HorizontalScrollBarVisibility="Disabled">
             <ListBox.ItemTemplate>
                 <DataTemplate>
                     <StackPanel Margin="0,3">
                         <TextBlock Text="{Binding NomeFile}" FontWeight="SemiBold" TextTrimming="CharacterEllipsis"/>
-                        <TextBlock Text="{Binding Dove}" Foreground="#555" FontSize="12" TextWrapping="Wrap"/>
+                        <TextBlock Text="{Binding Dove}" Foreground="{DynamicResource TestoSecondario}" FontSize="12" TextWrapping="Wrap"/>
                     </StackPanel>
                 </DataTemplate>
             </ListBox.ItemTemplate>

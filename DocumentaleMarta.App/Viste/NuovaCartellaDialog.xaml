@@ -12,7 +12,7 @@
         FocusManager.FocusedElement="{Binding ElementName=CasellaTitolo}">
     <Window.Resources>
         <Style x:Key="Etichetta" TargetType="TextBlock">
-            <Setter Property="Foreground" Value="#555"/>
+            <Setter Property="Foreground" Value="{DynamicResource TestoSecondario}"/>
             <Setter Property="VerticalAlignment" Value="Center"/>
             <Setter Property="Margin" Value="0,0,12,0"/>
         </Style>
@@ -48,7 +48,7 @@
             <TextBlock Grid.Row="2" Text="Scadenza" Style="{StaticResource Etichetta}" Margin="0,10,12,0"/>
             <StackPanel Grid.Row="2" Grid.Column="1" Orientation="Horizontal" Margin="0,10,0,0">
                 <DatePicker SelectedDate="{Binding DataScadenza}" Width="150"/>
-                <Button Content="✕" Command="{Binding CancellaScadenzaCommand}" Margin="6,0,0,0" Width="26"
+                <Button Content="✕" Command="{Binding CancellaScadenzaCommand}" Margin="6,0,0,0" Width="26" Padding="0"
                         ToolTip="Rimuovi la scadenza"/>
             </StackPanel>
 
@@ -83,7 +83,7 @@
                         </Grid.ColumnDefinitions>
                         <TextBlock Text="{Binding NomeFile}" TextTrimming="CharacterEllipsis" VerticalAlignment="Center"
                                    ToolTip="{Binding Percorso}"/>
-                        <TextBlock Grid.Column="1" Text="{Binding DimensioneTesto}" Foreground="#777" Margin="12,0"
+                        <TextBlock Grid.Column="1" Text="{Binding DimensioneTesto}" Foreground="{DynamicResource TestoTenue}" Margin="12,0"
                                    VerticalAlignment="Center"/>
                         <Button Grid.Column="2" Content="Rimuovi" Padding="8,1"
                                 Command="{Binding DataContext.RimuoviCommand, RelativeSource={RelativeSource AncestorType=ListBox}}"
@@ -93,9 +93,9 @@
             </ListBox.ItemTemplate>
         </ListBox>
         <TextBlock Text="I file vengono copiati nell'archivio: gli originali restano dove sono."
-                   Foreground="#888" FontSize="12" Margin="0,4,0,0"/>
+                   Foreground="{DynamicResource TestoTenue}" FontSize="12" Margin="0,4,0,0"/>
 
-        <TextBlock Text="{Binding Errore}" Foreground="#C42B1C" TextWrapping="Wrap" Margin="0,10,0,0" MinHeight="18"/>
+        <TextBlock Text="{Binding Errore}" Foreground="{DynamicResource TestoRosso}" TextWrapping="Wrap" Margin="0,10,0,0" MinHeight="18"/>
 
         <StackPanel Orientation="Horizontal" HorizontalAlignment="Right" Margin="0,10,0,0">
             <Button Content="Crea" Width="90" Padding="0,4" IsDefault="True" Click="Crea_Click"/>

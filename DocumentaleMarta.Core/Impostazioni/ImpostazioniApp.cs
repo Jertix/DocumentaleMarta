@@ -1,3 +1,5 @@
+using System.Text.Json.Serialization;
+
 namespace DocumentaleMarta.Core.Impostazioni;
 
 public class DatiAzienda
@@ -30,6 +32,14 @@ public class ImpostazioniApp
     public int BackupPromemoriaGiorni { get; set; } = 30;
     public DateTime? UltimoBackup { get; set; }
 
+    /// <summary>Chiaro, scuro o come Windows.</summary>
+    [JsonConverter(typeof(EnumTolleranteConverter<TemaApp>))]
+    public TemaApp Tema { get; set; } = TemaApp.ComeWindows;
+
+    /// <summary>Le scelte di aspetto, raccolte in un solo valore (per applicarle in blocco).</summary>
+    [JsonIgnore]
+    public AspettoApp Aspetto => new(Tema);
+
     /// <summary>Una copia indipendente: modificarla non tocca l'originale.</summary>
     public ImpostazioniApp Clona()
     {
@@ -61,6 +71,7 @@ public class ImpostazioniApp
         CartellaBackup = altra.CartellaBackup;
         BackupPromemoriaGiorni = altra.BackupPromemoriaGiorni;
         UltimoBackup = altra.UltimoBackup;
+        Tema = altra.Tema;
     }
 
     /// <summary>Restituisce i problemi trovati, vuoto se le impostazioni sono valide.</summary>

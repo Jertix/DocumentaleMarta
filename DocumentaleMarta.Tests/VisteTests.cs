@@ -4,6 +4,7 @@ using System.Windows;
 using System.Windows.Controls;
 using System.Windows.Media;
 using System.Windows.Media.Imaging;
+using System.Windows.Threading;
 using DocumentaleMarta.App.ViewModels;
 using DocumentaleMarta.App.Viste;
 using DocumentaleMarta.Core.Impostazioni;
@@ -24,27 +25,97 @@ public class VisteTests
     {
         public List<string> Messaggi { get; } = [];
         public override void Write(string? message) { }
-        public override void WriteLine(string? message) { if (message is not null) Messaggi.Add(message); }
+        public override void WriteLine(string? message)
+        {
+            // Lo stile di Windows 11 per il DatePicker ha un legame che al primo disegno non trova ancora il suo DatePicker e lo risolve
+            // subito dopo (succede in qualunque programma WPF con quel tema): non è un errore dei nostri file XAML.
+            if (message is null || message.Contains("target element is 'DatePickerTextBox'"))
+                return;
+
+            Messaggi.Add(message);
+        }
     }
 
-    /// <summary>Esegue su un thread STA (richiesto da WPF) raccogliendo gli errori di binding.</summary>
+    /// <summary>
+    /// Il thread WPF delle prove: uno solo per tutte, con un'applicazione vera (come nel programma, dove lo stile di Windows 11 sta
+    /// nelle risorse dell'applicazione e c'è già quando nascono le finestre). Le risorse dell'applicazione appartengono al thread
+    /// che le ha create: per questo non se ne usa uno nuovo a ogni prova.
+    /// </summary>
+    private sealed class ThreadWpf
+    {
+        private readonly System.Collections.Concurrent.BlockingCollection<Action> _coda = [];
+
+        public Thread Thread { get; }
+
+        public ThreadWpf()
+        {
+            using var pronto = new ManualResetEventSlim();
+            Thread = new Thread(() =>
+            {
+                // Chiudere l'ultima finestra non deve spegnere l'applicazione delle prove.
+                _ = new Application { ShutdownMode = ShutdownMode.OnExplicitShutdown };
+                AspettoDiProva.Applica(AspettoDiProva.Base);
+                pronto.Set();
+                foreach (var lavoro in _coda.GetConsumingEnumerable())
+                    lavoro();
+            })
+            {
+                IsBackground = true,
+                Name = "Thread WPF delle prove"
+            };
+            Thread.SetApartmentState(ApartmentState.STA);
+            Thread.Start();
+            pronto.Wait();
+        }
+
+        public void Esegui(Action azione)
+        {
+            using var fine = new ManualResetEventSlim();
+            _coda.Add(() =>
+            {
+                try { azione(); }
+                finally { fine.Set(); }
+            });
+            fine.Wait();
+        }
+    }
+
+    private static readonly Lazy<ThreadWpf> Wpf = new(() => new ThreadWpf());
+
+    /// <summary>Esegue sul thread WPF (STA, come richiede WPF) raccogliendo gli errori di binding.</summary>
     internal static List<string> InSta(Action azione)
     {
         var raccolta = new RaccoltaErroriBinding();
         Exception? errore = null;
 
-        var thread = new Thread(() =>
+        void Lavoro()
         {
+            // Il thread è lo stesso per tutte le prove: quel che WPF aveva ancora in coda per le prove precedenti
+            // si esaurisce prima di cominciare (senza ascoltare), così i suoi avvisi non finiscono nella prova di turno.
+            Dispatcher.CurrentDispatcher.Invoke(() => { }, DispatcherPriority.ApplicationIdle);
+
             PresentationTraceSources.Refresh();
             PresentationTraceSources.DataBindingSource.Listeners.Add(raccolta);
             PresentationTraceSources.DataBindingSource.Switch.Level = SourceLevels.Warning;
-            try { azione(); }
+            try
+            {
+                azione();
+                // Quel che la prova ha messo in coda si esaurisce qui, non dentro la prova successiva.
+                Dispatcher.CurrentDispatcher.Invoke(() => { }, DispatcherPriority.ApplicationIdle);
+            }
             catch (Exception ex) { errore = ex; }
-            finally { PresentationTraceSources.DataBindingSource.Listeners.Remove(raccolta); }
-        });
-        thread.SetApartmentState(ApartmentState.STA);
-        thread.Start();
-        thread.Join();
+            finally
+            {
+                try { AspettoDiProva.Ripristina(); }
+                catch (Exception ex) { errore ??= ex; }
+                finally { PresentationTraceSources.DataBindingSource.Listeners.Remove(raccolta); }
+            }
+        }
+
+        if (Thread.CurrentThread == Wpf.Value.Thread)
+            Lavoro(); // già sul thread WPF (una prova dentro l'altra): non si può aspettare se stessi
+        else
+            Wpf.Value.Esegui(Lavoro);
 
         if (errore is not null)
             ExceptionDispatchInfo.Capture(errore).Throw();
@@ -53,6 +124,11 @@ public class VisteTests
 
     internal static void Disegna(FrameworkElement elemento, double larghezza, double altezza, string nome)
     {
+        // Disegnato da solo, senza il resto della finestra, l'elemento perde il colore del testo che la finestra vera gli darebbe
+        // (con il tema scuro: bianco): lo si ricollega alla stessa risorsa, così cambia anch'esso con il tema.
+        if (elemento.Parent is Window && elemento.ReadLocalValue(System.Windows.Documents.TextElement.ForegroundProperty) == DependencyProperty.UnsetValue)
+            elemento.SetResourceReference(System.Windows.Documents.TextElement.ForegroundProperty, "WindowForeground");
+
         // Come in una finestra vera: si lascia finire il lavoro in coda (es. il calcolo delle larghezze delle colonne)
         // e poi si ripete il layout.
         for (var passata = 0; passata < 2; passata++)
@@ -67,9 +143,10 @@ public class VisteTests
             return;
 
         var bitmap = new RenderTargetBitmap((int)larghezza, (int)altezza, 96, 96, PixelFormats.Pbgra32);
+        // Lo sfondo della finestra (se l'elemento sta in una con un tema, quello del tema: in scuro non è bianco).
         var sfondo = new DrawingVisual();
         using (var dc = sfondo.RenderOpen())
-            dc.DrawRectangle(Brushes.White, null, new Rect(0, 0, larghezza, altezza));
+            dc.DrawRectangle(elemento.TryFindResource("WindowBackground") as Brush ?? Brushes.White, null, new Rect(0, 0, larghezza, altezza));
         bitmap.Render(sfondo);
         bitmap.Render(elemento);
 
@@ -305,7 +382,7 @@ public class VisteTests
     }
 
     /// <summary>Un archivio con scadenze di ogni urgenza, per vedere colori e icone. "Oggi" è il 1 ottobre 2026.</summary>
-    private static async Task<(MainViewModel Vm, AlertService Avvisi)> ArchivioConAvvisiAsync(ArchivioDiProva a)
+    internal static async Task<(MainViewModel Vm, AlertService Avvisi)> ArchivioConAvvisiAsync(ArchivioDiProva a)
     {
         var avvisi = new AlertService(30, 7, true, new TempoFisso(new DateTime(2026, 10, 1)));
         var fatture = await a.Servizio.CreaAreaAsync("Fatture");

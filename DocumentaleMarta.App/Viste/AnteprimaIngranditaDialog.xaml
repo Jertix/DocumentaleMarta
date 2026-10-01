@@ -13,7 +13,7 @@
         <BooleanToVisibilityConverter x:Key="BoolToVis"/>
         <FontFamily x:Key="FontIcone">Segoe Fluent Icons, Segoe MDL2 Assets</FontFamily>
 
-        <Style x:Key="PulsanteBarra" TargetType="Button">
+        <Style x:Key="PulsanteBarra" TargetType="Button" BasedOn="{StaticResource {x:Type Button}}">
             <Setter Property="MinWidth" Value="32"/>
             <Setter Property="Height" Value="28"/>
             <Setter Property="Padding" Value="8,2"/>
@@ -23,9 +23,10 @@
             <Setter Property="FontFamily" Value="{StaticResource FontIcone}"/>
             <Setter Property="FontSize" Value="14"/>
             <Setter Property="Width" Value="34"/>
+            <Setter Property="Padding" Value="0"/>
         </Style>
         <Style x:Key="TestoCentrale" TargetType="TextBlock">
-            <Setter Property="Foreground" Value="#777"/>
+            <Setter Property="Foreground" Value="{DynamicResource TestoTenue}"/>
             <Setter Property="FontSize" Value="15"/>
             <Setter Property="TextWrapping" Value="Wrap"/>
             <Setter Property="TextAlignment" Value="Center"/>
@@ -37,7 +38,7 @@
 
     <DockPanel>
         <!-- Barra: pagine a sinistra, zoom al centro, nota a destra -->
-        <Border DockPanel.Dock="Top" Padding="10,6" Background="#F7F7F7" BorderBrush="#D0D0D0" BorderThickness="0,0,0,1">
+        <Border DockPanel.Dock="Top" Padding="10,6" Background="{DynamicResource SfondoPannello}" BorderBrush="{DynamicResource Bordo}" BorderThickness="0,0,0,1">
             <DockPanel LastChildFill="False">
                 <StackPanel DockPanel.Dock="Left" Orientation="Horizontal"
                             Visibility="{Binding HaPagine, Converter={StaticResource BoolToVis}}">
@@ -46,7 +47,7 @@
                     <TextBlock Text="{Binding TestoPagina}" VerticalAlignment="Center" Margin="6,0,10,0" MinWidth="86" TextAlignment="Center"/>
                     <Button Command="{Binding PaginaSuccessivaCommand}" Content="&#xE76C;" Style="{StaticResource PulsanteIcona}"
                             ToolTip="Pagina successiva" AutomationProperties.Name="Pagina successiva"/>
-                    <Border Width="1" Background="#D0D0D0" Margin="10,2,14,2"/>
+                    <Border Width="1" Background="{DynamicResource Bordo}" Margin="10,2,14,2"/>
                 </StackPanel>
 
                 <StackPanel DockPanel.Dock="Left" Orientation="Horizontal">
@@ -59,19 +60,19 @@
                             Margin="8,0,0,0" ToolTip="Mostra tutta la pagina (Ctrl+0)"/>
                 </StackPanel>
 
-                <TextBlock DockPanel.Dock="Right" Text="{Binding Nota}" Foreground="#888" FontSize="12" VerticalAlignment="Center"
+                <TextBlock DockPanel.Dock="Right" Text="{Binding Nota}" Foreground="{DynamicResource TestoTenue}" FontSize="12" VerticalAlignment="Center"
                            Visibility="{Binding HaNota, Converter={StaticResource BoolToVis}}"/>
             </DockPanel>
         </Border>
 
         <!-- La pagina: pagina intera di partenza, poi si ingrandisce e si scorre (anche trascinando con il mouse) -->
-        <Grid Background="#E9E9E9">
+        <Grid Background="{DynamicResource SfondoVisualizzatore}">
             <ScrollViewer x:Name="Scorrimento" HorizontalScrollBarVisibility="Auto" VerticalScrollBarVisibility="Auto"
                           SizeChanged="Scorrimento_SizeChanged" Focusable="False"
                           Visibility="{Binding HaImmagine, Converter={StaticResource BoolToVis}}">
                 <Grid>
                     <Border x:Name="Pagina" HorizontalAlignment="Center" VerticalAlignment="Center" Background="White"
-                            BorderBrush="#C8C8C8" BorderThickness="1" Margin="12"
+                            BorderBrush="{DynamicResource Bordo}" BorderThickness="1" Margin="12"
                             MouseLeftButtonDown="Pagina_MouseLeftButtonDown" MouseMove="Pagina_MouseMove"
                             MouseLeftButtonUp="Pagina_MouseLeftButtonUp"
                             ToolTip="Doppio clic per ingrandire o tornare alla pagina intera">

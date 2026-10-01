@@ -10,24 +10,21 @@
              d:DesignWidth="780" d:DesignHeight="420">
     <UserControl.Resources>
         <ResourceDictionary>
-            <ResourceDictionary.MergedDictionaries>
-                <ResourceDictionary Source="Colori.xaml"/>
-            </ResourceDictionary.MergedDictionaries>
-
             <BooleanToVisibilityConverter x:Key="BoolToVis"/>
             <FontFamily x:Key="FontIcone">Segoe Fluent Icons, Segoe MDL2 Assets</FontFamily>
 
             <!-- Sfondo secondo l'urgenza della scadenza della cartella; testo rosso se il file non c'è più -->
-            <Style x:Key="RigaDocumento" TargetType="DataGridRow">
+            <Style x:Key="RigaDocumento" TargetType="DataGridRow" BasedOn="{StaticResource {x:Type DataGridRow}}">
+                <Setter Property="Background" Value="{DynamicResource SfondoSuperficie}"/>
                 <Style.Triggers>
                     <DataTrigger Binding="{Binding Avviso}" Value="Arancione">
-                        <Setter Property="Background" Value="{StaticResource SfondoArancione}"/>
+                        <Setter Property="Background" Value="{DynamicResource SfondoArancione}"/>
                     </DataTrigger>
                     <DataTrigger Binding="{Binding Avviso}" Value="Rosso">
-                        <Setter Property="Background" Value="{StaticResource SfondoRosso}"/>
+                        <Setter Property="Background" Value="{DynamicResource SfondoRosso}"/>
                     </DataTrigger>
                     <DataTrigger Binding="{Binding FileMancante}" Value="True">
-                        <Setter Property="Foreground" Value="#B42318"/>
+                        <Setter Property="Foreground" Value="{DynamicResource TestoRosso}"/>
                     </DataTrigger>
                 </Style.Triggers>
             </Style>
@@ -39,9 +36,10 @@
             </Style>
 
             <!-- Pulsanti compatti: icona e, al passaggio del mouse, la descrizione -->
-            <Style x:Key="PulsanteIcona" TargetType="Button">
+            <Style x:Key="PulsanteIcona" TargetType="Button" BasedOn="{StaticResource {x:Type Button}}">
                 <Setter Property="Width" Value="32"/>
                 <Setter Property="Height" Value="26"/>
+                <Setter Property="Padding" Value="0"/>
                 <Setter Property="Margin" Value="2,0"/>
                 <Setter Property="FontFamily" Value="{StaticResource FontIcone}"/>
                 <Setter Property="FontSize" Value="14"/>
@@ -53,7 +51,7 @@
         <DataGrid x:Name="Griglia" ItemsSource="{Binding Documenti}" AutoGenerateColumns="False" IsReadOnly="True"
                   CanUserAddRows="False" CanUserDeleteRows="False" CanUserResizeRows="False"
                   HeadersVisibility="Column" GridLinesVisibility="Horizontal"
-                  HorizontalGridLinesBrush="#E4E4E4" BorderBrush="#D0D0D0" Background="White"
+                  HorizontalGridLinesBrush="{DynamicResource BordoLeggero}" BorderBrush="{DynamicResource Bordo}" Background="{DynamicResource SfondoSuperficie}"
                   SelectionMode="Single" SelectionUnit="FullRow" RowHeaderWidth="0" RowHeight="36"
                   SelectedItem="{Binding DocumentoSelezionato, Mode=TwoWay}"
                   RowStyle="{StaticResource RigaDocumento}">
@@ -61,7 +59,7 @@
                 <DataGridTemplateColumn Width="30" CanUserSort="False">
                     <DataGridTemplateColumn.CellTemplate>
                         <DataTemplate>
-                            <TextBlock Text="&#xE7BA;" FontFamily="{StaticResource FontIcone}" Foreground="#B42318"
+                            <TextBlock Text="&#xE7BA;" FontFamily="{StaticResource FontIcone}" Foreground="{DynamicResource TestoRosso}"
                                        HorizontalAlignment="Center" VerticalAlignment="Center"
                                        ToolTip="Il file non si trova più nell'archivio"
                                        Visibility="{Binding FileMancante, Converter={StaticResource BoolToVis}}"/>
@@ -77,7 +75,7 @@
                     <DataGridTemplateColumn.CellTemplate>
                         <DataTemplate>
                             <DockPanel>
-                                <TextBlock DockPanel.Dock="Left" Text="&#xE7B8;" FontFamily="{StaticResource FontIcone}" Foreground="#777"
+                                <TextBlock DockPanel.Dock="Left" Text="&#xE7B8;" FontFamily="{StaticResource FontIcone}" Foreground="{DynamicResource TestoTenue}"
                                            Margin="4,0,0,0" VerticalAlignment="Center"
                                            ToolTip="Cartella archiviata in «Archivio completati»"
                                            Visibility="{Binding CartellaArchiviata, Converter={StaticResource BoolToVis}}"/>
@@ -123,7 +121,7 @@
         </DataGrid>
 
         <!-- Elenco vuoto -->
-        <TextBlock Text="{Binding TestoVuoto}" Foreground="#888"
+        <TextBlock Text="{Binding TestoVuoto}" Foreground="{DynamicResource TestoTenue}"
                    HorizontalAlignment="Center" VerticalAlignment="Center" Margin="0,30,0,0"
                    IsHitTestVisible="False">
             <TextBlock.Style>
