@@ -30,6 +30,142 @@ public partial class MainWindow : Window
         // I campi del form si salvano quando perdono il cursore: chiudendo la finestra mentre si scrive
         // l'ultima modifica andrebbe persa, quindi si toglie il cursore dal campo prima di chiudere.
         Closing += (_, _) => Keyboard.ClearFocus();
+
+        // Aprendo o chiudendo un ramo, o rileggendo l'albero, la colonna dell'albero si adatta ai nomi più lunghi che si vedono.
+        Albero.AddHandler(TreeViewItem.ExpandedEvent, new RoutedEventHandler((_, _) => PianificaAdattamentoAlbero()));
+        Albero.AddHandler(TreeViewItem.CollapsedEvent, new RoutedEventHandler((_, _) => PianificaAdattamentoAlbero()));
+        viewModel.Radici.CollectionChanged += (_, _) => PianificaAdattamentoAlbero();
+        Loaded += (_, _) => PianificaAdattamentoAlbero();
+    }
+
+    // ---------- Larghezza della colonna dell'albero ----------
+
+    /// <summary>La larghezza di partenza della colonna dell'albero: la stessa scritta nell'XAML.</summary>
+    private const double LarghezzaAlberoDiPartenza = 270;
+
+    /// <summary>Quanto spazio lasciare a destra del nome più lungo, perché non finisca contro il bordo.</summary>
+    private const double AriaADestraDelTesto = 10;
+
+    /// <summary>Al massimo, l'albero può occupare questa parte della finestra: il resto serve al contenuto.</summary>
+    private const double QuotaMassimaAlbero = 0.5;
+
+    /// <summary>
+    /// La larghezza scelta dall'utente (o quella di partenza): l'albero torna a questa quando i nomi lunghi non si vedono più,
+    /// per non rimpicciolirsi sotto quello che l'utente ha deciso trascinando il divisore.
+    /// </summary>
+    private double _larghezzaScelta = LarghezzaAlberoDiPartenza;
+
+    private bool _adattamentoPianificato;
+
+    /// <summary>L'utente ha trascinato il divisore: la larghezza ottenuta è quella che vuole (finché non servono nomi più lunghi).</summary>
+    private void Divisore_DragCompleted(object sender, System.Windows.Controls.Primitives.DragCompletedEventArgs e) =>
+        _larghezzaScelta = ColonnaAlbero.ActualWidth;
+
+    /// <summary>
+    /// Chiede di adattare la larghezza dell'albero quando WPF ha finito di creare e disporre i nodi (altrimenti si misurerebbe
+    /// prima che compaiano i nomi del ramo appena aperto). Più richieste ravvicinate valgono una sola.
+    /// </summary>
+    private void PianificaAdattamentoAlbero()
+    {
+        if (_adattamentoPianificato)
+            return;
+
+        _adattamentoPianificato = true;
+        Dispatcher.BeginInvoke(System.Windows.Threading.DispatcherPriority.Loaded, () =>
+        {
+            _adattamentoPianificato = false;
+            AdattaLarghezzaAlbero();
+        });
+    }
+
+    /// <summary>
+    /// Porta la colonna dell'albero alla larghezza che serve a vedere per intero i nomi dei nodi visibili, senza scendere sotto la
+    /// larghezza scelta dall'utente né salire oltre metà finestra (lasciando al contenuto il suo spazio minimo).
+    /// </summary>
+    public void AdattaLarghezzaAlbero()
+    {
+        var obiettivo = Math.Max(_larghezzaScelta, LarghezzaNecessaria() ?? 0);
+        obiettivo = Math.Max(ColonnaAlbero.MinWidth, Math.Min(obiettivo, LarghezzaMassimaAlbero()));
+
+        if (Math.Abs(obiettivo - ColonnaAlbero.Width.Value) >= 1)
+            ColonnaAlbero.Width = new GridLength(obiettivo);
+    }
+
+    /// <summary>Metà finestra, ma sempre lasciando al contenuto (e all'anteprima, se aperta) lo spazio che gli spetta.</summary>
+    private double LarghezzaMassimaAlbero()
+    {
+        var totale = Corpo.ActualWidth;
+        if (totale <= 0)
+            return double.MaxValue; // la finestra non è ancora disposta
+
+        var lasciatoAgliAltri = ColonnaContenuto.MinWidth + Divisore.ActualWidth + ColonnaAnteprima.ActualWidth;
+        return Math.Min(totale * QuotaMassimaAlbero, totale - lasciatoAgliAltri);
+    }
+
+    /// <summary>
+    /// La larghezza della colonna che serve per vedere per intero il nodo più largo tra quelli visibili: il suo rientro (che dipende
+    /// dal livello), l'icona, il nome e l'icona di avviso. Null se non c'è ancora nulla di disposto da misurare.
+    /// </summary>
+    private double? LarghezzaNecessaria()
+    {
+        var scorrimento = AlberoVisuale.Discendente<ScrollViewer>(Albero);
+        var spostamento = scorrimento?.HorizontalOffset ?? 0; // se l'albero è scorso di lato le posizioni sono spostate
+        double? piuLargo = null;
+
+        foreach (var nodo in NodiVisibili(Albero))
+        {
+            if (FineDelNome(nodo, spostamento) is { } fine)
+                piuLargo = Math.Max(piuLargo ?? 0, fine);
+        }
+        if (piuLargo is null)
+            return null;
+
+        var barraVerticale = scorrimento?.ComputedVerticalScrollBarVisibility == Visibility.Visible
+            ? SystemParameters.VerticalScrollBarWidth
+            : 0;
+        return piuLargo + AriaADestraDelTesto + Albero.Padding.Right + Albero.BorderThickness.Right + barraVerticale;
+    }
+
+    /// <summary>I nodi dell'albero che si vedono: quelli del primo livello e, per i rami aperti, i loro figli.</summary>
+    private static IEnumerable<TreeViewItem> NodiVisibili(ItemsControl contenitore)
+    {
+        for (var i = 0; i < contenitore.Items.Count; i++)
+        {
+            if (contenitore.ItemContainerGenerator.ContainerFromIndex(i) is not TreeViewItem nodo)
+                continue;
+
+            yield return nodo;
+            if (nodo.IsExpanded)
+            {
+                foreach (var figlio in NodiVisibili(nodo))
+                    yield return figlio;
+            }
+        }
+    }
+
+    /// <summary>
+    /// Dove finisce il contenuto (icona, nome, icona di avviso) di un nodo, rispetto al bordo sinistro dell'albero. Si sommano le
+    /// larghezze volute dai singoli pezzi: quelle del contenitore sarebbero già tagliate alla larghezza attuale della colonna.
+    /// </summary>
+    private double? FineDelNome(TreeViewItem nodo, double spostamento)
+    {
+        if (nodo.Template?.FindName("PART_Header", nodo) is not ContentPresenter intestazione
+            || VisualTreeHelper.GetChildrenCount(intestazione) == 0
+            || VisualTreeHelper.GetChild(intestazione, 0) is not FrameworkElement contenuto)
+            return null;
+
+        try
+        {
+            var inizio = contenuto.TransformToAncestor(Albero).Transform(new Point(0, 0)).X + spostamento;
+            var larghezza = contenuto is Panel pannello
+                ? pannello.Children.OfType<UIElement>().Sum(figlio => figlio.DesiredSize.Width)
+                : contenuto.DesiredSize.Width;
+            return larghezza > 0 ? inizio + larghezza : null;
+        }
+        catch (InvalidOperationException)
+        {
+            return null; // il nodo non è (più) collegato all'albero visivo
+        }
     }
 
     /// <summary>Il tasto destro in un TreeView non seleziona il nodo: lo facciamo noi, così il menu agisce su quello cliccato.</summary>

@@ -242,12 +242,13 @@
             </WrapPanel>
         </Border>
 
-        <Grid>
+        <Grid x:Name="Corpo">
             <Grid.ColumnDefinitions>
-                <ColumnDefinition Width="270" MinWidth="200"/>
+                <!-- La colonna dell'albero si allarga da sola quando un ramo aperto ha nomi lunghi (vedi MainWindow.xaml.cs) -->
+                <ColumnDefinition x:Name="ColonnaAlbero" Width="270" MinWidth="200"/>
                 <ColumnDefinition Width="Auto"/>
-                <ColumnDefinition Width="*" MinWidth="300"/>
-                <ColumnDefinition Width="Auto"/>
+                <ColumnDefinition x:Name="ColonnaContenuto" Width="*" MinWidth="300"/>
+                <ColumnDefinition x:Name="ColonnaAnteprima" Width="Auto"/>
             </Grid.ColumnDefinitions>
 
             <!-- Albero -->
@@ -287,8 +288,8 @@
                 </TreeView.ContextMenu>
             </TreeView>
 
-            <GridSplitter Grid.Column="1" Width="5" HorizontalAlignment="Center" VerticalAlignment="Stretch"
-                          Background="#E4E4E4" ShowsPreview="False"/>
+            <GridSplitter x:Name="Divisore" Grid.Column="1" Width="5" HorizontalAlignment="Center" VerticalAlignment="Stretch"
+                          Background="#E4E4E4" ShowsPreview="False" DragCompleted="Divisore_DragCompleted"/>
 
             <!-- Pannello di destra: riepilogo per radice e aree, form per le cartelle -->
             <Grid Grid.Column="2">

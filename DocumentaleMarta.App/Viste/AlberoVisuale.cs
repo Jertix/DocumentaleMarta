@@ -17,4 +17,21 @@ public static class AlberoVisuale
         }
         return null;
     }
+
+    /// <summary>Il primo elemento del tipo cercato tra i discendenti visivi (in ordine di profondità), o null.</summary>
+    public static T? Discendente<T>(DependencyObject? radice) where T : DependencyObject
+    {
+        if (radice is null)
+            return null;
+
+        for (var i = 0; i < VisualTreeHelper.GetChildrenCount(radice); i++)
+        {
+            var figlio = VisualTreeHelper.GetChild(radice, i);
+            if (figlio is T trovato)
+                return trovato;
+            if (Discendente<T>(figlio) is { } piuIn)
+                return piuIn;
+        }
+        return null;
+    }
 }
