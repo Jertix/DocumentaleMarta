@@ -27,9 +27,13 @@ public class VisteTests
         public override void Write(string? message) { }
         public override void WriteLine(string? message)
         {
-            // Lo stile di Windows 11 per il DatePicker ha un legame che al primo disegno non trova ancora il suo DatePicker e lo risolve
-            // subito dopo (succede in qualunque programma WPF con quel tema): non è un errore dei nostri file XAML.
-            if (message is null || message.Contains("target element is 'DatePickerTextBox'"))
+            // Lo stile di Windows 11 per il DatePicker e per le voci degli elenchi (ListBoxItem) ha dei legami che al primo disegno non
+            // trovano ancora il loro DatePicker o il loro elenco e li risolvono subito dopo (succede in qualunque programma WPF con quel
+            // tema, e a volte l'avviso arriva durante una prova diversa da quella che l'ha causato): non sono errori dei nostri XAML.
+            if (message is null
+                || message.Contains("target element is 'DatePickerTextBox'")
+                || (message.Contains("target element is 'ListBoxItem'")
+                    && (message.Contains("Path=HorizontalContentAlignment") || message.Contains("Path=VerticalContentAlignment"))))
                 return;
 
             Messaggi.Add(message);
