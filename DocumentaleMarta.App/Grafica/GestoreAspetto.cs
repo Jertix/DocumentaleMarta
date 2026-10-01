@@ -137,14 +137,25 @@ public sealed class GestoreAspetto(IOspiteTema ospite, Func<bool>? sistemaScuro 
 
         ospite.ImpostaTema(ScuroInUso);
 
-        _colori = ColoriTema.Crea(ScuroInUso, Sfumature.Da(SystemColors.AccentColor));
+        var accento = Sfumature.Da(Tavolozze.Principale(aspetto.Colore));
+        _colori = ColoriTema.Crea(ScuroInUso, accento, aspetto.SfondoColorato);
+
+        // Un colore principale scelto dall'utente prende il posto di quello di Windows in tutte le voci dello stile che lo usano.
+        if (aspetto.Colore != ColoreApp.ComeWindows && TrovaStileWindows(uniti) is { } stile)
+            foreach (System.Collections.DictionaryEntry voce in AccentoTema.Sovrascritture(stile, accento))
+                _colori[voce.Key] = voce.Value;
+
         uniti.Add(_colori);
     }
 
-    /// <summary>Windows ha cambiato i suoi colori: se si segue Windows, ci si adegua.</summary>
+    /// <summary>Lo stile di Windows 11 (chiaro o scuro) presente nelle risorse; null se non c'è (per esempio nelle prove senza applicazione).</summary>
+    private static ResourceDictionary? TrovaStileWindows(IEnumerable<ResourceDictionary> dizionari) =>
+        dizionari.FirstOrDefault(d => d.Source?.OriginalString.Contains("PresentationFramework.Fluent", StringComparison.Ordinal) == true);
+
+    /// <summary>Windows ha cambiato i suoi colori: se si segue Windows (per il tema o per il colore principale), ci si adegua.</summary>
     public void SistemaCambiato()
     {
-        if (_corrente.Tema == TemaApp.ComeWindows)
+        if (_corrente.Tema == TemaApp.ComeWindows || _corrente.Colore == ColoreApp.ComeWindows)
             Applica(_corrente);
     }
 }

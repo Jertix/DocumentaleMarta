@@ -42,8 +42,11 @@ ogni cartella può avere una scadenza, e il programma avvisa quando si avvicina.
 - **Ripristino** da un backup in una cartella nuova, senza mai toccare l'archivio attuale.
 
 **Personalizzare**
-- Finestra **Impostazioni**: tema **chiaro**, **scuro** o **come Windows** (si vede subito, senza riavvio), soglie degli
-  avvisi, dati della ditta, backup.
+- Finestra **Impostazioni**, sezione **Aspetto**: tema **chiaro**, **scuro** o **come Windows**; **colore principale**
+  (Acciaio, Fucina, Foresta, Prugna, Grafite o quello di Windows) per pulsanti, spunte e selezioni; **sfondo delle
+  finestre colorato** con una leggera tinta di quel colore. Le scelte si vedono subito, senza riavvio, e con «Annulla» il
+  programma torna com'era.
+- Nelle Impostazioni anche le soglie degli avvisi, i dati della ditta e il backup.
 
 ## Come si usa
 

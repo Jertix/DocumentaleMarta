@@ -20,13 +20,17 @@ internal static class AspettoDiProva
     internal static GestoreAspetto Gestore => _gestore ??= new GestoreAspetto(new OspiteApplicazione(Application.Current), () => WindowsScuro);
 
     /// <summary>Cambia il tema di tutta l'applicazione delle prove (le finestre già create si adeguano, come nel programma).</summary>
-    internal static GestoreAspetto Applica(TemaApp tema = TemaApp.Chiaro, bool windowsScuro = false)
+    internal static GestoreAspetto Applica(TemaApp tema = TemaApp.Chiaro, bool windowsScuro = false) =>
+        Applica(new AspettoApp(tema), windowsScuro);
+
+    /// <summary>Cambia l'aspetto (tema, colore principale, sfondo) di tutta l'applicazione delle prove.</summary>
+    internal static GestoreAspetto Applica(AspettoApp aspetto, bool windowsScuro = false)
     {
-        if (Gestore.Corrente != new AspettoApp(tema) || WindowsScuro != windowsScuro)
+        if (Gestore.Corrente != aspetto || WindowsScuro != windowsScuro)
             ChiudiLeFinestre();
 
         WindowsScuro = windowsScuro;
-        Gestore.Applica(new AspettoApp(tema));
+        Gestore.Applica(aspetto);
         return Gestore;
     }
 

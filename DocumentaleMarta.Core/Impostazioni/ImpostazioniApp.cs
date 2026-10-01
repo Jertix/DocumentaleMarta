@@ -52,9 +52,16 @@ public class ImpostazioniApp
     [JsonConverter(typeof(EnumTolleranteConverter<TemaApp>))]
     public TemaApp Tema { get; set; } = TemaApp.ComeWindows;
 
+    /// <summary>Il colore dei pulsanti principali, delle spunte e della selezione.</summary>
+    [JsonConverter(typeof(EnumTolleranteConverter<ColoreApp>))]
+    public ColoreApp Colore { get; set; } = ColoreApp.Acciaio;
+
+    /// <summary>Le finestre hanno uno sfondo con una leggera tinta del colore principale invece del grigio neutro.</summary>
+    public bool SfondoColorato { get; set; }
+
     /// <summary>Le scelte di aspetto, raccolte in un solo valore (per applicarle in blocco).</summary>
     [JsonIgnore]
-    public AspettoApp Aspetto => new(Tema);
+    public AspettoApp Aspetto => new(Tema, Colore, SfondoColorato);
 
     /// <summary>Una copia indipendente: modificarla non tocca l'originale.</summary>
     public ImpostazioniApp Clona()
@@ -88,6 +95,8 @@ public class ImpostazioniApp
         BackupPromemoriaGiorni = altra.BackupPromemoriaGiorni;
         UltimoBackup = altra.UltimoBackup;
         Tema = altra.Tema;
+        Colore = altra.Colore;
+        SfondoColorato = altra.SfondoColorato;
     }
 
     /// <summary>Restituisce i problemi trovati, vuoto se le impostazioni sono valide.</summary>

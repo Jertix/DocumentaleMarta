@@ -14,8 +14,33 @@ public enum TemaApp
     Scuro
 }
 
-/// <summary>Le scelte della sezione «Aspetto» delle impostazioni.</summary>
-public record AspettoApp(TemaApp Tema);
+/// <summary>
+/// Il colore principale del programma: quello dei pulsanti principali, delle spunte, della selezione e dei bordi attivi.
+/// Il primo è quello predefinito (anche per i valori sconosciuti nel file delle impostazioni).
+/// </summary>
+public enum ColoreApp
+{
+    /// <summary>Un blu freddo, da metalli.</summary>
+    Acciaio,
+
+    /// <summary>Un arancio caldo, come il metallo in forgia.</summary>
+    Fucina,
+
+    Foresta,
+
+    Prugna,
+
+    Grafite,
+
+    /// <summary>Il colore che l'utente ha scelto in Windows.</summary>
+    ComeWindows
+}
+
+/// <summary>
+/// Le scelte della sezione «Aspetto» delle impostazioni: tema chiaro o scuro, colore principale e se le finestre
+/// hanno uno sfondo con una leggera tinta di quel colore.
+/// </summary>
+public record AspettoApp(TemaApp Tema, ColoreApp Colore = ColoreApp.Acciaio, bool SfondoColorato = false);
 
 /// <summary>
 /// Salva un'enumerazione come testo leggibile («Scuro») e, se nel file c'è un valore che non esiste più (o scritto male a mano),

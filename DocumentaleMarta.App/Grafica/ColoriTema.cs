@@ -44,7 +44,7 @@ public static class ColoriTema
     /// <summary>Tutti i nomi che il dizionario contiene (e che i file XAML possono usare).</summary>
     public static readonly IReadOnlyList<string> Chiavi =
     [
-        "Bordo", "BordoLeggero", "SfondoPannello", "SfondoSuperficie", "SfondoDivisore", "SfondoVisualizzatore",
+        "SfondoFinestra", "Bordo", "BordoLeggero", "SfondoPannello", "SfondoSuperficie", "SfondoDivisore", "SfondoVisualizzatore",
         "TestoSecondario", "TestoTenue",
         "SfondoArancione", "SfondoRosso", "IconaArancione", "TestoArancione", "IconaRossa", "TestoRosso",
         "IconaCompletata", "TestoCompletata",
@@ -52,8 +52,17 @@ public static class ColoriTema
         "SfondoAccentoLeggero", "BordoAccento", "TestoAccento"
     ];
 
-    /// <summary>Il dizionario dei colori per il tema scuro o chiaro, con i colori che dipendono dall'accento ricavati da <paramref name="accento"/>.</summary>
-    public static ResourceDictionary Crea(bool scuro, Sfumature accento)
+    /// <summary>Quanto del colore principale si mescola allo sfondo delle finestre (chiaro, scuro) quando lo sfondo è colorato.</summary>
+    private const double TintaFinestraChiaro = 0.08, TintaFinestraScuro = 0.12;
+
+    /// <summary>Quanto del colore principale si mescola ai pannelli (barra in fondo, filtri, anteprima) quando lo sfondo è colorato.</summary>
+    private const double TintaPannelloChiaro = 0.10, TintaPannelloScuro = 0.16;
+
+    /// <summary>
+    /// Il dizionario dei colori per il tema scuro o chiaro, con i colori che dipendono dall'accento ricavati da <paramref name="accento"/>.
+    /// Con <paramref name="sfondoColorato"/> lo sfondo delle finestre e dei pannelli prende una leggera tinta del colore principale.
+    /// </summary>
+    public static ResourceDictionary Crea(bool scuro, Sfumature accento, bool sfondoColorato = false)
     {
         var d = new ResourceDictionary();
         // Aggiunge un colore al dizionario: quello chiaro o quello scuro, secondo il tema che si sta preparando.
@@ -65,14 +74,24 @@ public static class ColoriTema
         // Struttura: bordi, sfondi dei pannelli, delle griglie e dello spazio dietro la pagina dell'anteprima.
         Pennello("Bordo", "#D0D0D0", "#4A4A4A");
         Pennello("BordoLeggero", "#E4E4E4", "#3A3A3A");
-        Pennello("SfondoPannello", "#F5F5F5", "#272727");
         Pennello("SfondoSuperficie", "#FFFFFF", "#2B2B2B");
+
+        // Lo sfondo delle finestre e dei pannelli: grigio neutro, o con una leggera tinta del colore principale.
+        // (La finestra di Windows 11 dipinge il proprio sfondo da sola: le nostre finestre lo dichiarano con questo colore.)
+        var baseFinestra = Colori.Da(scuro ? "#202020" : "#FAFAFA");
+        var basePannello = Colori.Da(scuro ? "#272727" : "#F5F5F5");
+        PennelloDa("SfondoFinestra", sfondoColorato
+            ? baseFinestra.Mescola(accento.Scura1, scuro ? TintaFinestraScuro : TintaFinestraChiaro)
+            : baseFinestra);
+        PennelloDa("SfondoPannello", sfondoColorato
+            ? basePannello.Mescola(accento.Scura1, scuro ? TintaPannelloScuro : TintaPannelloChiaro)
+            : basePannello);
         Pennello("SfondoDivisore", "#E4E4E4", "#3A3A3A");
         Pennello("SfondoVisualizzatore", "#E9E9E9", "#161616");
 
         // Testi attenuati: etichette e spiegazioni.
         Pennello("TestoSecondario", "#555555", "#CFCFCF");
-        Pennello("TestoTenue", "#6F6F6F", "#A0A0A0");
+        Pennello("TestoTenue", "#666666", "#A0A0A0");
 
         // Scadenze: sfondo delle righe, icona e testo; uguali in albero, griglie e form.
         Pennello("SfondoArancione", "#FFF1DC", "#4A3718");

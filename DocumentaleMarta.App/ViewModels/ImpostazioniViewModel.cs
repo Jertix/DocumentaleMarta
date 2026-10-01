@@ -1,6 +1,8 @@
 using System.ComponentModel;
 using System.Globalization;
+using System.Windows.Media;
 using CommunityToolkit.Mvvm.ComponentModel;
+using DocumentaleMarta.App.Grafica;
 using DocumentaleMarta.Core.Impostazioni;
 
 namespace DocumentaleMarta.App.ViewModels;
@@ -37,6 +39,9 @@ public partial class ImpostazioniViewModel : ObservableObject
         BackupDisponibile = backupDisponibile;
         _anteprimaAspetto = anteprimaAspetto;
         _tema = attuali.Tema;
+        _colore = attuali.Colore;
+        _sfondoColorato = attuali.SfondoColorato;
+        OpzioniColore = [.. Tavolozze.Tutte.Select(t => new OpzioneColoreViewModel(this, t))];
 
         _ragioneSociale = attuali.Azienda.RagioneSociale;
         _codiceFiscale = attuali.Azienda.CodiceFiscale;
@@ -88,11 +93,38 @@ public partial class ImpostazioniViewModel : ObservableObject
     public bool TemaScuro { get => Tema == TemaApp.Scuro; set { if (value) Tema = TemaApp.Scuro; } }
     public bool TemaComeWindows { get => Tema == TemaApp.ComeWindows; set { if (value) Tema = TemaApp.ComeWindows; } }
 
-    /// <summary>Scegliendo un tema nella finestra lo si prova subito sul programma, prima ancora di salvare.</summary>
-    partial void OnTemaChanged(TemaApp value) => _anteprimaAspetto?.Invoke(new AspettoApp(value));
+    /// <summary>Il colore principale: dei pulsanti principali, delle spunte e della selezione.</summary>
+    [ObservableProperty]
+    private ColoreApp _colore;
+
+    /// <summary>Le finestre hanno uno sfondo con una leggera tinta del colore principale.</summary>
+    [ObservableProperty]
+    private bool _sfondoColorato;
+
+    /// <summary>I colori tra cui scegliere, ognuno con il suo pulsante di scelta (un pallino colorato e il nome).</summary>
+    public IReadOnlyList<OpzioneColoreViewModel> OpzioniColore { get; }
+
+    // Ogni scelta di aspetto nella finestra si prova subito sul programma, prima ancora di salvare.
+    partial void OnTemaChanged(TemaApp value) => ProvaAspetto();
+
+    /// <summary>Spuntando lo sfondo colorato lo si prova subito sul programma, prima ancora di salvare.</summary>
+    partial void OnSfondoColoratoChanged(bool value) => ProvaAspetto();
+
+    /// <summary>
+    /// Scegliendo un colore principale si riaccendono i pulsanti di scelta giusti e lo si prova subito sul programma, prima
+    /// ancora di salvare.
+    /// </summary>
+    partial void OnColoreChanged(ColoreApp value)
+    {
+        foreach (var opzione in OpzioniColore)
+            opzione.AggiornaScelta();
+        ProvaAspetto();
+    }
+
+    /// <summary>Mostra subito sul programma l'aspetto scelto fin qui (tema, colore principale, sfondo).</summary>
+    private void ProvaAspetto() => _anteprimaAspetto?.Invoke(new AspettoApp(Tema, Colore, SfondoColorato));
 
     /// <summary>I pulsanti "Fai il backup ora" e "Ripristina da un backup…" si vedono solo se c'è il servizio che li esegue.</summary>
-
     public bool BackupDisponibile { get; }
 
     /// <summary>
@@ -171,12 +203,53 @@ public partial class ImpostazioniViewModel : ObservableObject
         risultato.CartellaBackup = string.IsNullOrWhiteSpace(CartellaBackup) ? null : CartellaBackup.Trim();
         risultato.BackupPromemoriaGiorni = promemoria;
         risultato.Tema = Tema;
+        risultato.Colore = Colore;
+        risultato.SfondoColorato = SfondoColorato;
         return risultato;
     }
 
     /// <summary>Legge un numero di giorni scritto dall'utente (solo cifre); falso se non lo è.</summary>
     private static bool TryLeggiGiorni(string? testo, out int giorni) =>
         int.TryParse(testo?.Trim(), NumberStyles.None, CultureInfo.InvariantCulture, out giorni);
+}
+
+/// <summary>Un colore principale nella finestra «Impostazioni»: il pallino colorato, il nome e se è quello scelto.</summary>
+public class OpzioneColoreViewModel : ObservableObject
+{
+    private readonly ImpostazioniViewModel _impostazioni;
+
+    /// <summary>Crea la scelta per la palette indicata, collegata alla finestra a cui appartiene.</summary>
+    public OpzioneColoreViewModel(ImpostazioniViewModel impostazioni, Tavolozza tavolozza)
+    {
+        _impostazioni = impostazioni;
+        Id = tavolozza.Id;
+        Nome = tavolozza.Nome;
+
+        var pennello = new SolidColorBrush(tavolozza.Principale ?? System.Windows.SystemColors.AccentColor);
+        pennello.Freeze();
+        Pennello = pennello;
+    }
+
+    public ColoreApp Id { get; }
+
+    public string Nome { get; }
+
+    /// <summary>Il colore del pallino.</summary>
+    public Brush Pennello { get; }
+
+    /// <summary>Vero se è il colore scelto. Scegliendolo (il pulsante si accende) diventa il colore principale; spegnerlo non fa nulla.</summary>
+    public bool Scelto
+    {
+        get => _impostazioni.Colore == Id;
+        set
+        {
+            if (value)
+                _impostazioni.Colore = Id;
+        }
+    }
+
+    /// <summary>Il colore scelto è cambiato: il pulsante si riaccende o si spegne di conseguenza.</summary>
+    public void AggiornaScelta() => OnPropertyChanged(nameof(Scelto));
 }
 
 /// <summary>Tutto ciò che mostra la finestra "Informazioni".</summary>

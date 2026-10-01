@@ -143,10 +143,14 @@ public class VisteTests
             return;
 
         var bitmap = new RenderTargetBitmap((int)larghezza, (int)altezza, 96, 96, PixelFormats.Pbgra32);
-        // Lo sfondo della finestra (se l'elemento sta in una con un tema, quello del tema: in scuro non è bianco).
+        // Lo sfondo della finestra: quello che la finestra dichiara (con il tema, e con l'eventuale tinta, non è bianco);
+        // se l'elemento non sta in una finestra, quello del tema o il bianco.
+        var sfondoFinestra = Window.GetWindow(elemento)?.Background;
         var sfondo = new DrawingVisual();
         using (var dc = sfondo.RenderOpen())
-            dc.DrawRectangle(elemento.TryFindResource("WindowBackground") as Brush ?? Brushes.White, null, new Rect(0, 0, larghezza, altezza));
+            dc.DrawRectangle(
+                sfondoFinestra is { } b && b != Brushes.Transparent ? b : elemento.TryFindResource("WindowBackground") as Brush ?? Brushes.White,
+                null, new Rect(0, 0, larghezza, altezza));
         bitmap.Render(sfondo);
         bitmap.Render(elemento);
 
