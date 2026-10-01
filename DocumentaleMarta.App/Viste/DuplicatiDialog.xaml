@@ -1,0 +1,41 @@
+<Window x:Class="DocumentaleMarta.App.Viste.DuplicatiDialog"
+        xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
+        xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
+        xmlns:vm="clr-namespace:DocumentaleMarta.App.ViewModels"
+        mc:Ignorable="d"
+        d:DataContext="{d:DesignInstance Type=vm:DuplicatiViewModel}"
+        Title="File già presenti" Width="560" SizeToContent="Height" MaxHeight="620" ResizeMode="NoResize"
+        WindowStartupLocation="CenterOwner" ShowInTaskbar="False" Icon="/DocumentaleMarta.App;component/Risorse/Documentale.ico">
+    <Window.Resources>
+        <BooleanToVisibilityConverter x:Key="BoolToVis"/>
+    </Window.Resources>
+
+    <StackPanel Margin="24,20,24,18">
+        <TextBlock Text="{Binding Intestazione}" FontSize="16" FontWeight="SemiBold" TextWrapping="Wrap"/>
+        <TextBlock Text="Hanno lo stesso contenuto di documenti che hai già archiviato." Foreground="#666"
+                   TextWrapping="Wrap" Margin="0,4,0,10"/>
+
+        <ListBox ItemsSource="{Binding Righe}" MaxHeight="260" BorderBrush="#D0D0D0" HorizontalContentAlignment="Stretch"
+                 ScrollViewer.HorizontalScrollBarVisibility="Disabled">
+            <ListBox.ItemTemplate>
+                <DataTemplate>
+                    <StackPanel Margin="0,3">
+                        <TextBlock Text="{Binding NomeFile}" FontWeight="SemiBold" TextTrimming="CharacterEllipsis"/>
+                        <TextBlock Text="{Binding Dove}" Foreground="#555" FontSize="12" TextWrapping="Wrap"/>
+                    </StackPanel>
+                </DataTemplate>
+            </ListBox.ItemTemplate>
+        </ListBox>
+
+        <TextBlock Text="{Binding Domanda}" Margin="0,14,0,0"/>
+
+        <StackPanel Orientation="Horizontal" HorizontalAlignment="Right" Margin="0,12,0,0">
+            <Button Content="Allega comunque" Padding="14,4" Click="AllegaComunque_Click"/>
+            <Button x:Name="PulsanteSalta" Content="Salta i duplicati" Padding="14,4" Margin="8,0,0,0"
+                    Click="Salta_Click" Visibility="{Binding PuoSaltare, Converter={StaticResource BoolToVis}}"/>
+            <Button x:Name="PulsanteRifiuto" Content="{Binding TestoRifiuto}" Padding="14,4" Margin="8,0,0,0" IsCancel="True"/>
+        </StackPanel>
+    </StackPanel>
+</Window>

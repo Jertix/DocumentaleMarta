@@ -17,6 +17,7 @@ namespace DocumentaleMarta.Tests;
 /// Un nome sbagliato in un binding non dà errori di compilazione: qui lo si scopre dai messaggi di WPF.
 /// Se la variabile d'ambiente DOCUMENTALE_TEST_IMMAGINI indica una cartella, salva anche le immagini disegnate.
 /// </summary>
+[Collection("WPF")]
 public class VisteTests
 {
     private sealed class RaccoltaErroriBinding : TraceListener

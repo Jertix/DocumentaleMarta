@@ -1,6 +1,8 @@
+using System.IO;
 using System.Windows;
 using DocumentaleMarta.App.ViewModels;
 using DocumentaleMarta.App.Viste;
+using DocumentaleMarta.Core.Modelli;
 using Microsoft.Win32;
 
 namespace DocumentaleMarta.App.Servizi;
@@ -24,8 +26,23 @@ public class DialogService : IDialogService
     public bool Conferma(string titolo, string messaggio) =>
         Mostra(messaggio, titolo, MessageBoxButton.YesNo, MessageBoxImage.Warning, MessageBoxResult.No) == MessageBoxResult.Yes;
 
+    public bool Chiedi(string titolo, string messaggio) =>
+        Mostra(messaggio, titolo, MessageBoxButton.YesNo, MessageBoxImage.Question, MessageBoxResult.Yes) == MessageBoxResult.Yes;
+
     public void MostraErrore(string messaggio) =>
         Mostra(messaggio, TitoloApplicazione, MessageBoxButton.OK, MessageBoxImage.Error, MessageBoxResult.OK);
+
+    public void MostraMessaggio(string titolo, string messaggio) =>
+        Mostra(messaggio, titolo, MessageBoxButton.OK, MessageBoxImage.Information, MessageBoxResult.OK);
+
+    public string? SelezionaCartella(string titolo, string? percorsoIniziale)
+    {
+        var dialogo = new OpenFolderDialog { Title = titolo, Multiselect = false };
+        if (!string.IsNullOrWhiteSpace(percorsoIniziale) && Directory.Exists(percorsoIniziale))
+            dialogo.InitialDirectory = percorsoIniziale;
+        var confermato = Proprietaria is { } finestra ? dialogo.ShowDialog(finestra) : dialogo.ShowDialog();
+        return confermato == true ? dialogo.FolderName : null;
+    }
 
     public IReadOnlyList<string> SelezionaFile(string titolo)
     {
@@ -38,6 +55,12 @@ public class DialogService : IDialogService
         };
         var confermato = Proprietaria is { } finestra ? dialogo.ShowDialog(finestra) : dialogo.ShowDialog();
         return confermato == true ? dialogo.FileNames : [];
+    }
+
+    public SceltaDuplicati ChiediDuplicati(IReadOnlyList<DuplicatoTrovato> duplicati, int totaleFile)
+    {
+        var dialogo = new DuplicatiDialog(new DuplicatiViewModel(duplicati, totaleFile)) { Owner = Proprietaria };
+        return dialogo.ShowDialog() == true ? dialogo.Scelta : SceltaDuplicati.Annulla;
     }
 
     public bool MostraNuovaCartella(NuovaCartellaViewModel modello) =>

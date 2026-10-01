@@ -156,9 +156,10 @@ public class ArchivioFileService(string percorsoRadice, bool usaCestino = true) 
             File.Delete(percorso);
     }
 
-    private static string CalcolaHash(string percorso)
+    public string CalcolaHash(string percorsoAssoluto)
     {
-        using var stream = File.OpenRead(percorso);
+        // Come nella copia: un file aperto in Word o nel lettore PDF si legge lo stesso.
+        using var stream = new FileStream(percorsoAssoluto, FileMode.Open, FileAccess.Read, FileShare.ReadWrite);
         return Convert.ToHexString(SHA256.HashData(stream));
     }
 }

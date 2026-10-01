@@ -55,6 +55,7 @@
                   HeadersVisibility="Column" GridLinesVisibility="Horizontal"
                   HorizontalGridLinesBrush="#E4E4E4" BorderBrush="#D0D0D0" Background="White"
                   SelectionMode="Single" SelectionUnit="FullRow" RowHeaderWidth="0" RowHeight="36"
+                  SelectedItem="{Binding DocumentoSelezionato, Mode=TwoWay}"
                   RowStyle="{StaticResource RigaDocumento}">
             <DataGrid.Columns>
                 <DataGridTemplateColumn Width="30" CanUserSort="False">

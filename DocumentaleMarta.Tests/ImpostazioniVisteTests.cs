@@ -8,6 +8,7 @@ using DocumentaleMarta.Core.Servizi;
 namespace DocumentaleMarta.Tests;
 
 /// <summary>Prove di fumo sulle viste della fase 7: finestre Impostazioni e Informazioni, pannello "Ricerca avanzata", barra con i nuovi pulsanti.</summary>
+[Collection("WPF")]
 public class ImpostazioniVisteTests
 {
     private static ImpostazioniViewModel NuovoModello(ImpostazioniApp? impostazioni = null) =>

@@ -33,6 +33,7 @@
                 <RowDefinition Height="Auto"/>
                 <RowDefinition Height="Auto"/>
                 <RowDefinition Height="Auto"/>
+                <RowDefinition Height="Auto"/>
             </Grid.RowDefinitions>
 
             <TextBlock Grid.Row="0" Text="Titolo" Style="{StaticResource Etichetta}"/>
@@ -51,8 +52,15 @@
                         ToolTip="Rimuovi la scadenza"/>
             </StackPanel>
 
-            <TextBlock Grid.Row="3" Text="Completato" Style="{StaticResource Etichetta}" Margin="0,10,12,0"/>
+            <TextBlock Grid.Row="3" Text="Si ripete" Style="{StaticResource Etichetta}" Margin="0,10,12,0"/>
             <StackPanel Grid.Row="3" Grid.Column="1" Orientation="Horizontal" Margin="0,10,0,0">
+                <ComboBox ItemsSource="{Binding OpzioniRicorrenza}" DisplayMemberPath="Testo" SelectedValuePath="Valore"
+                          SelectedValue="{Binding Ricorrenza}" IsEnabled="{Binding HaScadenza}" Width="150"
+                          ToolTip="Serve una scadenza: quando completi la cartella ti propone la successiva"/>
+            </StackPanel>
+
+            <TextBlock Grid.Row="4" Text="Completato" Style="{StaticResource Etichetta}" Margin="0,10,12,0"/>
+            <StackPanel Grid.Row="4" Grid.Column="1" Orientation="Horizontal" Margin="0,10,0,0">
                 <CheckBox IsChecked="{Binding Completato}" VerticalAlignment="Center" Margin="0,0,24,0"/>
                 <TextBlock Text="Data completamento" Style="{StaticResource Etichetta}"/>
                 <DatePicker SelectedDate="{Binding DataCompletamento}" IsEnabled="{Binding Completato}" Width="150"/>

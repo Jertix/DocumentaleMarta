@@ -1,6 +1,7 @@
 using System.ComponentModel;
 using DocumentaleMarta.App.Servizi;
 using DocumentaleMarta.App.ViewModels;
+using DocumentaleMarta.Core.Modelli;
 
 namespace DocumentaleMarta.Tests;
 
@@ -11,8 +12,13 @@ public class FintoDialogService : IDialogService
     private readonly Queue<string[]> _selezioniFile = new();
     private readonly Queue<Action<NuovaCartellaViewModel>?> _nuoveCartelle = new();
     private readonly Queue<Action<ImpostazioniViewModel>?> _impostazioni = new();
+    private readonly Queue<SceltaDuplicati> _sceltaDuplicati = new();
 
     public bool RispostaConferma { get; set; } = true;
+
+    /// <summary>Risposta alle domande su una proposta (<see cref="Chiedi"/>); il messaggio finisce in <see cref="Domande"/>.</summary>
+    public bool RispostaDomanda { get; set; } = true;
+    public List<string> Domande { get; } = [];
     public List<string> Errori { get; } = [];
     public List<string> Conferme { get; } = [];
     public List<string> MessaggiChiesti { get; } = [];
@@ -37,6 +43,12 @@ public class FintoDialogService : IDialogService
 
     /// <summary>Prepara cosa farà l'utente nella prossima finestra "Impostazioni" (null = Annulla).</summary>
     public void RispondiImpostazioni(Action<ImpostazioniViewModel>? compila) => _impostazioni.Enqueue(compila);
+
+    /// <summary>Prepara la scelta dell'utente alla prossima domanda sui duplicati (se non c'è: "allega comunque").</summary>
+    public void RispondiDuplicati(SceltaDuplicati scelta) => _sceltaDuplicati.Enqueue(scelta);
+
+    /// <summary>Le domande sui duplicati fatte all'utente: quanti file erano duplicati su quanti scelti, e quali.</summary>
+    public List<(IReadOnlyList<DuplicatoTrovato> Duplicati, int TotaleFile)> DomandeDuplicati { get; } = [];
 
     /// <summary>Quante volte è stata aperta la finestra "Impostazioni".</summary>
     public int AperturaImpostazioni { get; private set; }
@@ -70,10 +82,41 @@ public class FintoDialogService : IDialogService
         return RispostaConferma;
     }
 
+    public bool Chiedi(string titolo, string messaggio)
+    {
+        Domande.Add(messaggio);
+        return RispostaDomanda;
+    }
+
     public void MostraErrore(string messaggio) => Errori.Add(messaggio);
+
+    /// <summary>I messaggi informativi mostrati (titolo, testo).</summary>
+    public List<(string Titolo, string Messaggio)> Messaggi { get; } = [];
+
+    public void MostraMessaggio(string titolo, string messaggio) => Messaggi.Add((titolo, messaggio));
+
+    private readonly Queue<string?> _cartelle = new();
+
+    /// <summary>Prepara la cartella che l'utente sceglierà nella prossima finestra di scelta (null = annulla).</summary>
+    public void RispondiCartella(string? percorso) => _cartelle.Enqueue(percorso);
+
+    /// <summary>I titoli delle finestre di scelta cartella aperte.</summary>
+    public List<string> SceltaCartellaChiesta { get; } = [];
+
+    public string? SelezionaCartella(string titolo, string? percorsoIniziale)
+    {
+        SceltaCartellaChiesta.Add(titolo);
+        return _cartelle.Count > 0 ? _cartelle.Dequeue() : null;
+    }
 
     public IReadOnlyList<string> SelezionaFile(string titolo) =>
         _selezioniFile.Count > 0 ? _selezioniFile.Dequeue() : [];
+
+    public SceltaDuplicati ChiediDuplicati(IReadOnlyList<DuplicatoTrovato> duplicati, int totaleFile)
+    {
+        DomandeDuplicati.Add((duplicati, totaleFile));
+        return _sceltaDuplicati.Count > 0 ? _sceltaDuplicati.Dequeue() : SceltaDuplicati.AllegaComunque;
+    }
 
     public bool MostraImpostazioni(ImpostazioniViewModel modello)
     {

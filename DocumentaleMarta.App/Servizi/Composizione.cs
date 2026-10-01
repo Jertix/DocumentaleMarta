@@ -24,6 +24,7 @@ public static class Composizione
         collezione.AddSingleton<IArchivioFileService>(new ArchivioFileService(impostazioni.PercorsoRadice));
         collezione.AddSingleton<IDbContextFactory<AppDbContext>>(new AppDbContextFactory(ArchivioDatabase.CreaOpzioni(percorsoDatabase)));
         collezione.AddSingleton<IArchivioService, ArchivioService>();
+        collezione.AddSingleton<IBackupService, BackupService>();
 
         // Lettura del testo dei documenti in background e ricerca nel testo.
         var ocr = new OcrWindows();
@@ -39,6 +40,7 @@ public static class Composizione
 
         collezione.AddSingleton<IDialogService, DialogService>();
         collezione.AddSingleton<IShellService, ShellService>();
+        collezione.AddSingleton<IGeneratoreAnteprima, GeneratoreAnteprima>();
         collezione.AddSingleton<MainViewModel>();
         collezione.AddSingleton<MainWindow>();
         return collezione.BuildServiceProvider();

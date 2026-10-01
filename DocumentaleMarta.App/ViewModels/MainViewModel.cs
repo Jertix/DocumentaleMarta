@@ -17,6 +17,8 @@ namespace DocumentaleMarta.App.ViewModels;
 /// <param name="monitor">Lo stato della lettura dei documenti in background, per la barra in fondo alla finestra.</param>
 /// <param name="ocr">Serve solo a spiegare perché manca il riconoscimento del testo.</param>
 /// <param name="servizioImpostazioni">Salva le modifiche della finestra "Impostazioni"; senza, la finestra non compare.</param>
+/// <param name="servizioBackup">Fa il backup dell'archivio; senza, il pulsante "Backup" e il promemoria non compaiono.</param>
+/// <param name="generatoreAnteprima">Disegna l'anteprima dei documenti selezionati; senza, il pannello non compare.</param>
 public partial class MainViewModel(
     IArchivioService archivio,
     IArchivioFileService files,
@@ -27,10 +29,20 @@ public partial class MainViewModel(
     IRicercaService? ricerca = null,
     IMonitorIndicizzazione? monitor = null,
     IOcr? ocr = null,
-    ImpostazioniService? servizioImpostazioni = null) : ObservableObject
+    ImpostazioniService? servizioImpostazioni = null,
+    IBackupService? servizioBackup = null,
+    IGeneratoreAnteprima? generatoreAnteprima = null) : ObservableObject
 {
     // Non è readonly: cambiando le soglie nelle impostazioni il servizio viene ricreato con i valori nuovi.
     private AlertService _avvisi = avvisi ?? new AlertService(impostazioni);
+
+    private readonly ControlloDuplicati _duplicati = new(archivio, dialog);
+
+    /// <summary>Il pannello con l'anteprima del documento selezionato; null se non c'è il generatore.</summary>
+    public AnteprimaViewModel? Anteprima { get; } =
+        generatoreAnteprima is null ? null : new AnteprimaViewModel(generatoreAnteprima, files);
+
+    public bool AnteprimaDisponibile => Anteprima is not null;
 
     private bool _caricamentoInCorso;
     private bool _ripristinandoSelezione;
@@ -81,6 +93,7 @@ public partial class MainViewModel(
 
     partial void OnNodoSelezionatoChanged(NodoAlberoViewModel? value)
     {
+        Anteprima?.Svuota(); // il documento che si vedeva era della schermata precedente
         FormCartella = null;
         ElencoDocumenti = null;
         ElencoScadenze = null;
@@ -177,6 +190,8 @@ public partial class MainViewModel(
                 RicalcolaAvvisi();
             };
             form.RicaricaRichiesta += () => _ = RicaricaSicuraAsync();
+            form.CartellaSuccessivaCreata += () => _ = RicaricaSicuraAsync();
+            form.DocumentoSelezionatoCambiato += documento => Anteprima?.Mostra(documento);
             FormCartella = form;
         }
         catch (Exception ex)
@@ -347,6 +362,7 @@ public partial class MainViewModel(
             Radici.Add(radice);
             RicalcolaAvvisi();
             Filtri.AggiornaAree(radice.Aree.Select(a => (a.Id, a.Nome)));
+            AggiornaPromemoriaBackup();
         }
         finally
         {
@@ -707,6 +723,8 @@ public partial class MainViewModel(
     /// <summary>Gli eventi delle griglie (doppio clic, eliminazione...) sono gli stessi per documenti di un'area e risultati di ricerca.</summary>
     private void CollegaElenco(ElencoDocumentiViewModel elenco)
     {
+        Anteprima?.Svuota(); // l'elenco precedente (o i risultati vecchi) non c'è più
+        elenco.DocumentoSelezionatoCambiato += documento => Anteprima?.Mostra(documento);
         elenco.VaiAllaCartellaRichiesto += VaiAllaCartella;
         elenco.DocumentoEliminato += OnDocumentoEliminato;
         elenco.RicaricaRichiesta += () => _ = RicaricaSicuraAsync();
@@ -803,7 +821,11 @@ public partial class MainViewModel(
         {
             try
             {
-                var creata = await archivio.CreaCartellaConDatiAsync(area.Id, modello.Dati, modello.PercorsiFile);
+                // Se l'utente rinuncia davanti ai duplicati la finestra si riapre: può togliere il file o allegarlo comunque.
+                if (await _duplicati.FiltraAsync(modello.PercorsiFile) is not { } daAllegare)
+                    continue;
+
+                var creata = await archivio.CreaCartellaConDatiAsync(area.Id, modello.Dati, daAllegare);
                 await RicaricaAsync(NodoAlberoViewModel.CreaChiave(TipoNodo.Cartella, creata.Id));
                 return;
             }
@@ -967,6 +989,144 @@ public partial class MainViewModel(
             $"{RuntimeInformation.FrameworkDescription} su {RuntimeInformation.OSDescription}"));
     }
 
+    // ---------- Backup ----------
+
+    /// <summary>Il pulsante "Backup" compare solo se c'è il servizio che lo esegue.</summary>
+    public bool BackupDisponibile => servizioBackup is not null;
+
+    /// <summary>"Backup in corso… 12 file" mentre il backup lavora (nella barra in fondo); vuoto altrimenti.</summary>
+    [ObservableProperty]
+    private string _testoBackup = "";
+
+    private bool _promemoriaBackupRimandato;
+    private bool _backupInCorso;
+
+    /// <summary>
+    /// Cosa dice il promemoria sotto la barra degli strumenti: il backup non si fa da troppo tempo (o non si è mai fatto)
+    /// e nell'archivio c'è qualcosa da perdere. Vuoto se non c'è nulla da ricordare.
+    /// </summary>
+    public string TestoPromemoriaBackup
+    {
+        get
+        {
+            if (servizioBackup is null || Radice is not { NumeroDocumenti: > 0 })
+                return "";
+            if (impostazioni.UltimoBackup is not { } ultimo)
+                return "Non hai ancora fatto nessun backup dei tuoi documenti.";
+
+            var giorni = _avvisi.Oggi.DayNumber - DateOnly.FromDateTime(ultimo).DayNumber;
+            return giorni >= impostazioni.BackupPromemoriaGiorni
+                ? $"L'ultimo backup risale a {Conta(giorni, "giorno", "giorni")} fa."
+                : "";
+        }
+    }
+
+    /// <summary>Il promemoria si vede, a meno che l'utente lo abbia rimandato (fino alla prossima apertura del programma).</summary>
+    public bool PromemoriaBackupVisibile => !_promemoriaBackupRimandato && TestoPromemoriaBackup.Length > 0;
+
+    private void AggiornaPromemoriaBackup()
+    {
+        OnPropertyChanged(nameof(TestoPromemoriaBackup));
+        OnPropertyChanged(nameof(PromemoriaBackupVisibile));
+    }
+
+    [RelayCommand]
+    private void RimandaPromemoriaBackup()
+    {
+        _promemoriaBackupRimandato = true;
+        AggiornaPromemoriaBackup();
+    }
+
+    /// <summary>
+    /// Salva tutto l'archivio (documenti e database) in un file ZIP nella cartella dei backup. La prima volta chiede dove
+    /// metterlo e se ne ricorda; poi basta un clic. Il pulsante resta spento finché il backup lavora.
+    /// </summary>
+    [RelayCommand(CanExecute = nameof(BackupDisponibile))]
+    private async Task EseguiBackupAsync()
+    {
+        // Il pulsante si spegne da solo mentre il backup lavora; qui si evita comunque di farne due insieme.
+        if (servizioBackup is null || _backupInCorso)
+            return;
+
+        var cartella = impostazioni.CartellaBackup;
+        if (string.IsNullOrWhiteSpace(cartella))
+        {
+            cartella = dialog.SelezionaCartella("Scegli la cartella in cui salvare i backup", null);
+            if (cartella is null)
+                return;
+        }
+
+        _backupInCorso = true;
+        TestoBackup = "Backup in corso…";
+        try
+        {
+            var progresso = new ProgressoSuInterfaccia(
+                n => TestoBackup = $"Backup in corso… {Conta(n, "file", "file")}", SynchronizationContext.Current);
+            var esito = await servizioBackup.CreaBackupAsync(cartella, progresso);
+
+            // Solo a backup riuscito la cartella si ricorda (una scelta sbagliata non resta nelle impostazioni).
+            impostazioni.CartellaBackup = cartella;
+            impostazioni.UltimoBackup = esito.Data;
+            var avviso = SalvaImpostazioniDopoBackup();
+
+            dialog.MostraMessaggio(
+                "Backup completato",
+                $"Il backup è stato creato:\n{esito.PercorsoZip}\n\n"
+                + $"{Conta(esito.NumeroFile, "file", "file")} salvati ({FormatiTesto.Dimensione(esito.Dimensione)}).\n\n"
+                + "Per ripristinarlo, apri il file ZIP: dentro c'è un file con le istruzioni."
+                + avviso);
+        }
+        catch (ArchivioException ex)
+        {
+            dialog.MostraErrore(ex.Message);
+        }
+        catch (Exception ex) when (ex is IOException or UnauthorizedAccessException)
+        {
+            dialog.MostraErrore(
+                $"Il backup non è riuscito: {ex.Message}\n\n"
+                + "Controlla che la cartella dei backup sia raggiungibile (per esempio che il disco esterno sia collegato) "
+                + "e che ci sia spazio libero. Puoi sceglierne un'altra dalle Impostazioni. Non è stato creato nessun file.");
+        }
+        catch (OperationCanceledException)
+        {
+            // Backup interrotto (chiusura del programma): nessun messaggio.
+        }
+        finally
+        {
+            _backupInCorso = false;
+            TestoBackup = "";
+            AggiornaPromemoriaBackup();
+        }
+    }
+
+    /// <summary>Salva nel file delle impostazioni la cartella e la data dell'ultimo backup. Restituisce un avviso da mostrare se non ci riesce.</summary>
+    private string SalvaImpostazioniDopoBackup()
+    {
+        if (servizioImpostazioni is null)
+            return "";
+        try
+        {
+            servizioImpostazioni.Salva(impostazioni);
+            return "";
+        }
+        catch (Exception ex) when (ex is IOException or UnauthorizedAccessException)
+        {
+            return $"\n\nAttenzione: non è stato possibile salvare la data del backup nelle impostazioni ({ex.Message}).";
+        }
+    }
+
+    /// <summary>Riporta l'avanzamento sul thread dell'interfaccia (i file vengono copiati in background).</summary>
+    private sealed class ProgressoSuInterfaccia(Action<int> aggiorna, SynchronizationContext? contesto) : IProgress<int>
+    {
+        public void Report(int valore)
+        {
+            if (contesto is null)
+                aggiorna(valore);
+            else
+                contesto.Post(_ => aggiorna(valore), null);
+        }
+    }
+
     // ---------- Trascinamento sull'albero ----------
 
     /// <summary>
@@ -987,7 +1147,10 @@ public partial class MainViewModel(
         if (file.Count == 0)
             return;
 
-        await archivio.AllegaDocumentiAsync(cartellaId, file);
+        if (await _duplicati.FiltraAsync(file) is not { } daAllegare)
+            return;
+
+        await archivio.AllegaDocumentiAsync(cartellaId, daAllegare);
         await RicaricaAsync();
     });
 

@@ -78,7 +78,31 @@ public class ImpostazioniApp
             errori.Add("La soglia arancione deve essere maggiore della soglia rossa.");
         if (BackupPromemoriaGiorni < 1)
             errori.Add("Il promemoria del backup deve essere di almeno 1 giorno.");
+        if (ErroreCartellaBackup() is { } erroreBackup)
+            errori.Add(erroreBackup);
 
         return errori;
+    }
+
+    /// <summary>La cartella dei backup (se indicata) deve essere un percorso valido e stare fuori dall'archivio.</summary>
+    private string? ErroreCartellaBackup()
+    {
+        if (string.IsNullOrWhiteSpace(CartellaBackup) || string.IsNullOrWhiteSpace(PercorsoRadice))
+            return null;
+
+        string backup, radice;
+        try
+        {
+            backup = Path.TrimEndingDirectorySeparator(Path.GetFullPath(CartellaBackup));
+            radice = Path.TrimEndingDirectorySeparator(Path.GetFullPath(PercorsoRadice));
+        }
+        catch (Exception ex) when (ex is ArgumentException or NotSupportedException or PathTooLongException)
+        {
+            return "La cartella dei backup non è un percorso valido.";
+        }
+
+        var dentro = backup.Equals(radice, StringComparison.OrdinalIgnoreCase)
+                     || backup.StartsWith(radice + Path.DirectorySeparatorChar, StringComparison.OrdinalIgnoreCase);
+        return dentro ? "La cartella dei backup non può stare dentro l'archivio: scegline una fuori." : null;
     }
 }

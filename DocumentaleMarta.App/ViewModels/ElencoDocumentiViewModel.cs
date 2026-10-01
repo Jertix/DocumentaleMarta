@@ -10,7 +10,7 @@ namespace DocumentaleMarta.App.ViewModels;
 /// <summary>Una riga della griglia di radice o area: un documento con la cartella e l'area a cui appartiene.</summary>
 public partial class DocumentoElencoViewModel(
     DocumentoElenco dati, bool fileMancante, StatoAvviso avviso, ElencoDocumentiViewModel elenco, string? trovato = null)
-    : ObservableObject, IOrigineDocumento
+    : ObservableObject, IOrigineDocumento, IDocumentoAnteprima
 {
     public int Id { get; } = dati.Id;
     public int CartellaId { get; } = dati.CartellaId;
@@ -117,6 +117,24 @@ public class ElencoDocumentiViewModel
 
     public ObservableCollection<DocumentoElencoViewModel> Documenti { get; } = [];
 
+    private DocumentoElencoViewModel? _documentoSelezionato;
+
+    /// <summary>La riga selezionata nella griglia: se ne mostra l'anteprima.</summary>
+    public DocumentoElencoViewModel? DocumentoSelezionato
+    {
+        get => _documentoSelezionato;
+        set
+        {
+            if (ReferenceEquals(_documentoSelezionato, value))
+                return;
+            _documentoSelezionato = value;
+            DocumentoSelezionatoCambiato?.Invoke(value);
+        }
+    }
+
+    /// <summary>È cambiato il documento selezionato (null = nessuno).</summary>
+    public event Action<IDocumentoAnteprima?>? DocumentoSelezionatoCambiato;
+
     /// <summary>L'utente ha fatto doppio clic su un documento: serve selezionare la sua cartella (id cartella).</summary>
     public event Action<int>? VaiAllaCartellaRichiesto;
 
@@ -172,6 +190,8 @@ public class ElencoDocumentiViewModel
         {
             case EsitoEliminazione.Eliminato:
                 Documenti.Remove(documento);
+                if (ReferenceEquals(DocumentoSelezionato, documento))
+                    DocumentoSelezionato = null;
                 DocumentoEliminato?.Invoke(documento.CartellaId);
                 break;
             case EsitoEliminazione.NonPiuEsistente:

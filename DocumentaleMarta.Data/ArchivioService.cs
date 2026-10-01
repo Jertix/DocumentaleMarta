@@ -258,6 +258,48 @@ public class ArchivioService(
         }
     }
 
+    public async Task<IReadOnlyList<DuplicatoTrovato>> TrovaDuplicatiAsync(IReadOnlyList<string> percorsiFile)
+    {
+        if (percorsiFile.Count == 0)
+            return [];
+
+        // Prima le impronte, fuori dal thread dell'interfaccia: i file possono essere grandi.
+        var impronte = await Task.Run(() =>
+        {
+            var risultato = new List<(string Percorso, string Hash)>();
+            foreach (var percorso in percorsiFile)
+            {
+                try { risultato.Add((percorso, files.CalcolaHash(percorso))); }
+                catch (Exception ex) when (ex is IOException or UnauthorizedAccessException) { }
+            }
+            return risultato;
+        });
+        if (impronte.Count == 0)
+            return [];
+
+        await using var db = await dbFactory.CreateDbContextAsync();
+        var hash = impronte.Select(i => i.Hash).Distinct().ToList();
+        var presenti = await db.Documenti.AsNoTracking()
+            .Where(d => hash.Contains(d.Hash))
+            .Select(d => new
+            {
+                d.Hash, d.Id, d.NomeFile, d.CartellaId, TitoloCartella = d.Cartella.Titolo, NomeArea = d.Cartella.Area.Nome,
+                d.DataCaricamento
+            })
+            .ToListAsync();
+
+        return impronte
+            .Select(i => new DuplicatoTrovato(
+                i.Percorso,
+                Path.GetFileName(i.Percorso),
+                presenti.Where(p => p.Hash == i.Hash)
+                    .OrderBy(p => p.DataCaricamento).ThenBy(p => p.Id)
+                    .Select(p => new DocumentoGiaArchiviato(p.Id, p.NomeFile, p.CartellaId, p.TitoloCartella, p.NomeArea))
+                    .ToList()))
+            .Where(d => d.GiaArchiviati.Count > 0)
+            .ToList();
+    }
+
     public async Task EliminaDocumentoAsync(int documentoId)
     {
         await using var db = await dbFactory.CreateDbContextAsync();
@@ -417,12 +459,16 @@ public class ArchivioService(
     private static DocumentoDettaglio ADettaglio(Documento d) =>
         new(d.Id, d.NomeFile, d.Estensione, d.Dimensione, d.DataCaricamento, d.PercorsoRelativo);
 
-    /// <summary>Copia i dati modificabili sulla cartella. Una cartella non completata non ha data di completamento.</summary>
+    /// <summary>
+    /// Copia i dati modificabili sulla cartella. Una cartella non completata non ha data di completamento;
+    /// senza una scadenza la ricorrenza non ha senso e si azzera.
+    /// </summary>
     private static void ApplicaDati(Cartella cartella, DatiCartella dati)
     {
         cartella.Titolo = dati.Titolo;
         cartella.Descrizione = string.IsNullOrWhiteSpace(dati.Descrizione) ? null : dati.Descrizione;
         cartella.DataScadenza = dati.DataScadenza;
+        cartella.Ricorrenza = dati.DataScadenza is null ? Ricorrenza.Nessuna : dati.Ricorrenza;
         cartella.Completato = dati.Completato;
         cartella.DataCompletamento = dati.Completato ? dati.DataCompletamento : null;
     }
@@ -434,7 +480,7 @@ public class ArchivioService(
             .Select(c => new
             {
                 c.Id, c.AreaId, NomeArea = c.Area.Nome, c.PercorsoRelativo,
-                c.Titolo, c.Descrizione, c.DataScadenza, c.Completato, c.DataCompletamento,
+                c.Titolo, c.Descrizione, c.DataScadenza, c.Ricorrenza, c.Completato, c.DataCompletamento,
                 Documenti = c.Documenti
                     .OrderBy(d => d.DataCaricamento).ThenBy(d => d.Id)
                     .Select(d => new { d.Id, d.NomeFile, d.Estensione, d.Dimensione, d.DataCaricamento, d.PercorsoRelativo })
@@ -446,7 +492,7 @@ public class ArchivioService(
             ? null
             : new CartellaDettaglio(
                 c.Id, c.AreaId, c.NomeArea, c.PercorsoRelativo,
-                new DatiCartella(c.Titolo, c.Descrizione, c.DataScadenza, c.Completato, c.DataCompletamento),
+                new DatiCartella(c.Titolo, c.Descrizione, c.DataScadenza, c.Completato, c.DataCompletamento, c.Ricorrenza),
                 c.Documenti.Select(d => new DocumentoDettaglio(d.Id, d.NomeFile, d.Estensione, d.Dimensione, d.DataCaricamento, d.PercorsoRelativo)).ToList());
     }
 

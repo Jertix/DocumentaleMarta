@@ -21,8 +21,29 @@ public sealed class CartellaTemporanea : IDisposable
 
     public void Dispose()
     {
-        SqliteConnection.ClearAllPools();
+        RilasciaDatabaseInPool();
         try { Directory.Delete(Percorso, recursive: true); }
         catch (IOException) { /* un antivirus può trattenere il file per un attimo: il sistema pulirà la cartella temp */ }
+    }
+
+    /// <summary>
+    /// Chiude le connessioni in pool dei soli database di questa cartella. <c>ClearAllPools</c> toccherebbe anche quelle
+    /// dei test che girano in parallelo e li farebbe fallire a caso ("database is locked", "disposed object").
+    /// </summary>
+    private void RilasciaDatabaseInPool()
+    {
+        try
+        {
+            foreach (var file in Directory.EnumerateFiles(Percorso, "*.db", SearchOption.AllDirectories))
+            {
+                // Il pool si individua dalla stringa di connessione: deve essere quella usata da ArchivioDatabase.CreaOpzioni.
+                using var connessione = new SqliteConnection(new SqliteConnectionStringBuilder { DataSource = file }.ToString());
+                SqliteConnection.ClearPool(connessione);
+            }
+        }
+        catch (DirectoryNotFoundException)
+        {
+            // Il test ha già cancellato la cartella.
+        }
     }
 }

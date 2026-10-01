@@ -7,6 +7,7 @@ using DocumentaleMarta.Core.Servizi;
 
 namespace DocumentaleMarta.Tests;
 
+[Collection("WPF")]
 public class TrascinamentoFunzioniTests : IDisposable
 {
     private readonly CartellaTemporanea _tmp = new();

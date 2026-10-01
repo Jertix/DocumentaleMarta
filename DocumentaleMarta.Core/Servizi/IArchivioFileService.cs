@@ -34,6 +34,9 @@ public interface IArchivioFileService
     /// <summary>Copia un file esterno nella cartella indicata. L'originale non viene toccato.</summary>
     FileArchiviato CopiaFile(string percorsoSorgente, string cartellaRelativa);
 
+    /// <summary>SHA-256 del contenuto di un file qualsiasi (anche fuori dall'archivio), in esadecimale. Lo si legge anche se è aperto in un altro programma.</summary>
+    string CalcolaHash(string percorsoAssoluto);
+
     /// <summary>Sposta un file dell'archivio in un'altra cartella e restituisce il nuovo percorso relativo.</summary>
     string SpostaFile(string percorsoRelativo, string cartellaDestinazioneRelativa);
 

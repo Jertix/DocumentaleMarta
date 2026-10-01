@@ -4,6 +4,7 @@ using System.Windows.Media.Imaging;
 
 namespace DocumentaleMarta.Tests;
 
+[Collection("WPF")]
 public class IconaTests
 {
     private static readonly Uri UriIcone = new("/DocumentaleMarta.App;component/Viste/Icone.xaml", UriKind.Relative);

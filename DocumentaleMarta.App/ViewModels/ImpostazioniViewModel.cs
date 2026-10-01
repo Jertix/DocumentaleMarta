@@ -28,6 +28,8 @@ public partial class ImpostazioniViewModel : ObservableObject
         _riepilogoAvvio = attuali.RiepilogoAvvio;
         _sogliaArancione = attuali.SogliaArancioneGiorni.ToString(CultureInfo.InvariantCulture);
         _sogliaRossa = attuali.SogliaRossaGiorni.ToString(CultureInfo.InvariantCulture);
+        _cartellaBackup = attuali.CartellaBackup ?? "";
+        _promemoriaBackup = attuali.BackupPromemoriaGiorni.ToString(CultureInfo.InvariantCulture);
     }
 
     [ObservableProperty] private string _ragioneSociale;
@@ -44,6 +46,17 @@ public partial class ImpostazioniViewModel : ObservableObject
 
     [ObservableProperty] private string _sogliaRossa;
 
+    /// <summary>Dove si salvano i backup; vuoto = non ancora scelta (la si sceglie al primo backup).</summary>
+    [ObservableProperty] private string _cartellaBackup;
+
+    /// <summary>Dopo quanti giorni dall'ultimo backup il programma lo ricorda, come testo.</summary>
+    [ObservableProperty] private string _promemoriaBackup;
+
+    /// <summary>Quando è stato fatto l'ultimo backup (informazione, non si modifica da qui).</summary>
+    public string UltimoBackupTesto => _partenza.UltimoBackup is { } data
+        ? $"Ultimo backup: {data:dd/MM/yyyy} alle {data:HH:mm}"
+        : "Non hai ancora fatto nessun backup.";
+
     /// <summary>Dove sta l'archivio: non si cambia da qui (spostarlo vuol dire spostare anche i file).</summary>
     public string PercorsoRadice => _partenza.PercorsoRadice;
 
@@ -59,8 +72,10 @@ public partial class ImpostazioniViewModel : ObservableObject
                 return "La soglia arancione deve essere un numero intero di giorni.";
             if (!TryLeggiGiorni(SogliaRossa, out var rossa))
                 return "La soglia rossa deve essere un numero intero di giorni.";
+            if (!TryLeggiGiorni(PromemoriaBackup, out var promemoria))
+                return "I giorni del promemoria del backup devono essere un numero intero.";
 
-            var problemi = Costruisci(arancione, rossa).Valida();
+            var problemi = Costruisci(arancione, rossa, promemoria).Valida();
             return problemi.Count > 0 ? problemi[0] : "";
         }
     }
@@ -80,12 +95,13 @@ public partial class ImpostazioniViewModel : ObservableObject
     /// <summary>Le impostazioni con i valori scelti (da chiamare quando <see cref="PuoSalvare"/> è vero).</summary>
     public ImpostazioniApp Costruisci()
     {
-        if (!TryLeggiGiorni(SogliaArancione, out var arancione) || !TryLeggiGiorni(SogliaRossa, out var rossa))
-            throw new InvalidOperationException("Le soglie non sono numeri validi.");
-        return Costruisci(arancione, rossa);
+        if (!TryLeggiGiorni(SogliaArancione, out var arancione) || !TryLeggiGiorni(SogliaRossa, out var rossa)
+            || !TryLeggiGiorni(PromemoriaBackup, out var promemoria))
+            throw new InvalidOperationException("I giorni indicati non sono numeri validi.");
+        return Costruisci(arancione, rossa, promemoria);
     }
 
-    private ImpostazioniApp Costruisci(int arancione, int rossa)
+    private ImpostazioniApp Costruisci(int arancione, int rossa, int promemoria)
     {
         var risultato = _partenza.Clona();
         risultato.Azienda.RagioneSociale = RagioneSociale.Trim();
@@ -98,6 +114,8 @@ public partial class ImpostazioniViewModel : ObservableObject
         risultato.RiepilogoAvvio = RiepilogoAvvio;
         risultato.SogliaArancioneGiorni = arancione;
         risultato.SogliaRossaGiorni = rossa;
+        risultato.CartellaBackup = string.IsNullOrWhiteSpace(CartellaBackup) ? null : CartellaBackup.Trim();
+        risultato.BackupPromemoriaGiorni = promemoria;
         return risultato;
     }
 

@@ -100,6 +100,27 @@
                     </Grid>
                 </GroupBox>
 
+                <GroupBox Header="Backup">
+                    <StackPanel>
+                        <TextBlock Text="Cartella in cui salvare i backup" Foreground="#555" Margin="0,0,0,2"/>
+                        <DockPanel>
+                            <Button DockPanel.Dock="Right" Content="Scegli…" Padding="12,3" Margin="6,0,0,0" Click="ScegliCartellaBackup_Click"/>
+                            <TextBox Text="{Binding CartellaBackup, UpdateSourceTrigger=PropertyChanged}" Padding="4,3"
+                                     AutomationProperties.Name="Cartella dei backup"/>
+                        </DockPanel>
+                        <TextBlock Foreground="#888" FontSize="12" TextWrapping="Wrap" Margin="0,4,0,0"
+                                   Text="Meglio un altro disco (una chiavetta o un disco esterno): così, se il PC si rompe, i backup si salvano. Non può stare dentro la cartella dell'archivio."/>
+
+                        <StackPanel Orientation="Horizontal" Margin="0,12,0,0">
+                            <TextBlock Text="Ricordami il backup dopo" Style="{StaticResource Etichetta}"/>
+                            <TextBox Text="{Binding PromemoriaBackup, UpdateSourceTrigger=PropertyChanged}" Width="60" Padding="4,3"
+                                     HorizontalContentAlignment="Right" MaxLength="4" AutomationProperties.Name="Giorni per il promemoria del backup"/>
+                            <TextBlock Text="giorni dall'ultimo" Margin="8,0,0,0" VerticalAlignment="Center"/>
+                        </StackPanel>
+                        <TextBlock Text="{Binding UltimoBackupTesto}" Foreground="#555" Margin="0,8,0,0"/>
+                    </StackPanel>
+                </GroupBox>
+
                 <GroupBox Header="Archivio">
                     <StackPanel>
                         <Grid>

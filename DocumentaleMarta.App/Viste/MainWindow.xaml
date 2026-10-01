@@ -7,7 +7,7 @@
         xmlns:viste="clr-namespace:DocumentaleMarta.App.Viste"
         mc:Ignorable="d"
         d:DataContext="{d:DesignInstance Type=vm:MainViewModel}"
-        Title="Documentale" Width="1100" Height="700" MinWidth="840" MinHeight="480"
+        Title="Documentale" Width="1180" Height="700" MinWidth="960" MinHeight="480"
         Icon="/DocumentaleMarta.App;component/Risorse/Documentale.ico">
     <Window.Resources>
         <ResourceDictionary>
@@ -74,6 +74,9 @@
         <!-- Piè di pagina: dati della ditta, letti dal file delle impostazioni -->
         <Border DockPanel.Dock="Bottom" Background="#F3F3F3" BorderBrush="#D0D0D0" BorderThickness="0,1,0,0" Padding="12,6">
             <DockPanel>
+                <!-- Backup in corso (vuoto quando non c'è) -->
+                <TextBlock DockPanel.Dock="Right" Text="{Binding TestoBackup}" Foreground="#1F5F99" FontSize="12"
+                           Margin="16,0,0,0" FontWeight="SemiBold"/>
                 <!-- Stato della lettura dei documenti in background (vuoto quando non c'è nulla da dire) -->
                 <TextBlock DockPanel.Dock="Right" Text="{Binding TestoIndicizzazione}" ToolTip="{Binding DettaglioIndicizzazione}"
                            Foreground="#555" FontSize="12" Margin="16,0,0,0" TextTrimming="CharacterEllipsis"/>
@@ -125,6 +128,9 @@
 
                 <!-- Impostazioni e informazioni, all'estremo destro -->
                 <StackPanel DockPanel.Dock="Right" Orientation="Horizontal" Margin="10,0,0,0">
+                    <ToggleButton Content="Anteprima" IsChecked="{Binding Anteprima.Visibile}" Padding="12,4" Margin="0,0,8,0"
+                                  ToolTip="Mostra o nasconde l'anteprima del documento selezionato"
+                                  Visibility="{Binding AnteprimaDisponibile, Converter={StaticResource BoolToVis}}"/>
                     <Button Content="&#xE713;" Command="{Binding ApriImpostazioniCommand}" Style="{StaticResource PulsanteBarra}"
                             ToolTip="Impostazioni" AutomationProperties.Name="Impostazioni"
                             Visibility="{Binding ImpostazioniDisponibili, Converter={StaticResource BoolToVis}}"/>
@@ -135,7 +141,23 @@
                 <StackPanel Orientation="Horizontal">
                     <Button Content="Nuova area" Command="{Binding NuovaAreaCommand}" Padding="12,4"/>
                     <Button Content="Nuova cartella" Command="{Binding NuovaCartellaCommand}" Padding="12,4" Margin="8,0,0,0"/>
+                    <Button Content="Backup" Command="{Binding EseguiBackupCommand}" Padding="12,4" Margin="20,0,0,0"
+                            ToolTip="Salva una copia di tutto l'archivio (documenti e database) in un file ZIP"
+                            Visibility="{Binding BackupDisponibile, Converter={StaticResource BoolToVis}}"/>
                 </StackPanel>
+            </DockPanel>
+        </Border>
+
+        <!-- Promemoria del backup: compare solo se è passato troppo tempo -->
+        <Border DockPanel.Dock="Top" Padding="12,6" Background="#FFF4CE" BorderBrush="#E6D08A" BorderThickness="0,0,0,1"
+                Visibility="{Binding PromemoriaBackupVisibile, Converter={StaticResource BoolToVis}}">
+            <DockPanel>
+                <Button DockPanel.Dock="Right" Content="Più tardi" Command="{Binding RimandaPromemoriaBackupCommand}"
+                        Padding="12,2" Margin="8,0,0,0"/>
+                <Button DockPanel.Dock="Right" Content="Fai il backup ora" Command="{Binding EseguiBackupCommand}" Padding="12,2"/>
+                <TextBlock Text="&#xE7BA;" FontFamily="{StaticResource FontIcone}" Foreground="#9A6700" FontSize="15"
+                           VerticalAlignment="Center" Margin="0,0,8,0"/>
+                <TextBlock Text="{Binding TestoPromemoriaBackup}" VerticalAlignment="Center" TextTrimming="CharacterEllipsis"/>
             </DockPanel>
         </Border>
 
@@ -185,9 +207,10 @@
 
         <Grid>
             <Grid.ColumnDefinitions>
-                <ColumnDefinition Width="300" MinWidth="200"/>
+                <ColumnDefinition Width="270" MinWidth="200"/>
                 <ColumnDefinition Width="Auto"/>
                 <ColumnDefinition Width="*" MinWidth="300"/>
+                <ColumnDefinition Width="Auto"/>
             </Grid.ColumnDefinitions>
 
             <!-- Albero -->
@@ -273,6 +296,20 @@
                     </viste:CartellaView.Style>
                 </viste:CartellaView>
             </Grid>
+
+            <!-- Anteprima del documento selezionato: si vede solo se il pannello è aperto -->
+            <viste:AnteprimaView Grid.Column="3" Width="300" DataContext="{Binding Anteprima}">
+                <viste:AnteprimaView.Style>
+                    <Style TargetType="viste:AnteprimaView">
+                        <Setter Property="Visibility" Value="Collapsed"/>
+                        <Style.Triggers>
+                            <DataTrigger Binding="{Binding Visibile}" Value="True">
+                                <Setter Property="Visibility" Value="Visible"/>
+                            </DataTrigger>
+                        </Style.Triggers>
+                    </Style>
+                </viste:AnteprimaView.Style>
+            </viste:AnteprimaView>
         </Grid>
     </DockPanel>
 </Window>

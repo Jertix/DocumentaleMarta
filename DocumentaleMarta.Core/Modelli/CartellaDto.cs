@@ -1,12 +1,14 @@
 namespace DocumentaleMarta.Core.Modelli;
 
 /// <summary>I campi di una cartella che l'utente può modificare.</summary>
+/// <param name="Ricorrenza">Ogni quanto si ripete. Senza una scadenza non ha senso e viene ignorata (resta "Nessuna").</param>
 public record DatiCartella(
     string Titolo,
     string? Descrizione,
     DateOnly? DataScadenza,
     bool Completato,
-    DateOnly? DataCompletamento);
+    DateOnly? DataCompletamento,
+    Ricorrenza Ricorrenza = Ricorrenza.Nessuna);
 
 public record DocumentoDettaglio(
     int Id,

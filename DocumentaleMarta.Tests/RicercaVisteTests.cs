@@ -8,6 +8,7 @@ using DocumentaleMarta.Core.Servizi;
 
 namespace DocumentaleMarta.Tests;
 
+[Collection("WPF")]
 public class RicercaVisteTests
 {
     private static async Task<(MainViewModel Vm, ArchivioDiProva Archivio)> ArchivioConRicercaAsync()

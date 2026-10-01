@@ -20,9 +20,15 @@ public partial class CartellaFormViewModel : CartellaCampiViewModel
     private readonly IDialogService _dialog;
     private readonly IShellService _shell;
     private readonly AzioniDocumenti _azioni;
+    private readonly ControlloDuplicati _duplicati;
     private readonly AlertService? _avvisi;
 
+    private readonly int _areaId;
     private DatiCartella _salvati;
+
+    /// <summary>La scadenza per cui è già stata fatta la proposta della cartella successiva: spuntando "Completato" più volte non si richiede.</summary>
+    private DateOnly? _scadenzaGiaProposta;
+
     private bool _salvataggioInCorso;
     private bool _salvataggioRichiesto;
     private Task _ultimoSalvataggio = Task.CompletedTask;
@@ -38,8 +44,10 @@ public partial class CartellaFormViewModel : CartellaCampiViewModel
         _shell = shell;
         _avvisi = avvisi;
         _azioni = new AzioniDocumenti(archivio, files, dialog, shell);
+        _duplicati = new ControlloDuplicati(archivio, dialog);
 
         Id = dettaglio.Id;
+        _areaId = dettaglio.AreaId;
         NomeArea = dettaglio.NomeArea;
         PercorsoRelativo = dettaglio.PercorsoRelativo;
         _salvati = dettaglio.Dati;
@@ -91,6 +99,15 @@ public partial class CartellaFormViewModel : CartellaCampiViewModel
 
     public string TitoloDocumenti => $"Documenti ({Documenti.Count})";
 
+    /// <summary>La riga selezionata nella griglia: se ne mostra l'anteprima.</summary>
+    [ObservableProperty]
+    private DocumentoViewModel? _documentoSelezionato;
+
+    /// <summary>È cambiato il documento selezionato (null = nessuno).</summary>
+    public event Action<IDocumentoAnteprima?>? DocumentoSelezionatoCambiato;
+
+    partial void OnDocumentoSelezionatoChanged(DocumentoViewModel? value) => DocumentoSelezionatoCambiato?.Invoke(value);
+
     /// <summary>Il titolo è stato salvato: titolo e nuovo percorso, per aggiornare il nodo dell'albero.</summary>
     public event Action<string, string>? TitoloSalvato;
 
@@ -118,7 +135,7 @@ public partial class CartellaFormViewModel : CartellaCampiViewModel
             return;
 
         if (e.PropertyName is nameof(Titolo) or nameof(Descrizione) or nameof(DataScadenza)
-            or nameof(Completato) or nameof(DataCompletamento))
+            or nameof(Ricorrenza) or nameof(Completato) or nameof(DataCompletamento))
             _ultimoSalvataggio = SalvaAsync();
     }
 
@@ -163,7 +180,13 @@ public partial class CartellaFormViewModel : CartellaCampiViewModel
         Errore = "";
         try
         {
-            ApplicaDettaglio(await _archivio.AggiornaCartellaAsync(Id, dati));
+            var eraCompletata = _salvati.Completato;
+            var salvato = await _archivio.AggiornaCartellaAsync(Id, dati);
+            ApplicaDettaglio(salvato);
+
+            // Appena completata una cartella che si ripete: si propone la prossima.
+            if (!eraCompletata && salvato.Dati.Completato)
+                await ProponiCartellaSuccessivaAsync(salvato.Dati);
         }
         catch (ArchivioException ex)
         {
@@ -217,6 +240,49 @@ public partial class CartellaFormViewModel : CartellaCampiViewModel
         DatiSalvati?.Invoke(dettaglio.Dati);
     }
 
+    // ---------- Cartelle che si ripetono ----------
+
+    /// <summary>Si è creata la cartella successiva di una serie (la lista delle cartelle va riletta).</summary>
+    public event Action? CartellaSuccessivaCreata;
+
+    /// <summary>
+    /// Una cartella che si ripete (ogni mese, 3 mesi, anno) è stata completata: propone di creare la successiva,
+    /// con lo stesso titolo e la scadenza spostata in avanti. I documenti non si copiano. Si può rifiutare.
+    /// </summary>
+    private async Task ProponiCartellaSuccessivaAsync(DatiCartella completata)
+    {
+        if (completata.Ricorrenza == Ricorrenza.Nessuna || completata.DataScadenza is not { } scadenza)
+            return;
+        if (_scadenzaGiaProposta == scadenza)
+            return;
+        _scadenzaGiaProposta = scadenza;
+
+        var prossima = CalcoloRicorrenza.Prossima(scadenza, completata.Ricorrenza);
+        var messaggio = $"La cartella «{completata.Titolo}» si ripete {CalcoloRicorrenza.Descrizione(completata.Ricorrenza)}.\n\n"
+                        + $"Vuoi creare la prossima, con scadenza {prossima:dd/MM/yyyy}?\n\n"
+                        + "Si copiano titolo, descrizione e ripetizione; i documenti no.";
+        if (!_dialog.Chiedi("Cartella ricorrente", messaggio))
+            return;
+
+        try
+        {
+            await _archivio.CreaCartellaConDatiAsync(
+                _areaId,
+                new DatiCartella(completata.Titolo, completata.Descrizione, prossima, false, null, completata.Ricorrenza),
+                []);
+            CartellaSuccessivaCreata?.Invoke();
+        }
+        catch (ArchivioException ex)
+        {
+            _dialog.MostraErrore($"Non è stato possibile creare la cartella successiva: {ex.Message}");
+            RicaricaRichiesta?.Invoke();
+        }
+        catch (Exception ex) when (ex is IOException or UnauthorizedAccessException)
+        {
+            _dialog.MostraErrore($"Non è stato possibile creare la cartella successiva: {ex.Message}");
+        }
+    }
+
     // ---------- Allegati ----------
 
     /// <param name="trascinati">
@@ -243,7 +309,11 @@ public partial class CartellaFormViewModel : CartellaCampiViewModel
 
         try
         {
-            var nuovi = await _archivio.AllegaDocumentiAsync(Id, scelti);
+            // Un file già archiviato (anche con un altro nome) non si allega due volte senza che l'utente lo sappia.
+            if (await _duplicati.FiltraAsync(scelti) is not { } daAllegare)
+                return;
+
+            var nuovi = await _archivio.AllegaDocumentiAsync(Id, daAllegare);
             foreach (var documento in nuovi)
                 Documenti.Add(new DocumentoViewModel(documento, fileMancante: false, this));
             NumeroDocumentiCambiato?.Invoke(Documenti.Count);
@@ -294,6 +364,8 @@ public partial class CartellaFormViewModel : CartellaCampiViewModel
         {
             case EsitoEliminazione.Eliminato:
                 Documenti.Remove(documento);
+                if (ReferenceEquals(DocumentoSelezionato, documento))
+                    DocumentoSelezionato = null;
                 NumeroDocumentiCambiato?.Invoke(Documenti.Count);
                 break;
             case EsitoEliminazione.NonPiuEsistente:

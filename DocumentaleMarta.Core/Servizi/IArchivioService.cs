@@ -44,6 +44,12 @@ public interface IArchivioService
     /// <summary>Copia i file nella cartella (gli originali restano dove sono). È tutto o niente.</summary>
     Task<IReadOnlyList<DocumentoDettaglio>> AllegaDocumentiAsync(int cartellaId, IReadOnlyList<string> percorsiFile);
 
+    /// <summary>
+    /// Tra i file indicati (fuori dall'archivio) trova quelli con lo stesso contenuto di documenti già archiviati,
+    /// confrontando l'impronta SHA-256. I file che non si riescono a leggere si ignorano: l'errore lo darà la copia.
+    /// </summary>
+    Task<IReadOnlyList<DuplicatoTrovato>> TrovaDuplicatiAsync(IReadOnlyList<string> percorsiFile);
+
     /// <summary>Elimina il documento dal database e manda il file nel Cestino.</summary>
     Task EliminaDocumentoAsync(int documentoId);
 
