@@ -5,6 +5,19 @@ using DocumentaleMarta.Core.Impostazioni;
 
 namespace DocumentaleMarta.App.ViewModels;
 
+/// <summary>Cosa l'utente ha chiesto di fare, oltre a salvare, premendo un pulsante della finestra "Impostazioni".</summary>
+public enum AzioneDaImpostazioni
+{
+    /// <summary>Solo salvare (o annullare).</summary>
+    Nessuna,
+
+    /// <summary>Salvare e poi fare subito il backup.</summary>
+    Backup,
+
+    /// <summary>Salvare e poi ripristinare un backup.</summary>
+    Ripristino
+}
+
 /// <summary>
 /// I valori della finestra "Impostazioni": una copia che l'utente modifica. Le impostazioni vere cambiano solo
 /// se si conferma e i valori sono validi.
@@ -13,10 +26,12 @@ public partial class ImpostazioniViewModel : ObservableObject
 {
     private readonly ImpostazioniApp _partenza;
 
-    public ImpostazioniViewModel(ImpostazioniApp attuali, string percorsoFile)
+    /// <param name="backupDisponibile">C'è il servizio che fa backup e ripristino: solo allora la finestra offre i due pulsanti.</param>
+    public ImpostazioniViewModel(ImpostazioniApp attuali, string percorsoFile, bool backupDisponibile = false)
     {
         _partenza = attuali.Clona();
         PercorsoFile = percorsoFile;
+        BackupDisponibile = backupDisponibile;
 
         _ragioneSociale = attuali.Azienda.RagioneSociale;
         _codiceFiscale = attuali.Azienda.CodiceFiscale;
@@ -51,6 +66,15 @@ public partial class ImpostazioniViewModel : ObservableObject
 
     /// <summary>Dopo quanti giorni dall'ultimo backup il programma lo ricorda, come testo.</summary>
     [ObservableProperty] private string _promemoriaBackup;
+
+    /// <summary>I pulsanti "Fai il backup ora" e "Ripristina da un backup…" si vedono solo se c'è il servizio che li esegue.</summary>
+    public bool BackupDisponibile { get; }
+
+    /// <summary>
+    /// Impostata dalla finestra quando si preme uno dei due pulsanti del backup: la finestra si chiude confermando (le impostazioni
+    /// si salvano) e chi l'ha aperta esegue poi l'azione. Resta "Nessuna" se si preme solo Salva o Annulla.
+    /// </summary>
+    public AzioneDaImpostazioni AzioneRichiesta { get; set; }
 
     /// <summary>Quando è stato fatto l'ultimo backup (informazione, non si modifica da qui).</summary>
     public string UltimoBackupTesto => _partenza.UltimoBackup is { } data

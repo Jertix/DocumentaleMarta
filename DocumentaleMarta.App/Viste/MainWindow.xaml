@@ -172,12 +172,6 @@
                 <StackPanel Orientation="Horizontal">
                     <Button Content="Nuova area" Command="{Binding NuovaAreaCommand}" Padding="12,4"/>
                     <Button Content="Nuova cartella" Command="{Binding NuovaCartellaCommand}" Padding="12,4" Margin="8,0,0,0"/>
-                    <Button Content="Backup" Command="{Binding EseguiBackupCommand}" Padding="12,4" Margin="20,0,0,0"
-                            ToolTip="Salva una copia di tutto l'archivio (documenti e database) in un file ZIP"
-                            Visibility="{Binding BackupDisponibile, Converter={StaticResource BoolToVis}}"/>
-                    <Button Content="Ripristina…" Command="{Binding RipristinaDaBackupCommand}" Padding="12,4" Margin="8,0,0,0"
-                            ToolTip="Ripristina l'archivio da un file di backup (ZIP): non tocca l'archivio attuale"
-                            Visibility="{Binding BackupDisponibile, Converter={StaticResource BoolToVis}}"/>
                 </StackPanel>
             </DockPanel>
         </Border>

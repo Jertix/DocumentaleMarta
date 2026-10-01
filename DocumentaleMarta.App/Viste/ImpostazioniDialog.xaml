@@ -9,6 +9,7 @@
         Title="Impostazioni" Width="580" SizeToContent="Height" MaxHeight="780" ResizeMode="NoResize"
         WindowStartupLocation="CenterOwner" ShowInTaskbar="False" Icon="/DocumentaleMarta.App;component/Risorse/Documentale.ico">
     <Window.Resources>
+        <BooleanToVisibilityConverter x:Key="BoolToVis"/>
         <Style x:Key="Etichetta" TargetType="TextBlock">
             <Setter Property="Foreground" Value="#555"/>
             <Setter Property="VerticalAlignment" Value="Center"/>
@@ -118,6 +119,20 @@
                             <TextBlock Text="giorni dall'ultimo" Margin="8,0,0,0" VerticalAlignment="Center"/>
                         </StackPanel>
                         <TextBlock Text="{Binding UltimoBackupTesto}" Foreground="#555" Margin="0,8,0,0"/>
+
+                        <!-- Backup e ripristino: salvano prima le impostazioni, poi eseguono l'operazione nella finestra principale -->
+                        <StackPanel Orientation="Horizontal" Margin="0,12,0,0"
+                                    Visibility="{Binding BackupDisponibile, Converter={StaticResource BoolToVis}}">
+                            <Button Content="Fai il backup ora" Padding="14,4" Click="FaiBackup_Click"
+                                    IsEnabled="{Binding PuoSalvare}"
+                                    ToolTip="Salva le impostazioni e poi fa una copia di tutto l'archivio (documenti e database) in un file ZIP"/>
+                            <Button Content="Ripristina da un backup…" Padding="14,4" Margin="8,0,0,0" Click="Ripristina_Click"
+                                    IsEnabled="{Binding PuoSalvare}"
+                                    ToolTip="Salva le impostazioni e poi ripristina l'archivio da un file di backup: non tocca l'archivio attuale"/>
+                        </StackPanel>
+                        <TextBlock Foreground="#888" FontSize="12" TextWrapping="Wrap" Margin="0,4,0,0"
+                                   Visibility="{Binding BackupDisponibile, Converter={StaticResource BoolToVis}}"
+                                   Text="I due pulsanti salvano prima le impostazioni e poi eseguono l'operazione. Il ripristino non tocca l'archivio attuale."/>
                     </StackPanel>
                 </GroupBox>
 

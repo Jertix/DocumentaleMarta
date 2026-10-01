@@ -1053,6 +1053,7 @@ public partial class MainViewModel(
     /// <summary>
     /// Apre la finestra delle impostazioni. Se i valori sono validi si salvano nel file e si applicano subito
     /// (soglie, dati della ditta, nome della radice): niente riavvio. Se il salvataggio fallisce la finestra resta aperta.
+    /// Se si è premuto "Fai il backup ora" o "Ripristina da un backup…", dopo il salvataggio parte l'operazione.
     /// </summary>
     [RelayCommand]
     private async Task ApriImpostazioniAsync()
@@ -1060,9 +1061,13 @@ public partial class MainViewModel(
         if (servizioImpostazioni is null)
             return;
 
-        var modello = new ImpostazioniViewModel(impostazioni, servizioImpostazioni.PercorsoFile);
+        var modello = new ImpostazioniViewModel(impostazioni, servizioImpostazioni.PercorsoFile, BackupDisponibile);
         while (dialog.MostraImpostazioni(modello))
         {
+            // Un'azione chiesta prima di un salvataggio fallito non vale per la riapertura della finestra.
+            var azione = modello.AzioneRichiesta;
+            modello.AzioneRichiesta = AzioneDaImpostazioni.Nessuna;
+
             var nuove = modello.Costruisci();
             try
             {
@@ -1077,6 +1082,17 @@ public partial class MainViewModel(
 
             impostazioni.CopiaDa(nuove);
             await EseguiAsync(ApplicaImpostazioniAsync);
+
+            // Le impostazioni sono salvate e applicate (anche la cartella dei backup appena scelta): ora l'operazione richiesta.
+            switch (azione)
+            {
+                case AzioneDaImpostazioni.Backup:
+                    await EseguiBackupCommand.ExecuteAsync(null);
+                    break;
+                case AzioneDaImpostazioni.Ripristino:
+                    await RipristinaDaBackupCommand.ExecuteAsync(null);
+                    break;
+            }
             return;
         }
     }

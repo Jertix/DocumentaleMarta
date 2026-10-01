@@ -25,6 +25,20 @@ public partial class ImpostazioniDialog : Window
             _modello.CartellaBackup = dialogo.FolderName;
     }
 
+    /// <summary>Salva e poi fa il backup: la finestra si chiude confermando e chi l'ha aperta esegue l'operazione.</summary>
+    private void FaiBackup_Click(object sender, RoutedEventArgs e) => ChiudiConAzione(AzioneDaImpostazioni.Backup);
+
+    private void Ripristina_Click(object sender, RoutedEventArgs e) => ChiudiConAzione(AzioneDaImpostazioni.Ripristino);
+
+    private void ChiudiConAzione(AzioneDaImpostazioni azione)
+    {
+        if (!_modello.PuoSalvare)
+            return;
+
+        _modello.AzioneRichiesta = azione;
+        DialogResult = true;
+    }
+
     private void Salva_Click(object sender, RoutedEventArgs e)
     {
         if (_modello.PuoSalvare)

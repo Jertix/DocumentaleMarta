@@ -245,16 +245,16 @@ public class Fase8VisteTests
             var contenuto = (FrameworkElement)finestra.Content;
             VisteTests.Disegna(contenuto, 1180, 680, "finestra-promemoria-backup");
 
-            var backup = Tutti<Button>(contenuto).First(b => b.Content is "Backup");
-            Assert.Equal(Visibility.Visible, backup.Visibility);
-            Assert.Same(vm.EseguiBackupCommand, backup.Command);
+            // Il backup si fa dalle Impostazioni: nella barra non c'è più il pulsante, resta quello del promemoria.
+            Assert.DoesNotContain(Tutti<Button>(contenuto), b => b.Content is "Backup");
             Assert.Contains("Non hai ancora fatto nessun backup dei tuoi documenti.", TestiVisibili(contenuto));
-            Assert.Contains(PulsantiVisibili(contenuto), b => b.Content is "Fai il backup ora");
+            var faiOra = Assert.Single(PulsantiVisibili(contenuto), b => b.Content is "Fai il backup ora");
+            Assert.Same(vm.EseguiBackupCommand, faiOra.Command);
 
             vm.RimandaPromemoriaBackupCommand.Execute(null);
             VisteTests.Disegna(contenuto, 1180, 680, "finestra-promemoria-rimandato");
             Assert.DoesNotContain("Non hai ancora fatto nessun backup dei tuoi documenti.", TestiVisibili(contenuto));
-            Assert.Equal(Visibility.Visible, backup.Visibility); // il pulsante resta
+            Assert.DoesNotContain(PulsantiVisibili(contenuto), b => b.Content is "Fai il backup ora");
         });
 
         Assert.Empty(errori);
@@ -291,8 +291,9 @@ public class Fase8VisteTests
             var contenuto = (FrameworkElement)finestra.Content;
             VisteTests.Disegna(contenuto, 1180, 680, "finestra-senza-backup");
 
-            Assert.Equal(Visibility.Collapsed, Tutti<Button>(contenuto).First(b => b.Content is "Backup").Visibility);
+            Assert.DoesNotContain(Tutti<Button>(contenuto), b => b.Content is "Backup" or "Ripristina…");
             Assert.DoesNotContain("Non hai ancora fatto nessun backup dei tuoi documenti.", TestiVisibili(contenuto));
+            Assert.DoesNotContain(PulsantiVisibili(contenuto), b => b.Content is "Fai il backup ora");
         });
 
         Assert.Empty(errori);
@@ -429,7 +430,7 @@ public class Fase8VisteTests
     // ---------- Ripristina da backup e filtro "Archiviate" ----------
 
     [Fact]
-    public async Task FinestraPrincipale_ConBackup_HaIlPulsanteRipristina_AccantoABackup()
+    public async Task FinestraPrincipale_LaBarraNonHaPiuBackupERipristina_SonoNelleImpostazioni()
     {
         var (vm, a) = await PrincipaleAsync();
         using var _ = a;
@@ -438,36 +439,14 @@ public class Fase8VisteTests
         {
             var finestra = new MainWindow(vm);
             var contenuto = (FrameworkElement)finestra.Content;
-            VisteTests.Disegna(contenuto, 1180, 680, "barra-con-ripristina");
+            VisteTests.Disegna(contenuto, 1180, 680, "barra-libera");
 
-            var ripristina = Tutti<Button>(contenuto).First(b => b.Content is "Ripristina…");
-            Assert.Equal(Visibility.Visible, ripristina.Visibility);
-            Assert.Same(vm.RipristinaDaBackupCommand, ripristina.Command);
-            Assert.Contains("non tocca l'archivio attuale", (string)ripristina.ToolTip);
-            Assert.True(ripristina.IsEnabled);
-
-            // Sta nella stessa barra di "Backup", subito dopo.
-            var barra = (Panel)System.Windows.Media.VisualTreeHelper.GetParent(Tutti<Button>(contenuto).First(b => b.Content is "Backup"));
-            var nomi = barra.Children.OfType<Button>().Select(b => b.Content as string).ToList();
-            Assert.Equal(nomi.IndexOf("Backup") + 1, nomi.IndexOf("Ripristina…"));
-        });
-
-        Assert.Empty(errori);
-    }
-
-    [Fact]
-    public async Task FinestraPrincipale_SenzaServizioDiBackup_NonHaIlPulsanteRipristina()
-    {
-        var (vm, a) = await PrincipaleAsync(backup: false);
-        using var _ = a;
-
-        var errori = VisteTests.InSta(() =>
-        {
-            var finestra = new MainWindow(vm);
-            var contenuto = (FrameworkElement)finestra.Content;
-            VisteTests.Disegna(contenuto, 1180, 680, "barra-senza-ripristina");
-
-            Assert.Equal(Visibility.Collapsed, Tutti<Button>(contenuto).First(b => b.Content is "Ripristina…").Visibility);
+            Assert.DoesNotContain(Tutti<Button>(contenuto), b => b.Content is "Backup" or "Ripristina…");
+            // La barra ha ancora le funzioni di tutti i giorni e l'ingranaggio delle impostazioni.
+            var visibili = PulsantiVisibili(contenuto).Select(b => b.Content as string).ToList();
+            Assert.Contains("Nuova area", visibili);
+            Assert.Contains("Nuova cartella", visibili);
+            Assert.Contains(Tutti<Button>(contenuto), b => System.Windows.Automation.AutomationProperties.GetName(b) == "Impostazioni");
         });
 
         Assert.Empty(errori);
