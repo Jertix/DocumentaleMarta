@@ -48,6 +48,13 @@ public interface IArchivioService
     Task EliminaDocumentoAsync(int documentoId);
 
     /// <summary>
+    /// Sposta il documento (il file vero e la riga nel database) in un'altra cartella. Se nella cartella di destinazione
+    /// c'è già un file con lo stesso nome, quello spostato prende un suffisso "(1)", "(2)"... Se lo spostamento
+    /// del file fallisce (file aperto altrove) non cambia nulla. Il testo già letto per la ricerca resta valido.
+    /// </summary>
+    Task SpostaDocumentoAsync(int documentoId, int cartellaDestinazioneId);
+
+    /// <summary>
     /// I documenti di un'area, o di tutto l'archivio se <paramref name="areaId"/> è null,
     /// dal più recente al più vecchio.
     /// </summary>

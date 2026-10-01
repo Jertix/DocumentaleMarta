@@ -6,6 +6,7 @@ namespace DocumentaleMarta.Core.Servizi;
 /// <param name="Trovato">
 /// Dove e cosa è stato trovato: un estratto del testo con le parole cercate tra <see cref="RisultatoRicerca.InizioEvidenza"/>
 /// e <see cref="RisultatoRicerca.FineEvidenza"/>, oppure (se è stato trovato nei nomi) "Nel nome del file" e simili.
+/// Vuoto quando si cerca solo con i filtri, senza parole.
 /// </param>
 public record RisultatoRicerca(DocumentoElenco Documento, string Trovato)
 {
@@ -24,6 +25,8 @@ public interface IRicercaService
     /// <summary>
     /// Cerca i documenti che contengono TUTTE le parole scritte, ciascuna in almeno uno di: nome del file, titolo o descrizione
     /// della cartella, nome dell'area, testo del documento. Maiuscole e accenti non contano.
+    /// Con dei <paramref name="filtri"/> restano solo i documenti che li rispettano; senza parole ma con dei filtri
+    /// si ottengono tutti i documenti che li rispettano.
     /// </summary>
-    Task<EsitoRicerca> CercaAsync(string testo, int massimo = 1000);
+    Task<EsitoRicerca> CercaAsync(string testo, FiltriRicerca? filtri = null, int massimo = 1000);
 }

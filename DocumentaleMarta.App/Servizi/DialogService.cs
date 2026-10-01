@@ -43,6 +43,12 @@ public class DialogService : IDialogService
     public bool MostraNuovaCartella(NuovaCartellaViewModel modello) =>
         new NuovaCartellaDialog(modello) { Owner = Proprietaria }.ShowDialog() == true;
 
+    public bool MostraImpostazioni(ImpostazioniViewModel modello) =>
+        new ImpostazioniDialog(modello) { Owner = Proprietaria }.ShowDialog() == true;
+
+    public void MostraInformazioni(InformazioniViewModel modello) =>
+        new InformazioniDialog(modello) { Owner = Proprietaria }.ShowDialog();
+
     private static MessageBoxResult Mostra(string messaggio, string titolo, MessageBoxButton pulsanti, MessageBoxImage icona, MessageBoxResult predefinito) =>
         Proprietaria is { } finestra
             ? MessageBox.Show(finestra, messaggio, titolo, pulsanti, icona, predefinito)

@@ -18,15 +18,20 @@ public class FintaRicerca(IRicercaService vera) : IRicercaService
 
     public Exception? Errore { get; set; }
 
-    public async Task<EsitoRicerca> CercaAsync(string testo, int massimo = 1000)
+    public List<FiltriRicerca?> FiltriRicevuti { get; } = [];
+
+    public async Task<EsitoRicerca> CercaAsync(string testo, FiltriRicerca? filtri = null, int massimo = 1000)
     {
         lock (_blocco)
+        {
             _richieste.Add(testo);
+            FiltriRicevuti.Add(filtri);
+        }
         if (Attese.TryGetValue(testo, out var attesa))
             await Task.Delay(attesa);
         if (Errore is not null)
             throw Errore;
-        return await vera.CercaAsync(testo, massimo);
+        return await vera.CercaAsync(testo, filtri, massimo);
     }
 }
 
@@ -456,5 +461,5 @@ public class RicercaViewModelTests : IDisposable
 /// <summary>Una ricerca che impone un massimo di risultati più basso, per provare il messaggio di "troppi risultati".</summary>
 public class LimitatoreDiRicerca(IRicercaService vera, int massimo) : IRicercaService
 {
-    public Task<EsitoRicerca> CercaAsync(string testo, int _ = 1000) => vera.CercaAsync(testo, massimo);
+    public Task<EsitoRicerca> CercaAsync(string testo, FiltriRicerca? filtri = null, int _ = 1000) => vera.CercaAsync(testo, filtri, massimo);
 }

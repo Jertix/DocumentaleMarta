@@ -10,6 +10,7 @@ public class FintoDialogService : IDialogService
     private readonly Queue<string?> _risposteTesto = new();
     private readonly Queue<string[]> _selezioniFile = new();
     private readonly Queue<Action<NuovaCartellaViewModel>?> _nuoveCartelle = new();
+    private readonly Queue<Action<ImpostazioniViewModel>?> _impostazioni = new();
 
     public bool RispostaConferma { get; set; } = true;
     public List<string> Errori { get; } = [];
@@ -33,6 +34,17 @@ public class FintoDialogService : IDialogService
 
     /// <summary>Prepara cosa farà l'utente nella prossima finestra "Nuova cartella" (null = Annulla).</summary>
     public void RispondiNuovaCartella(Action<NuovaCartellaViewModel>? compila) => _nuoveCartelle.Enqueue(compila);
+
+    /// <summary>Prepara cosa farà l'utente nella prossima finestra "Impostazioni" (null = Annulla).</summary>
+    public void RispondiImpostazioni(Action<ImpostazioniViewModel>? compila) => _impostazioni.Enqueue(compila);
+
+    /// <summary>Quante volte è stata aperta la finestra "Impostazioni".</summary>
+    public int AperturaImpostazioni { get; private set; }
+
+    public ImpostazioniViewModel? UltimeImpostazioni { get; private set; }
+
+    /// <summary>L'ultima finestra "Informazioni" mostrata.</summary>
+    public InformazioniViewModel? UltimeInformazioni { get; private set; }
 
     public string? ChiediTesto(string titolo, string messaggio, string valoreIniziale, Func<string, string?> validatore)
     {
@@ -62,6 +74,22 @@ public class FintoDialogService : IDialogService
 
     public IReadOnlyList<string> SelezionaFile(string titolo) =>
         _selezioniFile.Count > 0 ? _selezioniFile.Dequeue() : [];
+
+    public bool MostraImpostazioni(ImpostazioniViewModel modello)
+    {
+        AperturaImpostazioni++;
+        UltimeImpostazioni = modello;
+
+        var compila = _impostazioni.Count > 0 ? _impostazioni.Dequeue() : null;
+        if (compila is null)
+            return false;
+
+        compila(modello);
+        // Come il pulsante "Salva": con dei valori non validi è disattivato, per il test equivale ad annullare.
+        return modello.PuoSalvare;
+    }
+
+    public void MostraInformazioni(InformazioniViewModel modello) => UltimeInformazioni = modello;
 
     public bool MostraNuovaCartella(NuovaCartellaViewModel modello)
     {

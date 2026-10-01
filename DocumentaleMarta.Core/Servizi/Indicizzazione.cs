@@ -21,6 +21,9 @@ public interface IOcr
     /// <summary>Perché non è disponibile (es. manca il pacchetto della lingua), da mostrare all'utente.</summary>
     string? MotivoNonDisponibile { get; }
 
+    /// <summary>La lingua con cui si legge il testo (es. "italiano"), se l'OCR è disponibile.</summary>
+    string? Lingua { get; }
+
     Task<string> RiconosciImmagineAsync(string percorsoFile, CancellationToken cancellation);
 
     /// <summary>Legge le pagine del PDF come immagini e ne riconosce il testo.</summary>

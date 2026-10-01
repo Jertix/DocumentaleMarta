@@ -219,10 +219,25 @@ public partial class CartellaFormViewModel : CartellaCampiViewModel
 
     // ---------- Allegati ----------
 
+    /// <param name="trascinati">
+    /// I file trascinati sul form da Esplora file; senza (il pulsante "Allega") si apre la finestra per sceglierli.
+    /// </param>
     [RelayCommand]
-    private async Task AllegaAsync()
+    private async Task AllegaAsync(IReadOnlyList<string>? trascinati = null)
     {
-        var scelti = _dialog.SelezionaFile("Allega documenti");
+        IReadOnlyList<string> scelti;
+        if (trascinati is null)
+        {
+            scelti = _dialog.SelezionaFile("Allega documenti");
+        }
+        else
+        {
+            var (file, cartelleEscluse) = Trascinamento.SoloFile(trascinati);
+            if (cartelleEscluse > 0)
+                _dialog.MostraErrore(Trascinamento.MessaggioCartelleEscluse(cartelleEscluse));
+            scelti = file;
+        }
+
         if (scelti.Count == 0)
             return;
 

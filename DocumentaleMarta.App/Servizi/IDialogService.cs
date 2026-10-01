@@ -21,4 +21,10 @@ public interface IDialogService
 
     /// <summary>Mostra la finestra di creazione di una cartella. True se l'utente conferma.</summary>
     bool MostraNuovaCartella(NuovaCartellaViewModel modello);
+
+    /// <summary>Mostra la finestra delle impostazioni. True se l'utente conferma (e i valori sono validi).</summary>
+    bool MostraImpostazioni(ImpostazioniViewModel modello);
+
+    /// <summary>Mostra la finestra "Informazioni".</summary>
+    void MostraInformazioni(InformazioniViewModel modello);
 }

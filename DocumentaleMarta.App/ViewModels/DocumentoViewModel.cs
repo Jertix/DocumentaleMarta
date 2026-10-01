@@ -5,9 +5,12 @@ using DocumentaleMarta.Core.Modelli;
 namespace DocumentaleMarta.App.ViewModels;
 
 /// <summary>Una riga della griglia dei documenti di una cartella, con i suoi tre pulsanti.</summary>
-public partial class DocumentoViewModel(DocumentoDettaglio dettaglio, bool fileMancante, CartellaFormViewModel form) : ObservableObject
+public partial class DocumentoViewModel(DocumentoDettaglio dettaglio, bool fileMancante, CartellaFormViewModel form)
+    : ObservableObject, IOrigineDocumento
 {
     public int Id { get; } = dettaglio.Id;
+    int IOrigineDocumento.DocumentoId => Id;
+    int IOrigineDocumento.CartellaOrigineId => form.Id;
     public string NomeFile { get; } = dettaglio.NomeFile;
 
     /// <summary>"PDF", "DOCX"...</summary>

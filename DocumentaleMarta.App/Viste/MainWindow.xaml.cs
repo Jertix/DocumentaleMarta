@@ -50,10 +50,61 @@ public partial class MainWindow : Window
             nodo.BringIntoView();
     }
 
-    private static TreeViewItem? TrovaNodo(DependencyObject? origine)
+    private static TreeViewItem? TrovaNodo(DependencyObject? origine) => AlberoVisuale.Antenato<TreeViewItem>(origine);
+
+    // ---------- Trascinamento sull'albero ----------
+
+    private TreeViewItem? _bersaglioEvidenziato;
+
+    /// <summary>
+    /// Su una cartella dell'albero si può rilasciare un documento preso da una griglia (lo si sposta lì, se non è già lì)
+    /// o dei file presi da Esplora file (si allegano alla cartella). Altrove no.
+    /// </summary>
+    private void Albero_DragOver(object sender, DragEventArgs e)
     {
-        while (origine is not null and not TreeViewItem)
-            origine = origine is Visual ? VisualTreeHelper.GetParent(origine) : LogicalTreeHelper.GetParent(origine);
-        return origine as TreeViewItem;
+        var nodo = TrovaNodo(e.OriginalSource as DependencyObject);
+        var cartella = nodo?.DataContext as NodoAlberoViewModel;
+
+        var effetto = DragDropEffects.None;
+        if (cartella is { Tipo: TipoNodo.Cartella })
+        {
+            if (DatiTrascinati.HaFile(e.Data))
+                effetto = DragDropEffects.Copy;
+            else if (DatiTrascinati.Documento(e.Data) is { } documento && documento.CartellaOrigineId != cartella.Id)
+                effetto = DragDropEffects.Move;
+        }
+
+        e.Effects = effetto;
+        Evidenzia(effetto == DragDropEffects.None ? null : nodo);
+        e.Handled = true;
+    }
+
+    private void Albero_DragLeave(object sender, DragEventArgs e) => Evidenzia(null);
+
+    private async void Albero_Drop(object sender, DragEventArgs e)
+    {
+        Evidenzia(null);
+        e.Handled = true;
+
+        if (TrovaNodo(e.OriginalSource as DependencyObject)?.DataContext is not NodoAlberoViewModel { Tipo: TipoNodo.Cartella } cartella
+            || DataContext is not MainViewModel modello)
+            return;
+
+        if (DatiTrascinati.HaFile(e.Data))
+            await modello.AllegaATrascinatiAsync(cartella.Id, DatiTrascinati.File(e.Data));
+        else if (DatiTrascinati.Documento(e.Data) is { } documento && documento.CartellaOrigineId != cartella.Id)
+            await modello.SpostaDocumentoAsync(documento.DocumentoId, cartella.Id);
+    }
+
+    private void Evidenzia(TreeViewItem? nodo)
+    {
+        if (ReferenceEquals(_bersaglioEvidenziato, nodo))
+            return;
+
+        if (_bersaglioEvidenziato is not null)
+            BersaglioTrascinamento.SetAttivo(_bersaglioEvidenziato, false);
+        _bersaglioEvidenziato = nodo;
+        if (nodo is not null)
+            BersaglioTrascinamento.SetAttivo(nodo, true);
     }
 }

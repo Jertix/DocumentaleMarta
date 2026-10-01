@@ -24,6 +24,9 @@ public partial class ElencoView : UserControl
             ColonnaCaricato.Visibility = inRicerca ? Visibility.Collapsed : Visibility.Visible;
         };
 
+        // Le righe si possono trascinare su una cartella dell'albero per spostare il documento.
+        AvvioTrascinamento.Collega(Griglia);
+
         // Doppio clic su una riga: si va alla cartella del documento.
         DoppioClicGriglia.Collega<DocumentoElencoViewModel>(Griglia, riga => riga.VaiAllaCartellaCommand.Execute(null));
     }

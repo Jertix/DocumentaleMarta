@@ -6,7 +6,9 @@
              xmlns:vm="clr-namespace:DocumentaleMarta.App.ViewModels"
              mc:Ignorable="d"
              d:DataContext="{d:DesignInstance Type=vm:CartellaFormViewModel}"
-             d:DesignWidth="760" d:DesignHeight="560">
+             d:DesignWidth="760" d:DesignHeight="560"
+             AllowDrop="True" DragEnter="Cartella_DragOver" DragOver="Cartella_DragOver"
+             DragLeave="Cartella_DragLeave" Drop="Cartella_Drop">
     <UserControl.Resources>
         <ResourceDictionary>
         <ResourceDictionary.MergedDictionaries>
@@ -137,7 +139,7 @@
 
         <!-- Griglia dei documenti -->
         <Grid Grid.Row="3">
-            <DataGrid ItemsSource="{Binding Documenti}" AutoGenerateColumns="False" IsReadOnly="True"
+            <DataGrid x:Name="Griglia" ItemsSource="{Binding Documenti}" AutoGenerateColumns="False" IsReadOnly="True"
                       CanUserAddRows="False" CanUserDeleteRows="False" CanUserResizeRows="False"
                       HeadersVisibility="Column" GridLinesVisibility="Horizontal"
                       HorizontalGridLinesBrush="#E4E4E4" BorderBrush="#D0D0D0" Background="White"
@@ -192,5 +194,12 @@
                 </TextBlock.Style>
             </TextBlock>
         </Grid>
+
+        <!-- Appare mentre si trascinano dei file sopra il form -->
+        <Border x:Name="SuggerimentoRilascio" Grid.RowSpan="4" Margin="-12,-8" Visibility="Collapsed" IsHitTestVisible="False"
+                Background="#E8F3FC" BorderBrush="#2F80C4" BorderThickness="2" CornerRadius="6" Opacity="0.94">
+            <TextBlock Text="Rilascia qui i file per allegarli a questa cartella" FontSize="20" Foreground="#1F5F99"
+                       HorizontalAlignment="Center" VerticalAlignment="Center" TextWrapping="Wrap" TextAlignment="Center"/>
+        </Border>
     </Grid>
 </UserControl>

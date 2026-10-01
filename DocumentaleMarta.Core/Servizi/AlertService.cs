@@ -41,6 +41,9 @@ public class AlertService
     public int SogliaRossaGiorni { get; }
     public bool Attivo { get; }
 
+    /// <summary>L'orologio usato: chi ricrea il servizio con soglie nuove lo riusa.</summary>
+    public TimeProvider Tempo => _tempo;
+
     /// <summary>La data di oggi, secondo l'orologio del PC.</summary>
     public DateOnly Oggi => DateOnly.FromDateTime(_tempo.GetLocalNow().DateTime);
 

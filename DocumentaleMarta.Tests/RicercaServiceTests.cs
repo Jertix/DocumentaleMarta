@@ -278,6 +278,21 @@ public class RicercaServiceTests : IDisposable
     }
 
     [Fact]
+    public async Task UnDocumentoSpostatoInUnAltraCartella_RestaTrovabileDalTesto_ConLaNuovaCartella()
+    {
+        await PreparaAsync();
+        var preventivo = (await _a.Ricerca.CercaAsync("zincato")).Risultati.Single().Documento;
+        var contributi = (await _a.Ricerca.CercaAsync("F24")).Risultati.Single().Documento.CartellaId;
+
+        await _a.Servizio.SpostaDocumentoAsync(preventivo.Id, contributi);
+
+        var trovato = (await _a.Ricerca.CercaAsync("zincato")).Risultati.Single();
+        Assert.Equal("Contributi 2026", trovato.Documento.TitoloCartella);
+        Assert.Equal("INPS", trovato.Documento.NomeArea);
+        Assert.Contains($"{Inizio}zincato{Fine}", trovato.Trovato);
+    }
+
+    [Fact]
     public async Task UnaCartellaRinominata_SiTrovaDalNuovoTitolo_EIlTestoRestaCercabile()
     {
         await PreparaAsync();

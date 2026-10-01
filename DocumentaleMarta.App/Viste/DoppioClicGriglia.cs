@@ -2,7 +2,6 @@ using System.Windows;
 using System.Windows.Controls;
 using System.Windows.Controls.Primitives;
 using System.Windows.Input;
-using System.Windows.Media;
 
 namespace DocumentaleMarta.App.Viste;
 
@@ -27,23 +26,11 @@ public static class DoppioClicGriglia
         var origine = e.OriginalSource as DependencyObject;
 
         // Un doppio clic veloce su un pulsante (es. "Apri") non deve anche cambiare cartella.
-        if (Antenato<ButtonBase>(origine) is not null)
+        if (AlberoVisuale.Antenato<ButtonBase>(origine) is not null)
             return;
 
         // Sull'intestazione delle colonne o sullo spazio vuoto non c'è nessuna riga: nessun effetto.
-        if (Antenato<DataGridRow>(origine) is { DataContext: TRiga riga })
+        if (AlberoVisuale.Antenato<DataGridRow>(origine) is { DataContext: TRiga riga })
             azione(riga);
-    }
-
-    /// <summary>Risale dall'elemento cliccato (compreso lui) fino al primo elemento del tipo cercato.</summary>
-    private static T? Antenato<T>(DependencyObject? origine) where T : DependencyObject
-    {
-        while (origine is not null)
-        {
-            if (origine is T trovato)
-                return trovato;
-            origine = origine is Visual ? VisualTreeHelper.GetParent(origine) : LogicalTreeHelper.GetParent(origine);
-        }
-        return null;
     }
 }

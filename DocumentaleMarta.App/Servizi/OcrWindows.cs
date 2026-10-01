@@ -26,6 +26,8 @@ public sealed class OcrWindows : IOcr
 
     public bool Disponibile => _motore.Value is not null;
 
+    public string? Lingua => _motore.Value?.RecognizerLanguage.DisplayName;
+
     public string? MotivoNonDisponibile => Disponibile
         ? null
         : "Windows non ha il riconoscimento del testo (OCR) per l'italiano. Per attivarlo: Impostazioni → Ora e lingua → " +

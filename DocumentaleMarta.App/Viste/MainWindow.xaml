@@ -7,11 +7,13 @@
         xmlns:viste="clr-namespace:DocumentaleMarta.App.Viste"
         mc:Ignorable="d"
         d:DataContext="{d:DesignInstance Type=vm:MainViewModel}"
-        Title="Documentale" Width="1100" Height="700" MinWidth="760" MinHeight="480">
+        Title="Documentale" Width="1100" Height="700" MinWidth="840" MinHeight="480"
+        Icon="/DocumentaleMarta.App;component/Risorse/Documentale.ico">
     <Window.Resources>
         <ResourceDictionary>
             <ResourceDictionary.MergedDictionaries>
                 <ResourceDictionary Source="Colori.xaml"/>
+                <ResourceDictionary Source="Icone.xaml"/>
             </ResourceDictionary.MergedDictionaries>
 
             <BooleanToVisibilityConverter x:Key="BoolToVis"/>
@@ -22,6 +24,20 @@
                 <Setter Property="IsSelected" Value="{Binding IsSelected, Mode=TwoWay}"/>
                 <Setter Property="AutomationProperties.Name" Value="{Binding Testo}"/>
                 <EventSetter Event="Selected" Handler="NodoAlbero_Selected"/>
+                <Style.Triggers>
+                    <!-- Il nodo su cui si sta per rilasciare un documento o dei file -->
+                    <Trigger Property="viste:BersaglioTrascinamento.Attivo" Value="True">
+                        <Setter Property="Background" Value="#CFE6F8"/>
+                    </Trigger>
+                </Style.Triggers>
+            </Style>
+
+            <!-- Piccoli pulsanti quadrati con un'icona, per la barra in alto -->
+            <Style x:Key="PulsanteBarra" TargetType="Button">
+                <Setter Property="Width" Value="32"/>
+                <Setter Property="Height" Value="28"/>
+                <Setter Property="FontFamily" Value="{StaticResource FontIcone}"/>
+                <Setter Property="FontSize" Value="15"/>
             </Style>
 
             <!-- Il triangolo di avviso accanto ai nodi: arancione o rosso secondo la scadenza, assente se non c'è nulla da segnalare -->
@@ -61,8 +77,11 @@
                 <!-- Stato della lettura dei documenti in background (vuoto quando non c'è nulla da dire) -->
                 <TextBlock DockPanel.Dock="Right" Text="{Binding TestoIndicizzazione}" ToolTip="{Binding DettaglioIndicizzazione}"
                            Foreground="#555" FontSize="12" Margin="16,0,0,0" TextTrimming="CharacterEllipsis"/>
+                <!-- Il logo della ditta accanto ai suoi dati -->
+                <Image DockPanel.Dock="Left" Source="{StaticResource IconaAzienda}" Width="20" Height="20" Margin="0,0,8,0"
+                       ToolTip="{Binding DescrizioneAzienda}" VerticalAlignment="Center"/>
                 <TextBlock Text="{Binding TestoAzienda}" ToolTip="{Binding DescrizioneAzienda}"
-                           Foreground="#555" FontSize="12" TextTrimming="CharacterEllipsis"/>
+                           Foreground="#555" FontSize="12" TextTrimming="CharacterEllipsis" VerticalAlignment="Center"/>
             </DockPanel>
         </Border>
 
@@ -72,7 +91,7 @@
                 <!-- Ricerca: cerca in nome file, titolo e descrizione della cartella, area e testo dei documenti -->
                 <StackPanel DockPanel.Dock="Right" Orientation="Horizontal"
                             Visibility="{Binding RicercaDisponibile, Converter={StaticResource BoolToVis}}">
-                    <Grid Width="320">
+                    <Grid Width="260">
                         <TextBox x:Name="CasellaRicerca" Text="{Binding TestoRicerca, UpdateSourceTrigger=PropertyChanged}"
                                  Padding="6,4,28,4" VerticalContentAlignment="Center"
                                  AutomationProperties.Name="Cerca nei documenti">
@@ -100,6 +119,17 @@
                                 Visibility="{Binding TestoRicercaAttivo, Converter={StaticResource BoolToVis}}"/>
                     </Grid>
                     <Button Content="Cerca" Command="{Binding CercaCommand}" Padding="14,4" Margin="6,0,0,0"/>
+                    <ToggleButton Content="{Binding Filtri.TestoPulsante}" IsChecked="{Binding PannelloFiltriAperto}"
+                                  Padding="12,4" Margin="6,0,0,0" ToolTip="Filtra per tipo di file, area, stato e scadenza"/>
+                </StackPanel>
+
+                <!-- Impostazioni e informazioni, all'estremo destro -->
+                <StackPanel DockPanel.Dock="Right" Orientation="Horizontal" Margin="10,0,0,0">
+                    <Button Content="&#xE713;" Command="{Binding ApriImpostazioniCommand}" Style="{StaticResource PulsanteBarra}"
+                            ToolTip="Impostazioni" AutomationProperties.Name="Impostazioni"
+                            Visibility="{Binding ImpostazioniDisponibili, Converter={StaticResource BoolToVis}}"/>
+                    <Button Content="&#xE946;" Command="{Binding ApriInformazioniCommand}" Style="{StaticResource PulsanteBarra}"
+                            ToolTip="Informazioni" AutomationProperties.Name="Informazioni" Margin="4,0,0,0"/>
                 </StackPanel>
 
                 <StackPanel Orientation="Horizontal">
@@ -107,6 +137,50 @@
                     <Button Content="Nuova cartella" Command="{Binding NuovaCartellaCommand}" Padding="12,4" Margin="8,0,0,0"/>
                 </StackPanel>
             </DockPanel>
+        </Border>
+
+        <!-- Ricerca avanzata: i filtri si applicano subito, insieme alle parole scritte nel campo -->
+        <Border DockPanel.Dock="Top" Padding="12,8,12,10" Background="#FAFAFA" BorderBrush="#D0D0D0" BorderThickness="0,0,0,1"
+                Visibility="{Binding PannelloFiltriAperto, Converter={StaticResource BoolToVis}}">
+            <WrapPanel>
+                <StackPanel Margin="0,0,28,0">
+                    <TextBlock Text="Tipo di file" Foreground="#666" FontSize="12" Margin="0,0,0,3"/>
+                    <StackPanel Orientation="Horizontal" Height="24">
+                        <CheckBox Content="PDF" IsChecked="{Binding Filtri.Pdf}" Margin="0,0,12,0" VerticalContentAlignment="Center"/>
+                        <CheckBox Content="Word" IsChecked="{Binding Filtri.Word}" Margin="0,0,12,0" VerticalContentAlignment="Center"/>
+                        <CheckBox Content="Excel" IsChecked="{Binding Filtri.Excel}" Margin="0,0,12,0" VerticalContentAlignment="Center"/>
+                        <CheckBox Content="Immagini" IsChecked="{Binding Filtri.Immagini}" Margin="0,0,12,0" VerticalContentAlignment="Center"/>
+                        <CheckBox Content="Altro" IsChecked="{Binding Filtri.Altro}" VerticalContentAlignment="Center"/>
+                    </StackPanel>
+                </StackPanel>
+
+                <StackPanel Margin="0,0,20,0">
+                    <TextBlock Text="Area" Foreground="#666" FontSize="12" Margin="0,0,0,3"/>
+                    <ComboBox Width="170" ItemsSource="{Binding Filtri.Aree}" SelectedItem="{Binding Filtri.Area}"
+                              DisplayMemberPath="Nome"/>
+                </StackPanel>
+
+                <StackPanel Margin="0,0,20,0">
+                    <TextBlock Text="Stato delle cartelle" Foreground="#666" FontSize="12" Margin="0,0,0,3"/>
+                    <ComboBox Width="150" ItemsSource="{Binding Filtri.Stati}" SelectedItem="{Binding Filtri.Stato}"
+                              DisplayMemberPath="Testo" ToolTip="{Binding SuggerimentoStatoRicerca}"/>
+                </StackPanel>
+
+                <StackPanel Margin="0,0,20,0">
+                    <TextBlock Text="Scadenza dal … al" Foreground="#666" FontSize="12" Margin="0,0,0,3"/>
+                    <StackPanel Orientation="Horizontal">
+                        <DatePicker Width="118" SelectedDate="{Binding Filtri.ScadenzaDal}"/>
+                        <TextBlock Text="–" VerticalAlignment="Center" Margin="6,0"/>
+                        <DatePicker Width="118" SelectedDate="{Binding Filtri.ScadenzaAl}"/>
+                    </StackPanel>
+                </StackPanel>
+
+                <StackPanel VerticalAlignment="Bottom" Orientation="Horizontal">
+                    <CheckBox Content="Cerca anche dentro i documenti" IsChecked="{Binding Filtri.CercaNelContenuto}"
+                              VerticalAlignment="Center" Margin="0,0,16,4"/>
+                    <Button Content="Azzera filtri" Command="{Binding Filtri.AzzeraCommand}" Padding="12,3" Margin="0,0,0,2"/>
+                </StackPanel>
+            </WrapPanel>
         </Border>
 
         <Grid>
@@ -118,7 +192,8 @@
 
             <!-- Albero -->
             <TreeView x:Name="Albero" Grid.Column="0" ItemsSource="{Binding Radici}" BorderThickness="0" Padding="4"
-                      PreviewMouseRightButtonDown="Albero_PreviewMouseRightButtonDown">
+                      PreviewMouseRightButtonDown="Albero_PreviewMouseRightButtonDown"
+                      AllowDrop="True" DragOver="Albero_DragOver" DragLeave="Albero_DragLeave" Drop="Albero_Drop">
                 <TreeView.InputBindings>
                     <KeyBinding Key="F2" Command="{Binding RinominaCommand}"/>
                     <KeyBinding Key="Delete" Command="{Binding EliminaCommand}"/>

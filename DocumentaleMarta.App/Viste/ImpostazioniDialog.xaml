@@ -1,0 +1,126 @@
+<Window x:Class="DocumentaleMarta.App.Viste.ImpostazioniDialog"
+        xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
+        xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
+        xmlns:vm="clr-namespace:DocumentaleMarta.App.ViewModels"
+        mc:Ignorable="d"
+        d:DataContext="{d:DesignInstance Type=vm:ImpostazioniViewModel}"
+        Title="Impostazioni" Width="580" SizeToContent="Height" MaxHeight="780" ResizeMode="NoResize"
+        WindowStartupLocation="CenterOwner" ShowInTaskbar="False" Icon="/DocumentaleMarta.App;component/Risorse/Documentale.ico">
+    <Window.Resources>
+        <Style x:Key="Etichetta" TargetType="TextBlock">
+            <Setter Property="Foreground" Value="#555"/>
+            <Setter Property="VerticalAlignment" Value="Center"/>
+            <Setter Property="Margin" Value="0,0,12,0"/>
+        </Style>
+        <Style TargetType="GroupBox">
+            <Setter Property="Padding" Value="12,8,12,10"/>
+            <Setter Property="Margin" Value="0,0,0,12"/>
+        </Style>
+    </Window.Resources>
+
+    <DockPanel>
+        <!-- Pulsanti e messaggio d'errore -->
+        <Grid DockPanel.Dock="Bottom" Margin="20,8,20,16">
+            <Grid.ColumnDefinitions>
+                <ColumnDefinition Width="*"/>
+                <ColumnDefinition Width="Auto"/>
+            </Grid.ColumnDefinitions>
+            <TextBlock Text="{Binding Errore}" Foreground="#C42B1C" TextWrapping="Wrap" VerticalAlignment="Center" Margin="0,0,12,0"/>
+            <StackPanel Grid.Column="1" Orientation="Horizontal">
+                <Button Content="Salva" Width="90" Padding="0,4" IsDefault="True" IsEnabled="{Binding PuoSalvare}" Click="Salva_Click"/>
+                <Button Content="Annulla" Width="90" Padding="0,4" Margin="8,0,0,0" IsCancel="True"/>
+            </StackPanel>
+        </Grid>
+
+        <ScrollViewer VerticalScrollBarVisibility="Auto">
+            <StackPanel Margin="20,18,20,0">
+                <GroupBox Header="Avvisi di scadenza">
+                    <StackPanel>
+                        <CheckBox Content="Attiva gli avvisi di scadenza (icone, colori e nodo «Scadenze»)" IsChecked="{Binding AvvisiAttivi}"/>
+                        <CheckBox Content="Mostra un riepilogo all'apertura del programma" IsChecked="{Binding RiepilogoAvvio}" Margin="0,6,0,0"
+                                  IsEnabled="{Binding AvvisiAttivi}"/>
+
+                        <Grid Margin="0,12,0,0" IsEnabled="{Binding AvvisiAttivi}">
+                            <Grid.ColumnDefinitions>
+                                <ColumnDefinition Width="Auto"/>
+                                <ColumnDefinition Width="70"/>
+                                <ColumnDefinition Width="*"/>
+                            </Grid.ColumnDefinitions>
+                            <Grid.RowDefinitions>
+                                <RowDefinition Height="Auto"/>
+                                <RowDefinition Height="Auto"/>
+                            </Grid.RowDefinitions>
+
+                            <TextBlock Grid.Row="0" Text="Arancione se mancano al massimo" Style="{StaticResource Etichetta}"/>
+                            <TextBox Grid.Row="0" Grid.Column="1" Text="{Binding SogliaArancione, UpdateSourceTrigger=PropertyChanged}"
+                                     Padding="4,3" HorizontalContentAlignment="Right" MaxLength="4"
+                                     AutomationProperties.Name="Giorni per l'avviso arancione"/>
+                            <TextBlock Grid.Row="0" Grid.Column="2" Text="giorni" Margin="8,0,0,0" VerticalAlignment="Center"/>
+
+                            <TextBlock Grid.Row="1" Text="Rosso se ne mancano al massimo" Style="{StaticResource Etichetta}" Margin="0,8,12,0"/>
+                            <TextBox Grid.Row="1" Grid.Column="1" Text="{Binding SogliaRossa, UpdateSourceTrigger=PropertyChanged}"
+                                     Padding="4,3" HorizontalContentAlignment="Right" MaxLength="4" Margin="0,8,0,0"
+                                     AutomationProperties.Name="Giorni per l'avviso rosso"/>
+                            <TextBlock Grid.Row="1" Grid.Column="2" Text="giorni (o se la scadenza è già passata)" Margin="8,8,0,0" VerticalAlignment="Center"/>
+                        </Grid>
+                    </StackPanel>
+                </GroupBox>
+
+                <GroupBox Header="Dati della ditta">
+                    <Grid>
+                        <Grid.ColumnDefinitions>
+                            <ColumnDefinition Width="Auto"/>
+                            <ColumnDefinition Width="*"/>
+                        </Grid.ColumnDefinitions>
+                        <Grid.RowDefinitions>
+                            <RowDefinition Height="Auto"/>
+                            <RowDefinition Height="Auto"/>
+                            <RowDefinition Height="Auto"/>
+                            <RowDefinition Height="Auto"/>
+                            <RowDefinition Height="Auto"/>
+                        </Grid.RowDefinitions>
+
+                        <TextBlock Grid.Row="0" Text="Ragione sociale" Style="{StaticResource Etichetta}"/>
+                        <TextBox Grid.Row="0" Grid.Column="1" Text="{Binding RagioneSociale, UpdateSourceTrigger=PropertyChanged}" Padding="4,3"/>
+
+                        <TextBlock Grid.Row="1" Text="Codice fiscale" Style="{StaticResource Etichetta}" Margin="0,8,12,0"/>
+                        <TextBox Grid.Row="1" Grid.Column="1" Text="{Binding CodiceFiscale, UpdateSourceTrigger=PropertyChanged}" Padding="4,3" Margin="0,8,0,0"/>
+
+                        <TextBlock Grid.Row="2" Text="Partita IVA" Style="{StaticResource Etichetta}" Margin="0,8,12,0"/>
+                        <TextBox Grid.Row="2" Grid.Column="1" Text="{Binding PartitaIva, UpdateSourceTrigger=PropertyChanged}" Padding="4,3" Margin="0,8,0,0"/>
+
+                        <TextBlock Grid.Row="3" Text="Indirizzo" Style="{StaticResource Etichetta}" Margin="0,8,12,0"/>
+                        <TextBox Grid.Row="3" Grid.Column="1" Text="{Binding Indirizzo, UpdateSourceTrigger=PropertyChanged}" Padding="4,3" Margin="0,8,0,0"/>
+
+                        <TextBlock Grid.Row="4" Text="Attività" Style="{StaticResource Etichetta}" VerticalAlignment="Top" Margin="0,14,12,0"/>
+                        <TextBox Grid.Row="4" Grid.Column="1" Text="{Binding Descrizione, UpdateSourceTrigger=PropertyChanged}" Margin="0,8,0,0" Padding="4,3"
+                                 AcceptsReturn="True" TextWrapping="Wrap" MinLines="2" MaxLines="4" VerticalScrollBarVisibility="Auto"/>
+                    </Grid>
+                </GroupBox>
+
+                <GroupBox Header="Archivio">
+                    <StackPanel>
+                        <Grid>
+                            <Grid.ColumnDefinitions>
+                                <ColumnDefinition Width="Auto"/>
+                                <ColumnDefinition Width="*"/>
+                            </Grid.ColumnDefinitions>
+                            <TextBlock Text="Nome della radice nell'albero" Style="{StaticResource Etichetta}"/>
+                            <TextBox Grid.Column="1" Text="{Binding NomeRadice, UpdateSourceTrigger=PropertyChanged}" Padding="4,3"/>
+                        </Grid>
+
+                        <TextBlock Text="Cartella dell'archivio" Foreground="#555" Margin="0,12,0,2"/>
+                        <TextBox Text="{Binding PercorsoRadice, Mode=OneWay}" IsReadOnly="True" Background="#F5F5F5" Padding="4,3"/>
+                        <TextBlock Foreground="#888" FontSize="12" TextWrapping="Wrap" Margin="0,4,0,0"
+                                   Text="Per spostare l'archivio chiudi il programma, sposta la cartella e cambia «PercorsoRadice» nel file delle impostazioni."/>
+
+                        <TextBlock Text="File delle impostazioni" Foreground="#555" Margin="0,10,0,2"/>
+                        <TextBox Text="{Binding PercorsoFile, Mode=OneWay}" IsReadOnly="True" Background="#F5F5F5" Padding="4,3"/>
+                    </StackPanel>
+                </GroupBox>
+            </StackPanel>
+        </ScrollViewer>
+    </DockPanel>
+</Window>

@@ -611,6 +611,123 @@ public class ArchivioServiceTests : IDisposable
     public async Task EliminaDocumento_Inesistente_DaErroreChiaro() =>
         await Assert.ThrowsAsync<ArchivioException>(() => _servizio.EliminaDocumentoAsync(999));
 
+    // ---------- Spostare un documento ----------
+
+    private async Task<(CartellaDettaglio Origine, CartellaDettaglio Destinazione)> DueCartelleAsync(
+        string[] fileOrigine, string[]? fileDestinazione = null)
+    {
+        var area = await _servizio.CreaAreaAsync("A");
+        var origine = await _servizio.CreaCartellaConDatiAsync(
+            area, Dati("Origine"), fileOrigine.Select(n => _tmp.CreaFile(Path.Combine("o", n), "origine " + n)).ToList());
+        var destinazione = await _servizio.CreaCartellaConDatiAsync(
+            area, Dati("Destinazione"), (fileDestinazione ?? []).Select(n => _tmp.CreaFile(Path.Combine("d", n), "destinazione " + n)).ToList());
+        return (origine, destinazione);
+    }
+
+    [Fact]
+    public async Task SpostaDocumento_SpostaIlFileEAggiornaLaRiga()
+    {
+        var (origine, destinazione) = await DueCartelleAsync(["a.pdf", "b.pdf"]);
+        var documento = origine.Documenti[0];
+
+        await _servizio.SpostaDocumentoAsync(documento.Id, destinazione.Id);
+
+        var o = (await _servizio.CaricaCartellaAsync(origine.Id))!;
+        var d = (await _servizio.CaricaCartellaAsync(destinazione.Id))!;
+        Assert.Equal(["b.pdf"], o.Documenti.Select(x => x.NomeFile));
+        var spostato = Assert.Single(d.Documenti);
+        Assert.Equal(documento.Id, spostato.Id);
+        Assert.Equal(Path.Combine("A", "Destinazione", "a.pdf"), spostato.PercorsoRelativo);
+        Assert.False(File.Exists(Fisico("A", "Origine", "a.pdf")));
+        Assert.Equal("origine a.pdf", File.ReadAllText(Fisico("A", "Destinazione", "a.pdf")));
+        Assert.True(File.Exists(Fisico("A", "Origine", "b.pdf"))); // l'altro resta dov'è
+    }
+
+    [Fact]
+    public async Task SpostaDocumento_ConLoStessoNomeGiaPresente_PrendeUnSuffisso_ENonSovrascrive()
+    {
+        var (origine, destinazione) = await DueCartelleAsync(["doc.pdf"], ["doc.pdf"]);
+
+        await _servizio.SpostaDocumentoAsync(origine.Documenti[0].Id, destinazione.Id);
+
+        var d = (await _servizio.CaricaCartellaAsync(destinazione.Id))!;
+        Assert.Equal(["doc.pdf", "doc (1).pdf"], d.Documenti.Select(x => x.NomeFile).OrderBy(n => n == "doc.pdf" ? 0 : 1));
+        Assert.Equal("destinazione doc.pdf", File.ReadAllText(Fisico("A", "Destinazione", "doc.pdf")));
+        Assert.Equal("origine doc.pdf", File.ReadAllText(Fisico("A", "Destinazione", "doc (1).pdf")));
+        Assert.Equal("doc (1).pdf", d.Documenti.Single(x => x.Id == origine.Documenti[0].Id).NomeFile);
+    }
+
+    [Fact]
+    public async Task SpostaDocumento_NellaStessaCartella_NonFaNulla()
+    {
+        var (origine, _) = await DueCartelleAsync(["a.pdf"]);
+
+        await _servizio.SpostaDocumentoAsync(origine.Documenti[0].Id, origine.Id);
+
+        Assert.True(File.Exists(Fisico("A", "Origine", "a.pdf")));
+        Assert.Equal(["a.pdf"], (await _servizio.CaricaCartellaAsync(origine.Id))!.Documenti.Select(x => x.NomeFile));
+    }
+
+    [Fact]
+    public async Task SpostaDocumento_FileAperto_FallisceELoStatoNonCambia()
+    {
+        var (origine, destinazione) = await DueCartelleAsync(["a.pdf"]);
+
+        using (new FileStream(Fisico("A", "Origine", "a.pdf"), FileMode.Open, FileAccess.Read, FileShare.Read))
+        {
+            await Assert.ThrowsAnyAsync<IOException>(() => _servizio.SpostaDocumentoAsync(origine.Documenti[0].Id, destinazione.Id));
+        }
+
+        Assert.Single((await _servizio.CaricaCartellaAsync(origine.Id))!.Documenti);
+        Assert.Empty((await _servizio.CaricaCartellaAsync(destinazione.Id))!.Documenti);
+        Assert.True(File.Exists(Fisico("A", "Origine", "a.pdf")));
+    }
+
+    [Fact]
+    public async Task SpostaDocumento_FileSparitoDalDisco_FallisceELaRigaResta()
+    {
+        var (origine, destinazione) = await DueCartelleAsync(["a.pdf"]);
+        File.Delete(Fisico("A", "Origine", "a.pdf"));
+
+        await Assert.ThrowsAnyAsync<IOException>(() => _servizio.SpostaDocumentoAsync(origine.Documenti[0].Id, destinazione.Id));
+
+        Assert.Single((await _servizio.CaricaCartellaAsync(origine.Id))!.Documenti);
+    }
+
+    [Fact]
+    public async Task SpostaDocumento_DocumentoOCartellaInesistenti_ErroreChiaro()
+    {
+        var (origine, destinazione) = await DueCartelleAsync(["a.pdf"]);
+
+        await Assert.ThrowsAsync<ArchivioException>(() => _servizio.SpostaDocumentoAsync(999, destinazione.Id));
+        await Assert.ThrowsAsync<ArchivioException>(() => _servizio.SpostaDocumentoAsync(origine.Documenti[0].Id, 999));
+    }
+
+    [Fact]
+    public async Task SpostaDocumento_DaUnAreaAUnAltra_FunzionaEAggiornaIlPercorso()
+    {
+        var a1 = await _servizio.CreaAreaAsync("Prima");
+        var a2 = await _servizio.CreaAreaAsync("Seconda");
+        var c1 = await _servizio.CreaCartellaConDatiAsync(a1, Dati("C1"), [_tmp.CreaFile("x/doc.pdf")]);
+        var c2 = await _servizio.CreaCartellaAsync(a2, "C2");
+
+        await _servizio.SpostaDocumentoAsync(c1.Documenti[0].Id, c2);
+
+        Assert.True(File.Exists(Fisico("Seconda", "C2", "doc.pdf")));
+        Assert.Empty((await _servizio.CaricaCartellaAsync(c1.Id))!.Documenti);
+    }
+
+    [Fact]
+    public async Task SpostaDocumento_AncheDopoRinominaDellaCartellaDiDestinazione_UsaIlPercorsoAttuale()
+    {
+        var (origine, destinazione) = await DueCartelleAsync(["a.pdf"]);
+        await _servizio.RinominaCartellaAsync(destinazione.Id, "Nuova destinazione");
+
+        await _servizio.SpostaDocumentoAsync(origine.Documenti[0].Id, destinazione.Id);
+
+        Assert.True(File.Exists(Fisico("A", "Nuova destinazione", "a.pdf")));
+    }
+
     // ---------- Elenco documenti (radice e aree) ----------
 
     private async Task<(int Area1, int Area2)> DueAreeConDocumentiAsync()

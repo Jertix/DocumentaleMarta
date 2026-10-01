@@ -12,10 +12,14 @@ namespace DocumentaleMarta.App.Servizi;
 /// <summary>Il collegamento di tutti i servizi dell'applicazione. A parte, così si può provare che si costruiscano senza aprire nulla.</summary>
 public static class Composizione
 {
-    public static ServiceProvider Crea(ImpostazioniApp impostazioni, string percorsoDatabase)
+    /// <param name="servizioImpostazioni">Serve alla finestra "Impostazioni" per salvare le modifiche; senza, la finestra non compare.</param>
+    public static ServiceProvider Crea(
+        ImpostazioniApp impostazioni, string percorsoDatabase, ImpostazioniService? servizioImpostazioni = null)
     {
         var collezione = new ServiceCollection();
         collezione.AddSingleton(impostazioni);
+        if (servizioImpostazioni is not null)
+            collezione.AddSingleton(servizioImpostazioni);
         collezione.AddSingleton(new AlertService(impostazioni));
         collezione.AddSingleton<IArchivioFileService>(new ArchivioFileService(impostazioni.PercorsoRadice));
         collezione.AddSingleton<IDbContextFactory<AppDbContext>>(new AppDbContextFactory(ArchivioDatabase.CreaOpzioni(percorsoDatabase)));

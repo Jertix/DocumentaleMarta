@@ -9,10 +9,13 @@ namespace DocumentaleMarta.App.ViewModels;
 
 /// <summary>Una riga della griglia di radice o area: un documento con la cartella e l'area a cui appartiene.</summary>
 public partial class DocumentoElencoViewModel(
-    DocumentoElenco dati, bool fileMancante, StatoAvviso avviso, ElencoDocumentiViewModel elenco, string? trovato = null) : ObservableObject
+    DocumentoElenco dati, bool fileMancante, StatoAvviso avviso, ElencoDocumentiViewModel elenco, string? trovato = null)
+    : ObservableObject, IOrigineDocumento
 {
     public int Id { get; } = dati.Id;
     public int CartellaId { get; } = dati.CartellaId;
+    int IOrigineDocumento.DocumentoId => Id;
+    int IOrigineDocumento.CartellaOrigineId => CartellaId;
     public string NomeFile { get; } = dati.NomeFile;
 
     /// <summary>"PDF", "DOCX"...</summary>
@@ -64,13 +67,15 @@ public class ElencoDocumentiViewModel
     private readonly AlertService? _avvisi;
     private readonly IRicercaService? _ricerca;
     private readonly string? _testoRicerca;
+    private readonly FiltriRicerca? _filtri;
 
     /// <param name="areaId">L'area da mostrare; null per tutti i documenti dell'archivio.</param>
     /// <param name="avvisi">Per colorare le righe secondo la scadenza della cartella; senza, le righe restano senza colore.</param>
     /// <param name="ricerca">Insieme a <paramref name="testoRicerca"/>: invece dei documenti di un'area mostra i risultati della ricerca.</param>
+    /// <param name="filtri">I filtri della ricerca avanzata (solo per i risultati di una ricerca).</param>
     public ElencoDocumentiViewModel(
         IArchivioService archivio, IArchivioFileService files, IDialogService dialog, IShellService shell, int? areaId,
-        AlertService? avvisi = null, IRicercaService? ricerca = null, string? testoRicerca = null)
+        AlertService? avvisi = null, IRicercaService? ricerca = null, string? testoRicerca = null, FiltriRicerca? filtri = null)
     {
         _archivio = archivio;
         _files = files;
@@ -79,6 +84,7 @@ public class ElencoDocumentiViewModel
         _avvisi = avvisi;
         _ricerca = ricerca;
         _testoRicerca = testoRicerca;
+        _filtri = filtri;
     }
 
     /// <summary>Questa griglia mostra i risultati di una ricerca.</summary>
@@ -96,8 +102,15 @@ public class ElencoDocumentiViewModel
     /// <summary>La colonna "Trovato" serve solo nei risultati di una ricerca.</summary>
     public bool MostraTrovato => IsRicerca;
 
+    /// <summary>La ricerca usa dei filtri oltre alle parole (o al posto loro).</summary>
+    public bool HaFiltri => _filtri?.HaFiltri == true;
+
     public string TestoVuoto => IsRicerca
-        ? $"Nessun documento trovato per «{_testoRicerca}»."
+        ? string.IsNullOrWhiteSpace(_testoRicerca)
+            ? "Nessun documento corrisponde ai filtri scelti."
+            : HaFiltri
+                ? $"Nessun documento trovato per «{_testoRicerca}» con i filtri scelti."
+                : $"Nessun documento trovato per «{_testoRicerca}»."
         : _areaId is null
             ? "Nessun documento nell'archivio."
             : "Nessun documento in quest'area.";
@@ -118,7 +131,7 @@ public class ElencoDocumentiViewModel
         List<(DocumentoElenco Documento, string? Trovato)> righe;
         if (IsRicerca)
         {
-            var esito = await _ricerca!.CercaAsync(_testoRicerca!);
+            var esito = await _ricerca!.CercaAsync(_testoRicerca!, _filtri);
             Troncato = esito.Troncato;
             righe = esito.Risultati.Select(r => (r.Documento, (string?)r.Trovato)).ToList();
         }

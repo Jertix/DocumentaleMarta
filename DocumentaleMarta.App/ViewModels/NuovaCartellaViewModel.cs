@@ -39,9 +39,16 @@ public partial class NuovaCartellaViewModel(IDialogService dialog, string nomeAr
     public IReadOnlyList<string> PercorsiFile => Allegati.Select(a => a.Percorso).ToList();
 
     [RelayCommand]
-    private void Allega()
+    private void Allega() => AggiungiAllegati(dialog.SelezionaFile("Allega documenti"));
+
+    /// <summary>Aggiunge i file all'elenco da allegare (scelti con la finestra o trascinati da Esplora file).</summary>
+    public void AggiungiAllegati(IEnumerable<string> percorsi)
     {
-        foreach (var percorso in dialog.SelezionaFile("Allega documenti"))
+        var (file, cartelleEscluse) = Trascinamento.SoloFile(percorsi);
+        if (cartelleEscluse > 0)
+            dialog.MostraErrore(Trascinamento.MessaggioCartelleEscluse(cartelleEscluse));
+
+        foreach (var percorso in file)
         {
             // Lo stesso file scelto due volte non va allegato due volte.
             if (!Allegati.Any(a => string.Equals(a.Percorso, percorso, StringComparison.OrdinalIgnoreCase)))

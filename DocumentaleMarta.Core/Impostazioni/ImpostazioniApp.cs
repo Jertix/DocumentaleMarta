@@ -30,6 +30,39 @@ public class ImpostazioniApp
     public int BackupPromemoriaGiorni { get; set; } = 30;
     public DateTime? UltimoBackup { get; set; }
 
+    /// <summary>Una copia indipendente: modificarla non tocca l'originale.</summary>
+    public ImpostazioniApp Clona()
+    {
+        var copia = (ImpostazioniApp)MemberwiseClone();
+        copia.Azienda = new DatiAzienda
+        {
+            RagioneSociale = Azienda.RagioneSociale,
+            CodiceFiscale = Azienda.CodiceFiscale,
+            PartitaIva = Azienda.PartitaIva,
+            Indirizzo = Azienda.Indirizzo,
+            Descrizione = Azienda.Descrizione
+        };
+        return copia;
+    }
+
+    /// <summary>
+    /// Copia tutti i valori di <paramref name="altra"/> dentro questo oggetto, che resta lo stesso: chi lo tiene in mano
+    /// (il programma in esecuzione) vede subito i nuovi valori.
+    /// </summary>
+    public void CopiaDa(ImpostazioniApp altra)
+    {
+        Azienda = altra.Clona().Azienda;
+        PercorsoRadice = altra.PercorsoRadice;
+        NomeRadice = altra.NomeRadice;
+        AvvisiAttivi = altra.AvvisiAttivi;
+        RiepilogoAvvio = altra.RiepilogoAvvio;
+        SogliaArancioneGiorni = altra.SogliaArancioneGiorni;
+        SogliaRossaGiorni = altra.SogliaRossaGiorni;
+        CartellaBackup = altra.CartellaBackup;
+        BackupPromemoriaGiorni = altra.BackupPromemoriaGiorni;
+        UltimoBackup = altra.UltimoBackup;
+    }
+
     /// <summary>Restituisce i problemi trovati, vuoto se le impostazioni sono valide.</summary>
     public IReadOnlyList<string> Valida()
     {

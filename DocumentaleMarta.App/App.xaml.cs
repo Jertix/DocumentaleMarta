@@ -69,9 +69,10 @@ public partial class App : Application
     private static ServiceProvider? Avvia()
     {
         ImpostazioniApp impostazioni;
+        var servizioImpostazioni = new ImpostazioniService();
         try
         {
-            impostazioni = new ImpostazioniService().Carica();
+            impostazioni = servizioImpostazioni.Carica();
         }
         catch (Exception ex) when (ex is InvalidDataException or IOException or UnauthorizedAccessException)
         {
@@ -98,7 +99,7 @@ public partial class App : Application
             return null;
         }
 
-        return Composizione.Crea(impostazioni, percorsoDatabase);
+        return Composizione.Crea(impostazioni, percorsoDatabase, servizioImpostazioni);
     }
 
     private static void OnErroreNonGestito(object sender, DispatcherUnhandledExceptionEventArgs e)

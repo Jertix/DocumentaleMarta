@@ -1,11 +1,14 @@
 using System.Collections.ObjectModel;
 using System.ComponentModel;
 using System.IO;
+using System.Reflection;
+using System.Runtime.InteropServices;
 using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
 using DocumentaleMarta.App.Servizi;
 using DocumentaleMarta.Core.Impostazioni;
 using DocumentaleMarta.Core.Servizi;
+using DocumentaleMarta.Data;
 
 namespace DocumentaleMarta.App.ViewModels;
 
@@ -13,6 +16,7 @@ namespace DocumentaleMarta.App.ViewModels;
 /// <param name="ricerca">Senza, il campo di ricerca non compare.</param>
 /// <param name="monitor">Lo stato della lettura dei documenti in background, per la barra in fondo alla finestra.</param>
 /// <param name="ocr">Serve solo a spiegare perché manca il riconoscimento del testo.</param>
+/// <param name="servizioImpostazioni">Salva le modifiche della finestra "Impostazioni"; senza, la finestra non compare.</param>
 public partial class MainViewModel(
     IArchivioService archivio,
     IArchivioFileService files,
@@ -22,9 +26,11 @@ public partial class MainViewModel(
     AlertService? avvisi = null,
     IRicercaService? ricerca = null,
     IMonitorIndicizzazione? monitor = null,
-    IOcr? ocr = null) : ObservableObject
+    IOcr? ocr = null,
+    ImpostazioniService? servizioImpostazioni = null) : ObservableObject
 {
-    private readonly AlertService _avvisi = avvisi ?? new AlertService(impostazioni);
+    // Non è readonly: cambiando le soglie nelle impostazioni il servizio viene ricreato con i valori nuovi.
+    private AlertService _avvisi = avvisi ?? new AlertService(impostazioni);
 
     private bool _caricamentoInCorso;
     private bool _ripristinandoSelezione;
@@ -82,7 +88,7 @@ public partial class MainViewModel(
         _caricamentoElenco = Task.CompletedTask;
 
         // Se c'è una ricerca in corso (es. l'albero è stato riletto) si mostrano di nuovo i suoi risultati.
-        if (TestoRicercaAttivo && value is not null)
+        if (RicercaAttiva && value is not null)
         {
             _caricamentoElenco = _ricerca = EseguiRicercaAsync(TestoRicerca.Trim(), TimeSpan.Zero);
             return;
@@ -115,7 +121,7 @@ public partial class MainViewModel(
             var elenco = new ElencoDocumentiViewModel(
                 archivio, files, dialog, shell, nodo.Tipo == TipoNodo.Area ? nodo.Id : null, _avvisi);
             await elenco.CaricaAsync();
-            if (!ReferenceEquals(NodoSelezionato, nodo) || TestoRicercaAttivo)
+            if (!ReferenceEquals(NodoSelezionato, nodo) || RicercaAttiva)
                 return; // nel frattempo l'utente ha scelto un altro elemento o ha iniziato una ricerca
 
             CollegaElenco(elenco);
@@ -134,7 +140,7 @@ public partial class MainViewModel(
         {
             var elenco = new ScadenzeViewModel(archivio, _avvisi);
             await elenco.CaricaAsync();
-            if (!ReferenceEquals(NodoSelezionato, nodo) || TestoRicercaAttivo)
+            if (!ReferenceEquals(NodoSelezionato, nodo) || RicercaAttiva)
                 return;
 
             elenco.VaiAllaCartellaRichiesto += VaiAllaCartella;
@@ -151,7 +157,7 @@ public partial class MainViewModel(
         try
         {
             var dettaglio = await archivio.CaricaCartellaAsync(nodo.Id);
-            if (!ReferenceEquals(NodoSelezionato, nodo) || TestoRicercaAttivo)
+            if (!ReferenceEquals(NodoSelezionato, nodo) || RicercaAttiva)
                 return; // nel frattempo l'utente ha scelto un altro elemento o ha iniziato una ricerca
 
             if (dettaglio is null)
@@ -194,7 +200,7 @@ public partial class MainViewModel(
 
         // Dai risultati di una ricerca si va alla cartella: la ricerca finisce. Se la cartella è già quella selezionata
         // la selezione non cambia e il pannello va ricaricato da qui.
-        if (TestoRicercaAttivo)
+        if (RicercaAttiva)
             EsciDallaRicerca(ricarica: nodo.IsSelected);
 
         for (var p = nodo.Padre; p is not null; p = p.Padre)
@@ -340,6 +346,7 @@ public partial class MainViewModel(
             Radici.Clear();
             Radici.Add(radice);
             RicalcolaAvvisi();
+            Filtri.AggiornaAree(radice.Aree.Select(a => (a.Id, a.Nome)));
         }
         finally
         {
@@ -370,7 +377,7 @@ public partial class MainViewModel(
             return;
 
         // Chi sceglie un altro elemento dell'albero ha finito di cercare.
-        if (TestoRicercaAttivo && !_ripristinandoSelezione)
+        if (RicercaAttiva && !_ripristinandoSelezione)
             EsciDallaRicerca(ricarica: false);
 
         var precedente = NodoSelezionato;
@@ -521,8 +528,56 @@ public partial class MainViewModel(
     [NotifyPropertyChangedFor(nameof(TestoRicercaAttivo))]
     private string _testoRicerca = "";
 
-    /// <summary>C'è qualcosa da cercare (il campo non è vuoto né fatto di soli spazi).</summary>
+    /// <summary>Il campo di ricerca contiene qualcosa (non è vuoto né fatto di soli spazi).</summary>
     public bool TestoRicercaAttivo => !string.IsNullOrWhiteSpace(TestoRicerca);
+
+    /// <summary>C'è una ricerca da mostrare: delle parole, dei filtri della ricerca avanzata, o entrambi.</summary>
+    public bool RicercaAttiva => TestoRicercaAttivo || Filtri.NumeroAttivi > 0;
+
+    // ---------- Ricerca avanzata ----------
+
+    private FiltriRicercaViewModel? _filtri;
+
+    /// <summary>I filtri del pannello "Ricerca avanzata".</summary>
+    public FiltriRicercaViewModel Filtri
+    {
+        get
+        {
+            if (_filtri is null)
+            {
+                _filtri = new FiltriRicercaViewModel();
+                _filtri.Cambiati += OnFiltriCambiati;
+            }
+            return _filtri;
+        }
+    }
+
+    /// <summary>Spiega cosa significano "In scadenza" e "Scadute" nel menu dello stato.</summary>
+    public string SuggerimentoStatoRicerca =>
+        $"«In scadenza»: non completate, con la scadenza entro {Giorni(_avvisi.SogliaArancioneGiorni)} (la soglia arancione delle impostazioni).\n" +
+        "«Scadute»: non completate, con la scadenza già passata.";
+
+    /// <summary>Il pannello dei filtri è aperto.</summary>
+    [ObservableProperty]
+    private bool _pannelloFiltriAperto;
+
+    /// <summary>Un filtro è cambiato: la ricerca si rifà subito (o, se non resta più nulla da cercare, si torna alla vista normale).</summary>
+    private void OnFiltriCambiati()
+    {
+        if (_sopprimiRicerca)
+            return;
+
+        OnPropertyChanged(nameof(RicercaAttiva));
+        AnnullaRicercaInCorso();
+        if (!RicercaAttiva)
+        {
+            ElencoDocumenti = null;
+            CaricaPannello(NodoSelezionato);
+            return;
+        }
+
+        _ricerca = EseguiRicercaAsync(TestoRicerca.Trim(), TimeSpan.Zero);
+    }
 
     /// <summary>Sono mostrati i risultati di una ricerca.</summary>
     public bool InRicerca => ElencoDocumenti is { IsRicerca: true };
@@ -539,10 +594,11 @@ public partial class MainViewModel(
         if (_sopprimiRicerca)
             return;
 
+        OnPropertyChanged(nameof(RicercaAttiva));
         AnnullaRicercaInCorso();
-        if (!TestoRicercaAttivo)
+        if (!RicercaAttiva)
         {
-            // Campo svuotato: si torna a mostrare ciò che spetta all'elemento selezionato.
+            // Campo svuotato e nessun filtro: si torna a mostrare ciò che spetta all'elemento selezionato.
             ElencoDocumenti = null;
             CaricaPannello(NodoSelezionato);
             return;
@@ -556,7 +612,7 @@ public partial class MainViewModel(
     private Task CercaAsync()
     {
         AnnullaRicercaInCorso();
-        if (!TestoRicercaAttivo)
+        if (!RicercaAttiva)
             return Task.CompletedTask;
 
         return _ricerca = EseguiRicercaAsync(TestoRicerca.Trim(), TimeSpan.Zero);
@@ -587,7 +643,8 @@ public partial class MainViewModel(
             if (attesa > TimeSpan.Zero)
                 await Task.Delay(attesa, token);
 
-            var risultati = new ElencoDocumentiViewModel(archivio, files, dialog, shell, null, _avvisi, ricerca, testo);
+            var risultati = new ElencoDocumentiViewModel(
+                archivio, files, dialog, shell, null, _avvisi, ricerca, testo, Filtri.ToFiltri(_avvisi));
             await risultati.CaricaAsync();
             if (token.IsCancellationRequested)
                 return; // nel frattempo il testo è cambiato: vale la ricerca più recente
@@ -613,14 +670,25 @@ public partial class MainViewModel(
         }
     }
 
-    /// <summary>Svuota il campo di ricerca senza far partire altro; se richiesto ricarica il pannello dell'elemento selezionato.</summary>
+    /// <summary>
+    /// Finisce la ricerca: svuota il campo e azzera i filtri senza far partire altro; se richiesto ricarica
+    /// il pannello dell'elemento selezionato.
+    /// </summary>
     private void EsciDallaRicerca(bool ricarica)
     {
         AnnullaRicercaInCorso();
 
         _sopprimiRicerca = true;
-        try { TestoRicerca = ""; }
-        finally { _sopprimiRicerca = false; }
+        try
+        {
+            TestoRicerca = "";
+            Filtri.Azzera(notifica: false);
+        }
+        finally
+        {
+            _sopprimiRicerca = false;
+        }
+        OnPropertyChanged(nameof(RicercaAttiva));
 
         if (ElencoDocumenti is { IsRicerca: true })
             ElencoDocumenti = null;
@@ -630,8 +698,10 @@ public partial class MainViewModel(
 
     private string RiepilogoRicerca(ElencoDocumentiViewModel risultati)
     {
-        var testo = $"{Conta(risultati.Documenti.Count, "documento trovato", "documenti trovati")} per «{risultati.TestoRicerca}»";
-        return risultati.Troncato ? testo + " (ce ne sono altri: scrivi più parole per restringere la ricerca)" : testo;
+        var parole = string.IsNullOrWhiteSpace(risultati.TestoRicerca) ? "" : $" per «{risultati.TestoRicerca}»";
+        var filtri = risultati.HaFiltri ? " con i filtri scelti" : "";
+        var testo = $"{Conta(risultati.Documenti.Count, "documento trovato", "documenti trovati")}{parole}{filtri}";
+        return risultati.Troncato ? testo + " (ce ne sono altri: restringi la ricerca)" : testo;
     }
 
     /// <summary>Gli eventi delle griglie (doppio clic, eliminazione...) sono gli stessi per documenti di un'area e risultati di ricerca.</summary>
@@ -819,6 +889,107 @@ public partial class MainViewModel(
             dialog.MostraErrore($"Impossibile aprire Esplora file: {ex.Message}");
         }
     }
+
+    // ---------- Impostazioni e informazioni ----------
+
+    /// <summary>La finestra "Impostazioni" compare solo se c'è un servizio che sa salvarle.</summary>
+    public bool ImpostazioniDisponibili => servizioImpostazioni is not null;
+
+    /// <summary>
+    /// Apre la finestra delle impostazioni. Se i valori sono validi si salvano nel file e si applicano subito
+    /// (soglie, dati della ditta, nome della radice): niente riavvio. Se il salvataggio fallisce la finestra resta aperta.
+    /// </summary>
+    [RelayCommand]
+    private async Task ApriImpostazioniAsync()
+    {
+        if (servizioImpostazioni is null)
+            return;
+
+        var modello = new ImpostazioniViewModel(impostazioni, servizioImpostazioni.PercorsoFile);
+        while (dialog.MostraImpostazioni(modello))
+        {
+            var nuove = modello.Costruisci();
+            try
+            {
+                servizioImpostazioni.Salva(nuove);
+            }
+            catch (Exception ex) when (ex is IOException or UnauthorizedAccessException)
+            {
+                dialog.MostraErrore(
+                    $"Non è stato possibile salvare le impostazioni: {ex.Message}\n\nFile: {servizioImpostazioni.PercorsoFile}");
+                continue;
+            }
+
+            impostazioni.CopiaDa(nuove);
+            await EseguiAsync(ApplicaImpostazioniAsync);
+            return;
+        }
+    }
+
+    /// <summary>Le soglie e i dati della ditta sono cambiati: si ricrea il servizio degli avvisi e si rilegge l'albero.</summary>
+    private async Task ApplicaImpostazioniAsync()
+    {
+        _avvisi = new AlertService(impostazioni, _avvisi.Tempo);
+        OnPropertyChanged(nameof(TestoAzienda));
+        OnPropertyChanged(nameof(DescrizioneAzienda));
+        OnPropertyChanged(nameof(SuggerimentoStatoRicerca));
+        await RicaricaAsync();
+    }
+
+    /// <summary>Mostra la finestra "Informazioni": versione, dati della ditta, dove sono archivio e database, stato dell'OCR.</summary>
+    [RelayCommand]
+    private void ApriInformazioni()
+    {
+        var azienda = impostazioni.Azienda;
+        var assemblea = typeof(MainViewModel).Assembly;
+        var versione = assemblea.GetCustomAttribute<AssemblyInformationalVersionAttribute>()?.InformationalVersion
+                       ?? assemblea.GetName().Version?.ToString() ?? "";
+        versione = versione.Split('+')[0]; // il compilatore aggiunge "+identificativo del commit"
+
+        var radice = Radici.FirstOrDefault();
+        var contenuto = radice is null
+            ? ""
+            : $"{Conta(radice.Aree.Count(), "area", "aree")}  ·  {Conta(radice.NumeroCartelle, "cartella", "cartelle")}  ·  {Conta(radice.NumeroDocumenti, "documento", "documenti")}";
+
+        var statoOcr = ocr switch
+        {
+            null => "Non verificato.",
+            { Disponibile: true } => $"Disponibile ({ocr.Lingua}).",
+            _ => ocr.MotivoNonDisponibile ?? "Non disponibile."
+        };
+
+        dialog.MostraInformazioni(new InformazioniViewModel(
+            "Documentale", versione,
+            azienda.RagioneSociale, azienda.CodiceFiscale, azienda.PartitaIva, azienda.Indirizzo, azienda.Descrizione,
+            files.PercorsoRadice, ArchivioDatabase.PercorsoDatabase(files.PercorsoRadice),
+            servizioImpostazioni?.PercorsoFile ?? "",
+            contenuto, statoOcr,
+            $"{RuntimeInformation.FrameworkDescription} su {RuntimeInformation.OSDescription}"));
+    }
+
+    // ---------- Trascinamento sull'albero ----------
+
+    /// <summary>
+    /// Un documento è stato trascinato su una cartella dell'albero: lo si sposta lì (il file vero e la riga nel database).
+    /// </summary>
+    public Task SpostaDocumentoAsync(int documentoId, int cartellaDestinazioneId) => EseguiAsync(async () =>
+    {
+        await archivio.SpostaDocumentoAsync(documentoId, cartellaDestinazioneId);
+        await RicaricaAsync();
+    });
+
+    /// <summary>Dei file sono stati trascinati da Esplora file su una cartella dell'albero: si allegano a quella cartella.</summary>
+    public Task AllegaATrascinatiAsync(int cartellaId, IReadOnlyList<string> percorsi) => EseguiAsync(async () =>
+    {
+        var (file, cartelleEscluse) = Trascinamento.SoloFile(percorsi);
+        if (cartelleEscluse > 0)
+            dialog.MostraErrore(Trascinamento.MessaggioCartelleEscluse(cartelleEscluse));
+        if (file.Count == 0)
+            return;
+
+        await archivio.AllegaDocumentiAsync(cartellaId, file);
+        await RicaricaAsync();
+    });
 
     /// <summary>Rilegge tutto dall'archivio (utile se i file sono stati toccati fuori dal programma).</summary>
     [RelayCommand]

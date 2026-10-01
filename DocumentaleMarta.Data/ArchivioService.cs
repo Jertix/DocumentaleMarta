@@ -276,6 +276,43 @@ public class ArchivioService(
         await EliminaConCestinoAsync(db, cartella, cartella.PercorsoRelativo);
     }
 
+    public async Task SpostaDocumentoAsync(int documentoId, int cartellaDestinazioneId)
+    {
+        await using var db = await dbFactory.CreateDbContextAsync();
+        var documento = await db.Documenti.SingleOrDefaultAsync(d => d.Id == documentoId)
+                        ?? throw new ArchivioException("Il documento non esiste più.");
+        var destinazione = await db.Cartelle.SingleOrDefaultAsync(c => c.Id == cartellaDestinazioneId)
+                           ?? throw new ArchivioException("La cartella di destinazione non esiste più.");
+
+        if (documento.CartellaId == destinazione.Id)
+            return;
+
+        // Prima il database, dentro una transazione; poi il file. Se lo spostamento del file fallisce la transazione
+        // non viene confermata e il database resta com'era.
+        await using var transazione = await db.Database.BeginTransactionAsync();
+
+        var vecchioPercorso = documento.PercorsoRelativo;
+        var nome = NomiFileSicuri.RendiUnivoco(
+            Path.GetFileName(vecchioPercorso),
+            n => files.Esiste(Path.Combine(destinazione.PercorsoRelativo, n)));
+
+        documento.CartellaId = destinazione.Id;
+        documento.NomeFile = nome;
+        documento.PercorsoRelativo = Path.Combine(destinazione.PercorsoRelativo, nome);
+        await db.SaveChangesAsync();
+
+        var effettivo = await Task.Run(() => files.SpostaFile(vecchioPercorso, destinazione.PercorsoRelativo));
+        if (effettivo != documento.PercorsoRelativo)
+        {
+            // Nel frattempo qualcuno ha creato un file con quel nome: il file ha preso un altro nome, il database si allinea.
+            documento.PercorsoRelativo = effettivo;
+            documento.NomeFile = Path.GetFileName(effettivo);
+            await db.SaveChangesAsync();
+        }
+
+        await transazione.CommitAsync();
+    }
+
     public async Task<IReadOnlyList<DocumentoElenco>> CaricaDocumentiAsync(int? areaId)
     {
         await using var db = await dbFactory.CreateDbContextAsync();

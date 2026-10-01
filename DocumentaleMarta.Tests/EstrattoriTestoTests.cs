@@ -9,6 +9,7 @@ public class FintoOcr(bool disponibile = true, string testo = "testo riconosciut
 {
     public bool Disponibile { get; } = disponibile;
     public string? MotivoNonDisponibile { get; } = disponibile ? null : "Manca il pacchetto della lingua italiana.";
+    public string? Lingua { get; } = disponibile ? "italiano" : null;
     public List<string> Immagini { get; } = [];
     public List<string> Pdf { get; } = [];
 

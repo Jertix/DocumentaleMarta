@@ -8,6 +8,7 @@
         d:DataContext="{d:DesignInstance Type=vm:NuovaCartellaViewModel}"
         Title="Nuova cartella" Width="600" SizeToContent="Height" ResizeMode="NoResize"
         WindowStartupLocation="CenterOwner" ShowInTaskbar="False"
+        AllowDrop="True" DragOver="Finestra_DragOver" Drop="Finestra_Drop"
         FocusManager.FocusedElement="{Binding ElementName=CasellaTitolo}">
     <Window.Resources>
         <Style x:Key="Etichetta" TargetType="TextBlock">
