@@ -18,6 +18,11 @@
     <Using Include="Xunit" />
   </ItemGroup>
 
+  <!-- File creati da programmi veri (LibreOffice), per provare i lettori su formati non costruiti a mano -->
+  <ItemGroup>
+    <None Include="FileVeri\**" CopyToOutputDirectory="PreserveNewest" />
+  </ItemGroup>
+
   <ItemGroup>
     <ProjectReference Include="..\DocumentaleMarta.Core\DocumentaleMarta.Core.csproj" />
     <ProjectReference Include="..\DocumentaleMarta.Data\DocumentaleMarta.Data.csproj" />

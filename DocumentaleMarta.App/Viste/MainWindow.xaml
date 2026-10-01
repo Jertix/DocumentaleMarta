@@ -169,10 +169,13 @@
                     <TextBlock Text="Tipo di file" Foreground="#666" FontSize="12" Margin="0,0,0,3"/>
                     <StackPanel Orientation="Horizontal" Height="24">
                         <CheckBox Content="PDF" IsChecked="{Binding Filtri.Pdf}" Margin="0,0,12,0" VerticalContentAlignment="Center"/>
-                        <CheckBox Content="Word" IsChecked="{Binding Filtri.Word}" Margin="0,0,12,0" VerticalContentAlignment="Center"/>
-                        <CheckBox Content="Excel" IsChecked="{Binding Filtri.Excel}" Margin="0,0,12,0" VerticalContentAlignment="Center"/>
+                        <CheckBox Content="Word" IsChecked="{Binding Filtri.Word}" Margin="0,0,12,0" VerticalContentAlignment="Center"
+                                  ToolTip="Documenti di testo: Word, OpenOffice e LibreOffice (.odt), RTF"/>
+                        <CheckBox Content="Excel" IsChecked="{Binding Filtri.Excel}" Margin="0,0,12,0" VerticalContentAlignment="Center"
+                                  ToolTip="Fogli di calcolo: Excel, OpenOffice e LibreOffice (.ods), CSV"/>
                         <CheckBox Content="Immagini" IsChecked="{Binding Filtri.Immagini}" Margin="0,0,12,0" VerticalContentAlignment="Center"/>
-                        <CheckBox Content="Altro" IsChecked="{Binding Filtri.Altro}" VerticalContentAlignment="Center"/>
+                        <CheckBox Content="Altro" IsChecked="{Binding Filtri.Altro}" VerticalContentAlignment="Center"
+                                  ToolTip="Testo semplice, presentazioni (PowerPoint, Impress), disegni e tutti gli altri formati"/>
                     </StackPanel>
                 </StackPanel>
 

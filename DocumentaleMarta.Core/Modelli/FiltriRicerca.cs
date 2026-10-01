@@ -11,14 +11,15 @@ public enum CategoriaFile
     Excel = 4,
     Immagini = 8,
 
-    /// <summary>Tutto ciò che non rientra negli altri (testo semplice, PowerPoint, file sconosciuti...).</summary>
+    /// <summary>Tutto ciò che non rientra negli altri (testo semplice, presentazioni PowerPoint e Impress, file sconosciuti...).</summary>
     Altro = 16
 }
 
 public static class CategorieFile
 {
-    private static readonly HashSet<string> Word = [".doc", ".docx", ".dot", ".dotx", ".odt", ".rtf"];
-    private static readonly HashSet<string> Excel = [".xls", ".xlsx", ".xlsm", ".ods", ".csv"];
+    // I formati di OpenOffice e LibreOffice stanno con i loro equivalenti: i documenti con Word, i fogli con Excel.
+    private static readonly HashSet<string> Word = [".doc", ".docx", ".dot", ".dotx", .. FormatiOpenDocument.Testo, ".rtf"];
+    private static readonly HashSet<string> Excel = [".xls", ".xlsx", ".xlsm", .. FormatiOpenDocument.FoglioDiCalcolo, ".csv"];
     private static readonly HashSet<string> Immagini =
         [".jpg", ".jpeg", ".jpe", ".png", ".tif", ".tiff", ".bmp", ".gif", ".webp", ".heic"];
 

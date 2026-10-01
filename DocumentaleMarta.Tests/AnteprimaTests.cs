@@ -1,3 +1,4 @@
+using System.IO.Compression;
 using System.Windows.Media;
 using System.Windows.Media.Imaging;
 using DocumentaleMarta.App.Servizi;
@@ -78,9 +79,18 @@ public class GeneratoreAnteprimaTests : IDisposable
     [InlineData(".gif", true)]
     [InlineData(".tif", true)]
     [InlineData(".tiff", true)]
+    [InlineData(".odt", true)]
+    [InlineData(".ott", true)]
+    [InlineData(".ods", true)]
+    [InlineData(".ots", true)]
+    [InlineData(".odp", true)]
+    [InlineData(".otp", true)]
+    [InlineData(".odg", true)]
+    [InlineData(".otg", true)]
+    [InlineData(".ODT", true)]
     [InlineData(".docx", false)]
     [InlineData(".xlsx", false)]
-    [InlineData(".odt", false)]
+    [InlineData(".doc", false)]
     [InlineData(".txt", false)]
     [InlineData("", false)]
     public void Supporta_SoloPdfEImmagini(string estensione, bool atteso) =>
@@ -215,7 +225,7 @@ public class GeneratoreAnteprimaTests : IDisposable
     [Theory]
     [InlineData("documento.docx", "DOCX")]
     [InlineData("foglio.xlsx", "XLSX")]
-    [InlineData("testo.odt", "ODT")]
+    [InlineData("vecchio.doc", "DOC")]
     public async Task UnFileSenzaAnteprima_DiceCosaFare_ENonEUnErrore(string nome, string tipo)
     {
         var percorso = _tmp.CreaFile(nome, "contenuto");
@@ -273,6 +283,94 @@ public class GeneratoreAnteprimaTests : IDisposable
 
         await Assert.ThrowsAnyAsync<OperationCanceledException>(
             () => Task.Run(() => _generatore.GeneraAsync(pdf, 0, annullamento.Token)));
+    }
+
+    // ---------- OpenOffice e LibreOffice: la miniatura della prima pagina ----------
+
+    [Fact]
+    public async Task UnOdt_ConLaMiniatura_MostraLaPrimaPagina()
+    {
+        var odt = OpenDocumentDiProva.Odt(_tmp.Combina("lettera.odt"), ["Gentile cliente"], miniatura: OpenDocumentDiProva.PngDiProva(128, 180));
+
+        var risultato = await Genera(odt);
+
+        Assert.Equal(StatoAnteprima.Pronta, risultato.Stato);
+        Assert.Equal(1, risultato.Pagine);
+        var immagine = Assert.IsAssignableFrom<BitmapSource>(risultato.Immagine);
+        Assert.Equal((128, 180), (immagine.PixelWidth, immagine.PixelHeight));
+        Assert.True(immagine.IsFrozen);
+        Assert.Equal(GeneratoreAnteprima.NotaMiniatura, risultato.Nota); // si dice che è solo la miniatura salvata nel documento
+    }
+
+    [Fact]
+    public async Task PdfEImmagini_NonHannoNote()
+    {
+        Assert.Equal("", (await Genera(Png("a.png", 20, 20))).Nota);
+        Assert.Equal("", (await Genera(FileDiProva.Pdf(_tmp.Combina("a.pdf"), "x"))).Nota);
+    }
+
+    [Theory]
+    [InlineData("spreadsheet", ".ods")]
+    [InlineData("presentation", ".odp")]
+    [InlineData("drawing", ".odg")]
+    [InlineData("text", ".ott")]
+    public async Task AncheFogliPresentazioniDisegniEModelli_MostranoLaMiniatura(string tipo, string estensione)
+    {
+        var file = OpenDocumentDiProva.Documento(_tmp.Combina("doc" + estensione), tipo, "", miniatura: OpenDocumentDiProva.PngDiProva());
+
+        Assert.Equal(StatoAnteprima.Pronta, (await Genera(file)).Stato);
+    }
+
+    [Fact]
+    public async Task UnOdt_SenzaMiniatura_DiceCheNonCeL_Anteprima_ENonEUnErrore()
+    {
+        var odt = OpenDocumentDiProva.Odt(_tmp.Combina("senza.odt"), ["Gentile cliente"]);
+
+        var risultato = await Genera(odt);
+
+        Assert.Equal(StatoAnteprima.NonDisponibile, risultato.Stato);
+        Assert.Contains("non contiene l'anteprima", risultato.Messaggio);
+        Assert.Contains("Apri documento", risultato.Messaggio);
+    }
+
+    [Fact]
+    public async Task UnOdtRovinato_DaUnMessaggioSuUnDocumento()
+    {
+        var risultato = await Genera(_tmp.CreaFile("rovinato.odt", "non sono uno zip"));
+
+        Assert.Equal(StatoAnteprima.Errore, risultato.Stato);
+        Assert.Contains("questo documento", risultato.Messaggio);
+    }
+
+    [Fact]
+    public async Task UnaMiniaturaRovinata_DaUnMessaggio_NonUnEccezione()
+    {
+        var odt = OpenDocumentDiProva.Odt(_tmp.Combina("brutta.odt"), ["x"], miniatura: [1, 2, 3, 4, 5]);
+
+        Assert.Equal(StatoAnteprima.Errore, (await Genera(odt)).Stato);
+    }
+
+    [Fact]
+    public async Task UnOdt_SiVedeAncheSeEAperto_ESiPuoEliminareDopo()
+    {
+        var odt = OpenDocumentDiProva.Odt(_tmp.Combina("aperto.odt"), ["x"], miniatura: OpenDocumentDiProva.PngDiProva());
+        using (new FileStream(odt, FileMode.Open, FileAccess.ReadWrite, FileShare.ReadWrite))
+            Assert.Equal(StatoAnteprima.Pronta, (await Genera(odt)).Stato);
+
+        File.Delete(odt);
+        Assert.False(File.Exists(odt));
+    }
+
+    [Fact]
+    public async Task UnOdtGrande_ConLaMiniatura_SiVedeSenzaCaricareTuttoIlFile()
+    {
+        // Il documento è grosso (qui 30 MB di dati poco comprimibili) ma la miniatura è piccola: l'anteprima non lo carica.
+        var odt = OpenDocumentDiProva.Odt(_tmp.Combina("grosso.odt"), ["x"], miniatura: OpenDocumentDiProva.PngDiProva());
+        using (var zip = ZipFile.Open(odt, ZipArchiveMode.Update))
+        using (var voce = zip.CreateEntry("Pictures/foto.bin", System.IO.Compression.CompressionLevel.NoCompression).Open())
+            voce.Write(new byte[30 * 1024 * 1024]);
+
+        Assert.Equal(StatoAnteprima.Pronta, (await Genera(odt)).Stato);
     }
 
     // ---------- Il file non resta bloccato: si può spostare, eliminare, modificare ----------
@@ -402,6 +500,30 @@ public class AnteprimaViewModelTests : IDisposable
 
         Assert.False(_vm.CaricamentoVisibile);
         Assert.True(_vm.HaImmagine);
+    }
+
+    [Fact]
+    public async Task LaNotaSottoLImmagine_SiMostraSoloConLImmagine_EScompareCambiandoDocumento()
+    {
+        _generatore.Comportamento = (_, _, _) => Task.FromResult(
+            new RisultatoAnteprima(StatoAnteprima.Pronta, FintoGeneratoreAnteprima.ImmagineFinta, 1, Nota: "Solo una miniatura."));
+        _vm.Mostra(Documento("lettera.odt"));
+        await _vm.Completamento;
+        Assert.Equal("Solo una miniatura.", _vm.Nota);
+        Assert.True(_vm.HaNota);
+
+        _generatore.Comportamento = null; // il prossimo documento non ha note
+        _vm.Mostra(Documento("fattura.pdf"));
+        await _vm.Completamento;
+        Assert.Equal("", _vm.Nota);
+        Assert.False(_vm.HaNota);
+
+        _generatore.Comportamento = (_, _, _) => Task.FromResult(
+            new RisultatoAnteprima(StatoAnteprima.Pronta, FintoGeneratoreAnteprima.ImmagineFinta, 1, Nota: "Ancora."));
+        _vm.Mostra(Documento("altro.odt"));
+        await _vm.Completamento;
+        _vm.Svuota();
+        Assert.Equal("", _vm.Nota);
     }
 
     [Fact]

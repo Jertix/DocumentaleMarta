@@ -38,6 +38,10 @@
                         AutomationProperties.Name="Pagina successiva"/>
             </Grid>
 
+            <!-- Una precisazione sotto l'immagine, per esempio che è solo una miniatura -->
+            <TextBlock DockPanel.Dock="Bottom" Text="{Binding Nota}" Foreground="#888" FontSize="11" TextWrapping="Wrap"
+                       Margin="0,6,0,0" Visibility="{Binding HaNota, Converter={StaticResource BoolToVis}}"/>
+
             <Grid>
                 <Border Background="White" BorderBrush="#D8D8D8" BorderThickness="1"
                         Visibility="{Binding HaImmagine, Converter={StaticResource BoolToVis}}">

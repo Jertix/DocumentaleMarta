@@ -12,7 +12,7 @@ public class DialogService : IDialogService
     private const string TitoloApplicazione = "Documentale";
 
     private const string FiltroFile =
-        "Documenti e immagini|*.pdf;*.doc;*.docx;*.xls;*.xlsx;*.ppt;*.pptx;*.odt;*.ods;*.rtf;*.txt;*.csv;*.jpg;*.jpeg;*.png;*.tif;*.tiff;*.bmp;*.gif" +
+        "Documenti e immagini|*.pdf;*.doc;*.docx;*.xls;*.xlsx;*.ppt;*.pptx;*.odt;*.ods;*.odp;*.odg;*.ott;*.ots;*.otp;*.otg;*.rtf;*.txt;*.csv;*.jpg;*.jpeg;*.png;*.tif;*.tiff;*.bmp;*.gif" +
         "|Tutti i file|*.*";
 
     private static Window? Proprietaria => Application.Current?.MainWindow;

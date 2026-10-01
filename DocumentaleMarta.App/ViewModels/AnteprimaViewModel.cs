@@ -41,7 +41,7 @@ public partial class AnteprimaViewModel(IGeneratoreAnteprima generatore, IArchiv
     private StatoAnteprima _stato = StatoAnteprima.Vuota;
 
     [ObservableProperty]
-    [NotifyPropertyChangedFor(nameof(HaImmagine), nameof(CaricamentoVisibile), nameof(HaPagine))]
+    [NotifyPropertyChangedFor(nameof(HaImmagine), nameof(CaricamentoVisibile), nameof(HaPagine), nameof(HaNota))]
     private ImageSource? _immagine;
 
     /// <summary>Il nome del documento mostrato.</summary>
@@ -51,6 +51,13 @@ public partial class AnteprimaViewModel(IGeneratoreAnteprima generatore, IArchiv
     /// <summary>Cosa dire quando non c'è un'immagine (nessuna selezione, formato senza anteprima, errore).</summary>
     [ObservableProperty]
     private string _messaggio = TestoNessunDocumento;
+
+    /// <summary>Una precisazione sotto l'immagine (es. "Miniatura della prima pagina"); vuota se non serve.</summary>
+    [ObservableProperty]
+    [NotifyPropertyChangedFor(nameof(HaNota))]
+    private string _nota = "";
+
+    public bool HaNota => HaImmagine && Nota.Length > 0;
 
     [ObservableProperty]
     [NotifyPropertyChangedFor(nameof(HaPagine), nameof(TestoPagina))]
@@ -161,7 +168,7 @@ public partial class AnteprimaViewModel(IGeneratoreAnteprima generatore, IArchiv
                 () => generatore.GeneraAsync(files.PercorsoAssoluto(documento.PercorsoRelativo), pagina, annullamento), annullamento);
             annullamento.ThrowIfCancellationRequested();
 
-            Imposta(risultato.Stato, risultato.Messaggio, risultato.Immagine, documento.NomeFile, risultato.Pagine);
+            Imposta(risultato.Stato, risultato.Messaggio, risultato.Immagine, documento.NomeFile, risultato.Pagine, risultato.Nota);
             PaginaCorrente = Math.Clamp(pagina, 0, Math.Max(0, risultato.Pagine - 1)) + 1;
         }
         catch (OperationCanceledException)
@@ -174,9 +181,10 @@ public partial class AnteprimaViewModel(IGeneratoreAnteprima generatore, IArchiv
         }
     }
 
-    private void Imposta(StatoAnteprima stato, string messaggio, ImageSource? immagine, string titolo, int pagine)
+    private void Imposta(StatoAnteprima stato, string messaggio, ImageSource? immagine, string titolo, int pagine, string nota = "")
     {
         Immagine = immagine;
+        Nota = nota;
         Messaggio = messaggio;
         Titolo = titolo;
         NumeroPagine = Math.Max(1, pagine);

@@ -1,7 +1,9 @@
 using System.IO;
+using System.IO.Compression;
 using System.Windows.Media;
 using System.Windows.Media.Imaging;
 using DocumentaleMarta.App.ViewModels;
+using DocumentaleMarta.Core.Modelli;
 using Windows.Data.Pdf;
 using Windows.Storage.Streams;
 
@@ -27,7 +29,9 @@ public enum StatoAnteprima
 
 /// <param name="Immagine">La pagina disegnata, già "congelata" (si può usare da qualsiasi thread).</param>
 /// <param name="Pagine">Quante pagine ha il documento (1 per le immagini singole).</param>
-public record RisultatoAnteprima(StatoAnteprima Stato, ImageSource? Immagine = null, int Pagine = 1, string Messaggio = "")
+/// <param name="Nota">Una precisazione da mostrare sotto l'immagine (es. che è solo una miniatura).</param>
+public record RisultatoAnteprima(
+    StatoAnteprima Stato, ImageSource? Immagine = null, int Pagine = 1, string Messaggio = "", string Nota = "")
 {
     public static RisultatoAnteprima NonDisponibile(string messaggio) => new(StatoAnteprima.NonDisponibile, Messaggio: messaggio);
     public static RisultatoAnteprima InErrore(string messaggio) => new(StatoAnteprima.Errore, Messaggio: messaggio);
@@ -59,7 +63,8 @@ public class GeneratoreAnteprima : IGeneratoreAnteprima
         new(StringComparer.OrdinalIgnoreCase) { ".jpg", ".jpeg", ".png", ".bmp", ".gif", ".tif", ".tiff" };
 
     public bool Supporta(string estensione) =>
-        estensione.Equals(".pdf", StringComparison.OrdinalIgnoreCase) || Immagini.Contains(estensione);
+        estensione.Equals(".pdf", StringComparison.OrdinalIgnoreCase) || Immagini.Contains(estensione)
+        || FormatiOpenDocument.Contiene(estensione);
 
     public async Task<RisultatoAnteprima> GeneraAsync(string percorsoAssoluto, int pagina, CancellationToken annullamento)
     {
@@ -73,6 +78,12 @@ public class GeneratoreAnteprima : IGeneratoreAnteprima
             var info = new FileInfo(percorsoAssoluto);
             if (!info.Exists)
                 return RisultatoAnteprima.InErrore("Il file non si trova più nell'archivio.");
+
+            // Un file di OpenOffice o LibreOffice porta con sé la miniatura della prima pagina: si legge solo quella,
+            // senza caricare il documento (che può essere grande).
+            if (FormatiOpenDocument.Contiene(estensione))
+                return await Task.Run(() => DisegnaMiniaturaOpenDocument(percorsoAssoluto), annullamento);
+
             if (info.Length > DimensioneMassima)
                 return RisultatoAnteprima.NonDisponibile(
                     $"Il file è troppo grande per l'anteprima ({FormatiTesto.Dimensione(info.Length)}). Aprilo con il pulsante «Apri documento» della riga.");
@@ -96,10 +107,36 @@ public class GeneratoreAnteprima : IGeneratoreAnteprima
         catch (Exception)
         {
             // Formato rovinato, PDF protetto da password, immagine corrotta: dal sistema arrivano eccezioni di tanti tipi diversi.
-            return RisultatoAnteprima.InErrore(estensione == ".pdf"
-                ? "Non si riesce a mostrare questo PDF: potrebbe essere protetto da password o danneggiato. Prova ad aprirlo con il pulsante «Apri documento» della riga."
-                : "Non si riesce a mostrare questa immagine: il file potrebbe essere danneggiato. Prova ad aprirla con il pulsante «Apri documento» della riga.");
+            return RisultatoAnteprima.InErrore(estensione switch
+            {
+                ".pdf" => "Non si riesce a mostrare questo PDF: potrebbe essere protetto da password o danneggiato. Prova ad aprirlo con il pulsante «Apri documento» della riga.",
+                _ when FormatiOpenDocument.Contiene(estensione) => "Non si riesce a mostrare questo documento: il file potrebbe essere danneggiato. Prova ad aprirlo con il pulsante «Apri documento» della riga.",
+                _ => "Non si riesce a mostrare questa immagine: il file potrebbe essere danneggiato. Prova ad aprirla con il pulsante «Apri documento» della riga."
+            });
         }
+    }
+
+    public const string NotaMiniatura = "Miniatura della prima pagina, salvata nel documento.";
+
+    /// <summary>Oltre questa dimensione una "miniatura" non è credibile: si ignora.</summary>
+    private const long DimensioneMassimaMiniatura = 20L * 1024 * 1024;
+
+    private static RisultatoAnteprima DisegnaMiniaturaOpenDocument(string percorso)
+    {
+        using var flusso = new FileStream(percorso, FileMode.Open, FileAccess.Read, FileShare.ReadWrite | FileShare.Delete);
+        using var archivio = new ZipArchive(flusso, ZipArchiveMode.Read);
+
+        var voce = archivio.GetEntry(FormatiOpenDocument.PercorsoMiniatura);
+        if (voce is null || voce.Length is 0 or > DimensioneMassimaMiniatura)
+            return RisultatoAnteprima.NonDisponibile(
+                "Questo documento non contiene l'anteprima. Aprilo con il suo programma usando il pulsante «Apri documento» della riga.");
+
+        using var miniatura = new MemoryStream();
+        using (var origine = voce.Open())
+            origine.CopyTo(miniatura);
+
+        // È un'immagine PNG della prima pagina: si mostra come qualsiasi altra immagine, dicendo però che è solo una miniatura.
+        return DisegnaImmagine(miniatura.ToArray(), ".png", 0) with { Nota = NotaMiniatura };
     }
 
     private static async Task<byte[]> LeggiAsync(string percorso, CancellationToken annullamento)

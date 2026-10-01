@@ -31,6 +31,7 @@ public static class Composizione
         collezione.AddSingleton<IOcr>(ocr);
         collezione.AddSingleton<IEstrattoreTesto>(new EstrattoreTestoSemplice());
         collezione.AddSingleton<IEstrattoreTesto>(new EstrattoreOfficeOpenXml());
+        collezione.AddSingleton<IEstrattoreTesto>(new EstrattoreOpenDocument());
         collezione.AddSingleton<IEstrattoreTesto>(new EstrattorePdf(ocr));
         collezione.AddSingleton<IEstrattoreTesto>(new EstrattoreImmagine(ocr));
         collezione.AddSingleton<IndicizzazioneService>();

@@ -217,7 +217,10 @@ public class ComposizioneTests : IDisposable
         var indicizzazione = servizi.GetRequiredService<IndicizzazioneService>();
         Assert.Same(indicizzazione, servizi.GetRequiredService<IIndicizzatore>());
         Assert.Same(indicizzazione, servizi.GetRequiredService<IMonitorIndicizzazione>());
-        Assert.Equal(4, servizi.GetServices<IEstrattoreTesto>().Count());
+        var estrattori = servizi.GetServices<IEstrattoreTesto>().ToList();
+        Assert.Equal(5, estrattori.Count);
+        // Ogni formato di OpenOffice e LibreOffice ha un lettore tra quelli collegati.
+        Assert.All(FormatiOpenDocument.Tutti, estensione => Assert.Contains(estrattori, e => e.Supporta(estensione)));
         Assert.NotNull(servizi.GetRequiredService<IRicercaService>());
         Assert.NotNull(servizi.GetRequiredService<IOcr>());
 

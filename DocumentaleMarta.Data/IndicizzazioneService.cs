@@ -75,7 +75,10 @@ public sealed class IndicizzazioneService(
             Cambiato?.Invoke();
     }
 
-    /// <summary>Accoda i documenti non ancora letti o la cui lettura era fallita. Da chiamare all'avvio dell'app.</summary>
+    /// <summary>
+    /// Accoda i documenti non ancora letti o la cui lettura era fallita, e quelli marcati "non supportati" quando per il loro
+    /// formato non c'era ancora un lettore (es. OpenOffice, aggiunto dopo). Da chiamare all'avvio dell'app.
+    /// </summary>
     public async Task AccodaPendentiAsync()
     {
         await using var db = await dbFactory.CreateDbContextAsync();
@@ -84,6 +87,13 @@ public sealed class IndicizzazioneService(
                         || d.StatoIndicizzazione == StatoIndicizzazione.Errore)
             .Select(d => d.Id)
             .ToListAsync();
+
+        var nonSupportati = await db.Documenti.AsNoTracking()
+            .Where(d => d.StatoIndicizzazione == StatoIndicizzazione.NonSupportato)
+            .Select(d => new { d.Id, d.Estensione })
+            .ToListAsync();
+        ids.AddRange(nonSupportati.Where(d => _estrattori.Any(e => e.Supporta(d.Estensione))).Select(d => d.Id));
+
         Accoda(ids);
     }
 
