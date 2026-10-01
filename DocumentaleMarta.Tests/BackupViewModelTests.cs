@@ -92,10 +92,14 @@ public class BackupViewModelTests : IDisposable
 
     // ---------- Il comando ----------
 
+    /// <summary>Mette l'archivio dove la cartella predefinita dei backup (C:\Backup\DocumentaleMarta) finirebbe al suo interno: il programma deve chiedere.</summary>
+    private void LaCartellaPredefinitaNonSiPuoUsare() => _impostazioni.PercorsoRadice = @"C:\Backup";
+
     [Fact]
-    public async Task IlPrimoBackup_ChiedeLaCartella_LaUsa_ESiRicordaNelleImpostazioni()
+    public async Task IlPrimoBackup_SeLaPredefinitaNonSiPuoUsare_ChiedeLaCartella_LaUsa_ESiRicordaNelleImpostazioni()
     {
         var vm = await ConDocumentiAsync();
+        LaCartellaPredefinitaNonSiPuoUsare();
         _a.Dialog.RispondiCartella(@"E:\Backup");
 
         await vm.EseguiBackupCommand.ExecuteAsync(null);
@@ -113,7 +117,7 @@ public class BackupViewModelTests : IDisposable
     public async Task ILMessaggioFinale_DiceDoveEIlBackupEQuantoEGrande()
     {
         var vm = await ConDocumentiAsync();
-        _a.Dialog.RispondiCartella(@"E:\Backup");
+        _impostazioni.CartellaBackup = @"E:\Backup";
 
         await vm.EseguiBackupCommand.ExecuteAsync(null);
 
@@ -142,6 +146,7 @@ public class BackupViewModelTests : IDisposable
     public async Task AnnullandoLaScelta_NonSiFaNulla()
     {
         var vm = await ConDocumentiAsync();
+        LaCartellaPredefinitaNonSiPuoUsare();
         _a.Dialog.RispondiCartella(null);
 
         await vm.EseguiBackupCommand.ExecuteAsync(null);
@@ -159,6 +164,7 @@ public class BackupViewModelTests : IDisposable
     {
         _backup.Errore = new ArchivioException("La cartella dei backup non può stare dentro l'archivio.");
         var vm = await ConDocumentiAsync();
+        LaCartellaPredefinitaNonSiPuoUsare();
         _a.Dialog.RispondiCartella(Path.Combine(_a.Radice, "Fatture"));
 
         await vm.EseguiBackupCommand.ExecuteAsync(null);
@@ -235,7 +241,7 @@ public class BackupViewModelTests : IDisposable
         var vm = Principale(servizio: new ImpostazioniService(Path.Combine(bloccante, "impostazioni.json")));
         await _a.CreaCartellaAsync("Fatture", "Fattura", "a.pdf");
         await vm.InizializzaAsync();
-        _a.Dialog.RispondiCartella(@"E:\Backup");
+        _impostazioni.CartellaBackup = @"E:\Backup";
 
         await vm.EseguiBackupCommand.ExecuteAsync(null);
 
@@ -328,7 +334,7 @@ public class BackupViewModelTests : IDisposable
     {
         var vm = await ConDocumentiAsync();
         Assert.True(vm.PromemoriaBackupVisibile);
-        _a.Dialog.RispondiCartella(@"E:\Backup");
+        _impostazioni.CartellaBackup = @"E:\Backup";
 
         await vm.EseguiBackupCommand.ExecuteAsync(null);
 
@@ -380,7 +386,7 @@ public class BackupViewModelTests : IDisposable
         var destinazione = _a.Tmp.Combina("dischetto");
         var vm = Principale(new BackupService(_a.Factory, _a.Files));
         await vm.InizializzaAsync();
-        _a.Dialog.RispondiCartella(destinazione);
+        _impostazioni.CartellaBackup = destinazione; // senza una scelta si userebbe C:\Backup, che in una prova non va toccata
 
         await vm.EseguiBackupCommand.ExecuteAsync(null);
 
@@ -402,12 +408,12 @@ public class BackupViewModelTests : IDisposable
         await _a.CreaCartellaAsync("Fatture", "Fattura", "a.pdf");
         var vm = Principale(new BackupService(_a.Factory, _a.Files));
         await vm.InizializzaAsync();
-        _a.Dialog.RispondiCartella(Path.Combine(_a.Radice, "Fatture"));
+        _impostazioni.CartellaBackup = Path.Combine(_a.Radice, "Fatture"); // (le Impostazioni non lo lascerebbero salvare: qui si prova il servizio)
 
         await vm.EseguiBackupCommand.ExecuteAsync(null);
 
         Assert.Contains("non può stare dentro l'archivio", Assert.Single(_a.Dialog.Errori));
-        Assert.Null(_impostazioni.CartellaBackup);
+        Assert.Null(_impostazioni.UltimoBackup);
         Assert.False(Directory.Exists(Path.Combine(_a.Radice, "Fatture", "Documentale-backup")));
         Assert.Empty(Directory.GetFiles(_a.Fisico("Fatture", "Fattura"), "*.zip"));
     }
@@ -439,14 +445,33 @@ public class ImpostazioniBackupTests
     }
 
     [Fact]
-    public void SenzaBackup_LaFinestraLoDice_ELaCartellaEVuota()
+    public void SenzaBackup_LaFinestraLoDice_ELaCartellaEQuellaPredefinita()
     {
         var vm = Nuovo();
 
-        Assert.Equal("", vm.CartellaBackup);
+        Assert.Equal(@"C:\Backup\DocumentaleMarta", vm.CartellaBackup);
         Assert.Equal("30", vm.PromemoriaBackup);
         Assert.Equal("Non hai ancora fatto nessun backup.", vm.UltimoBackupTesto);
-        Assert.True(vm.PuoSalvare); // la cartella dei backup si sceglie anche al primo backup
+        Assert.True(vm.PuoSalvare);
+    }
+
+    [Fact]
+    public void SeLaPredefinitaNonSiPuoUsare_LaCartellaNellaFinestraEVuota_EIlBackupLaChiedera()
+    {
+        var vm = new ImpostazioniViewModel(new ImpostazioniApp { PercorsoRadice = @"C:\Backup" }, @"C:\x\impostazioni.json");
+
+        Assert.Equal("", vm.CartellaBackup);
+        Assert.True(vm.PuoSalvare);
+    }
+
+    [Fact]
+    public void LaSpiegazione_DiceQualeELaCartellaPredefinita_EPerchePuoStareVuota()
+    {
+        var vm = Nuovo();
+
+        Assert.Contains(@"C:\Backup\DocumentaleMarta", vm.SuggerimentoCartellaBackup);
+        Assert.Contains("Se la lasci vuota", vm.SuggerimentoCartellaBackup);
+        Assert.Contains("Non può stare dentro la cartella dell'archivio", vm.SuggerimentoCartellaBackup);
     }
 
     [Fact]

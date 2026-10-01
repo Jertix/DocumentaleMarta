@@ -48,7 +48,7 @@ public partial class ImpostazioniViewModel : ObservableObject
         _riepilogoAvvio = attuali.RiepilogoAvvio;
         _sogliaArancione = attuali.SogliaArancioneGiorni.ToString(CultureInfo.InvariantCulture);
         _sogliaRossa = attuali.SogliaRossaGiorni.ToString(CultureInfo.InvariantCulture);
-        _cartellaBackup = attuali.CartellaBackup ?? "";
+        _cartellaBackup = attuali.CartellaBackupInUso ?? ""; // se non ne ha scelta una, si vede quella predefinita
         _promemoriaBackup = attuali.BackupPromemoriaGiorni.ToString(CultureInfo.InvariantCulture);
     }
 
@@ -66,8 +66,14 @@ public partial class ImpostazioniViewModel : ObservableObject
 
     [ObservableProperty] private string _sogliaRossa;
 
-    /// <summary>Dove si salvano i backup; vuoto = non ancora scelta (la si sceglie al primo backup).</summary>
+    /// <summary>Dove si salvano i backup; se non è mai stata scelta una cartella c'è quella predefinita, e lasciandola vuota si usa quella.</summary>
     [ObservableProperty] private string _cartellaBackup;
+
+    /// <summary>La spiegazione sotto il campo della cartella dei backup (dice anche qual è la cartella predefinita).</summary>
+    public string SuggerimentoCartellaBackup =>
+        "Meglio un altro disco (una chiavetta o un disco esterno): così, se il PC si rompe, i backup si salvano. "
+        + "Non può stare dentro la cartella dell'archivio. "
+        + $"Se la lasci vuota si usa {ImpostazioniApp.CartellaBackupPredefinita}, che viene creata da sola.";
 
     /// <summary>Dopo quanti giorni dall'ultimo backup il programma lo ricorda, come testo.</summary>
     [ObservableProperty] private string _promemoriaBackup;

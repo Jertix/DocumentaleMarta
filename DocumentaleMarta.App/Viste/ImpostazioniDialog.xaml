@@ -125,7 +125,7 @@
                                      AutomationProperties.Name="Cartella dei backup"/>
                         </DockPanel>
                         <TextBlock Foreground="{DynamicResource TestoTenue}" FontSize="12" TextWrapping="Wrap" Margin="0,4,0,0"
-                                   Text="Meglio un altro disco (una chiavetta o un disco esterno): così, se il PC si rompe, i backup si salvano. Non può stare dentro la cartella dell'archivio."/>
+                                   Text="{Binding SuggerimentoCartellaBackup, Mode=OneTime}"/>
 
                         <StackPanel Orientation="Horizontal" Margin="0,12,0,0">
                             <TextBlock Text="Ricordami il backup dopo" Style="{StaticResource Etichetta}"/>

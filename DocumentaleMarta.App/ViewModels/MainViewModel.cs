@@ -1199,8 +1199,10 @@ public partial class MainViewModel(
     }
 
     /// <summary>
-    /// Salva tutto l'archivio (documenti e database) in un file ZIP nella cartella dei backup. La prima volta chiede dove
-    /// metterlo e se ne ricorda; poi basta un clic. Il pulsante resta spento finché il backup lavora.
+    /// Salva tutto l'archivio (documenti e database) in un file ZIP nella cartella dei backup. Se l'utente non ha scelto una
+    /// cartella si usa quella predefinita (C:\Backup\DocumentaleMarta), senza chiedere niente; la si chiede solo se quella
+    /// predefinita non si può usare. A backup riuscito la cartella si ricorda nelle impostazioni. Il pulsante resta spento
+    /// finché il backup lavora.
     /// </summary>
     [RelayCommand(CanExecute = nameof(BackupDisponibile))]
     private async Task EseguiBackupAsync()
@@ -1209,7 +1211,7 @@ public partial class MainViewModel(
         if (servizioBackup is null || _backupInCorso)
             return;
 
-        var cartella = impostazioni.CartellaBackup;
+        var cartella = impostazioni.CartellaBackupInUso;
         if (string.IsNullOrWhiteSpace(cartella))
         {
             cartella = dialog.SelezionaCartella("Scegli la cartella in cui salvare i backup", null);
@@ -1288,7 +1290,7 @@ public partial class MainViewModel(
             return;
 
         // 1. Quale backup.
-        var zip = dialog.SelezionaFileBackup(impostazioni.CartellaBackup);
+        var zip = dialog.SelezionaFileBackup(impostazioni.CartellaBackupInUso);
         if (zip is null)
             return;
 

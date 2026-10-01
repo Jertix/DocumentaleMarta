@@ -115,9 +115,10 @@ public class ImpostazioniBackupAzioniTests : IDisposable
     }
 
     [Fact]
-    public async Task FaiIlBackupOra_SenzaCartellaScelta_LaChiedeComeAlSolito()
+    public async Task FaiIlBackupOra_SenzaCartellaScelta_SeLaPredefinitaNonSiPuoUsare_LaChiedeComeAlSolito()
     {
         var vm = Principale();
+        _impostazioni.PercorsoRadice = @"C:\Backup"; // qui la cartella predefinita (C:\Backup\DocumentaleMarta) starebbe dentro l'archivio
         _a.Dialog.RispondiCartella(@"E:\Scelta");
         _a.Dialog.RispondiImpostazioni(m => m.AzioneRichiesta = AzioneDaImpostazioni.Backup);
 

@@ -28,7 +28,15 @@ public class ImpostazioniApp
     /// <summary>Rosso se la scadenza è entro questi giorni (le scadenze già passate sono sempre rosse).</summary>
     public int SogliaRossaGiorni { get; set; } = 7;
 
+    /// <summary>La cartella dei backup che l'utente ha scelto; vuota finché non ne sceglie una (vedi <see cref="CartellaBackupInUso"/>).</summary>
     public string? CartellaBackup { get; set; }
+
+    /// <summary>
+    /// Dove si salvano i backup finché l'utente non sceglie un'altra cartella: così il primo backup parte senza chiedere niente.
+    /// Si crea da sola al primo backup.
+    /// </summary>
+    public const string CartellaBackupPredefinita = @"C:\Backup\DocumentaleMarta";
+
     public int BackupPromemoriaGiorni { get; set; } = 30;
     public DateTime? UltimoBackup { get; set; }
 
@@ -95,16 +103,39 @@ public class ImpostazioniApp
         return errori;
     }
 
-    /// <summary>La cartella dei backup (se indicata) deve essere un percorso valido e stare fuori dall'archivio.</summary>
-    private string? ErroreCartellaBackup()
+    /// <summary>
+    /// La cartella in cui fare il backup adesso: quella scelta dall'utente oppure, se non ne ha scelta nessuna, quella predefinita.
+    /// È vuota (null) solo se non c'è una scelta e la cartella predefinita starebbe dentro l'archivio (per esempio se l'archivio
+    /// è stato messo proprio in «C:\Backup»): allora il programma deve chiedere all'utente dove salvare.
+    /// </summary>
+    [JsonIgnore]
+    public string? CartellaBackupInUso
     {
-        if (string.IsNullOrWhiteSpace(CartellaBackup) || string.IsNullOrWhiteSpace(PercorsoRadice))
+        get
+        {
+            if (!string.IsNullOrWhiteSpace(CartellaBackup))
+                return CartellaBackup.Trim();
+
+            return ErroreCartellaBackup(CartellaBackupPredefinita) is null ? CartellaBackupPredefinita : null;
+        }
+    }
+
+    /// <summary>La cartella dei backup scelta (se indicata) deve essere un percorso valido e stare fuori dall'archivio.</summary>
+    private string? ErroreCartellaBackup() => ErroreCartellaBackup(CartellaBackup);
+
+    /// <summary>
+    /// Controlla una cartella per i backup: deve essere un percorso valido e stare fuori dall'archivio (un backup dentro
+    /// l'archivio finirebbe dentro il backup successivo). Restituisce il motivo se non va bene, null se va bene o se non c'è nulla da controllare.
+    /// </summary>
+    private string? ErroreCartellaBackup(string? cartella)
+    {
+        if (string.IsNullOrWhiteSpace(cartella) || string.IsNullOrWhiteSpace(PercorsoRadice))
             return null;
 
         string backup, radice;
         try
         {
-            backup = Path.TrimEndingDirectorySeparator(Path.GetFullPath(CartellaBackup));
+            backup = Path.TrimEndingDirectorySeparator(Path.GetFullPath(cartella));
             radice = Path.TrimEndingDirectorySeparator(Path.GetFullPath(PercorsoRadice));
         }
         catch (Exception ex) when (ex is ArgumentException or NotSupportedException or PathTooLongException)
