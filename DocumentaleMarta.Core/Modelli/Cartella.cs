@@ -14,6 +14,12 @@ public class Cartella
     public bool Completato { get; set; }
     public DateOnly? DataCompletamento { get; set; }
 
+    /// <summary>
+    /// La cartella completata è stata messa nell'"Archivio completati" dell'albero. È solo un modo di mostrarla:
+    /// resta nella sua area e nella sua cartella su disco. Una cartella non completata non è mai archiviata.
+    /// </summary>
+    public bool Archiviata { get; set; }
+
     public string PercorsoRelativo { get; set; } = "";
     public DateTime DataCreazione { get; set; }
 

@@ -22,7 +22,7 @@ public class ArchivioService(
                 a.Id, a.Nome, a.PercorsoRelativo, a.Ordine,
                 Cartelle = a.Cartelle.Select(c => new
                 {
-                    c.Id, c.Titolo, c.PercorsoRelativo, c.DataCreazione, c.DataScadenza, c.Completato,
+                    c.Id, c.Titolo, c.PercorsoRelativo, c.DataCreazione, c.DataScadenza, c.Completato, c.Archiviata,
                     NumeroDocumenti = c.Documenti.Count
                 }).ToList()
             })
@@ -38,7 +38,7 @@ public class ArchivioService(
                     .OrderBy(c => c.Titolo, OrdineAlfabetico)
                     .ThenBy(c => c.DataCreazione)
                     .Select(c => new CartellaNodo(
-                        c.Id, c.Titolo, c.PercorsoRelativo, c.NumeroDocumenti, c.DataScadenza, c.Completato))
+                        c.Id, c.Titolo, c.PercorsoRelativo, c.NumeroDocumenti, c.DataScadenza, c.Completato, c.Archiviata))
                     .ToList()))
             .ToList();
     }
@@ -355,12 +355,56 @@ public class ArchivioService(
         await transazione.CommitAsync();
     }
 
-    public async Task<IReadOnlyList<DocumentoElenco>> CaricaDocumentiAsync(int? areaId)
+    public Task<IReadOnlyList<DocumentoElenco>> CaricaDocumentiAsync(int? areaId) => CaricaElencoAsync(areaId, soloArchiviate: false);
+
+    public Task<IReadOnlyList<DocumentoElenco>> CaricaDocumentiArchiviatiAsync(int? areaId) => CaricaElencoAsync(areaId, soloArchiviate: true);
+
+    // ---------- Archivio completati ----------
+
+    public async Task ArchiviaCartellaAsync(int cartellaId)
+    {
+        await using var db = await dbFactory.CreateDbContextAsync();
+        var cartella = await db.Cartelle.SingleOrDefaultAsync(c => c.Id == cartellaId)
+                       ?? throw new ArchivioException("La cartella non esiste più.");
+
+        if (!cartella.Completato)
+            throw new ArchivioException($"La cartella «{cartella.Titolo}» non è completata: si archiviano solo le cartelle completate.");
+        if (cartella.Archiviata)
+            return;
+
+        cartella.Archiviata = true;
+        await db.SaveChangesAsync();
+    }
+
+    public async Task RipristinaCartellaAsync(int cartellaId)
+    {
+        await using var db = await dbFactory.CreateDbContextAsync();
+        var cartella = await db.Cartelle.SingleOrDefaultAsync(c => c.Id == cartellaId)
+                       ?? throw new ArchivioException("La cartella non esiste più.");
+
+        if (!cartella.Archiviata)
+            return;
+
+        cartella.Archiviata = false;
+        await db.SaveChangesAsync();
+    }
+
+    public async Task<int> ArchiviaCompletateAsync(int? areaId)
+    {
+        await using var db = await dbFactory.CreateDbContextAsync();
+        return await db.Cartelle
+            .Where(c => c.Completato && !c.Archiviata && (areaId == null || c.AreaId == areaId))
+            .ExecuteUpdateAsync(s => s.SetProperty(c => c.Archiviata, true));
+    }
+
+    /// <param name="soloArchiviate">Vero: solo i documenti delle cartelle archiviate; falso: tutti, archiviate comprese.</param>
+    private async Task<IReadOnlyList<DocumentoElenco>> CaricaElencoAsync(int? areaId, bool soloArchiviate)
     {
         await using var db = await dbFactory.CreateDbContextAsync();
 
         var righe = await db.Documenti.AsNoTracking()
             .Where(d => areaId == null || d.Cartella.AreaId == areaId)
+            .Where(d => !soloArchiviate || d.Cartella.Archiviata)
             .Select(d => new
             {
                 d.Id, d.NomeFile, d.Estensione, d.Dimensione, d.DataCaricamento, d.PercorsoRelativo,
@@ -460,8 +504,8 @@ public class ArchivioService(
         new(d.Id, d.NomeFile, d.Estensione, d.Dimensione, d.DataCaricamento, d.PercorsoRelativo);
 
     /// <summary>
-    /// Copia i dati modificabili sulla cartella. Una cartella non completata non ha data di completamento;
-    /// senza una scadenza la ricorrenza non ha senso e si azzera.
+    /// Copia i dati modificabili sulla cartella. Una cartella non completata non ha data di completamento e non è
+    /// archiviata; senza una scadenza la ricorrenza non ha senso e si azzera.
     /// </summary>
     private static void ApplicaDati(Cartella cartella, DatiCartella dati)
     {
@@ -471,6 +515,10 @@ public class ArchivioService(
         cartella.Ricorrenza = dati.DataScadenza is null ? Ricorrenza.Nessuna : dati.Ricorrenza;
         cartella.Completato = dati.Completato;
         cartella.DataCompletamento = dati.Completato ? dati.DataCompletamento : null;
+
+        // Nell'archivio ci sono solo cartelle completate: riaprendola torna a comparire nella sua area.
+        if (!dati.Completato)
+            cartella.Archiviata = false;
     }
 
     private static async Task<CartellaDettaglio?> LeggiDettaglioAsync(AppDbContext db, int cartellaId)
@@ -480,7 +528,7 @@ public class ArchivioService(
             .Select(c => new
             {
                 c.Id, c.AreaId, NomeArea = c.Area.Nome, c.PercorsoRelativo,
-                c.Titolo, c.Descrizione, c.DataScadenza, c.Ricorrenza, c.Completato, c.DataCompletamento,
+                c.Titolo, c.Descrizione, c.DataScadenza, c.Ricorrenza, c.Completato, c.DataCompletamento, c.Archiviata,
                 Documenti = c.Documenti
                     .OrderBy(d => d.DataCaricamento).ThenBy(d => d.Id)
                     .Select(d => new { d.Id, d.NomeFile, d.Estensione, d.Dimensione, d.DataCaricamento, d.PercorsoRelativo })
@@ -493,7 +541,8 @@ public class ArchivioService(
             : new CartellaDettaglio(
                 c.Id, c.AreaId, c.NomeArea, c.PercorsoRelativo,
                 new DatiCartella(c.Titolo, c.Descrizione, c.DataScadenza, c.Completato, c.DataCompletamento, c.Ricorrenza),
-                c.Documenti.Select(d => new DocumentoDettaglio(d.Id, d.NomeFile, d.Estensione, d.Dimensione, d.DataCaricamento, d.PercorsoRelativo)).ToList());
+                c.Documenti.Select(d => new DocumentoDettaglio(d.Id, d.NomeFile, d.Estensione, d.Dimensione, d.DataCaricamento, d.PercorsoRelativo)).ToList(),
+                c.Archiviata);
     }
 
     /// <summary>Rinomina la cartella fisica; se nel frattempo è sparita dal disco ne crea una nuova col nome richiesto.</summary>

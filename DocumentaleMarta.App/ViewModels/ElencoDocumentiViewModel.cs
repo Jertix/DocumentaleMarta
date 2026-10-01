@@ -68,15 +68,19 @@ public class ElencoDocumentiViewModel
     private readonly IRicercaService? _ricerca;
     private readonly string? _testoRicerca;
     private readonly FiltriRicerca? _filtri;
+    private readonly bool _soloArchiviate;
 
+    /// <param name="soloArchiviate">Mostra solo i documenti delle cartelle dell'"Archivio completati" (di tutte le aree o di quella indicata).</param>
     /// <param name="areaId">L'area da mostrare; null per tutti i documenti dell'archivio.</param>
     /// <param name="avvisi">Per colorare le righe secondo la scadenza della cartella; senza, le righe restano senza colore.</param>
     /// <param name="ricerca">Insieme a <paramref name="testoRicerca"/>: invece dei documenti di un'area mostra i risultati della ricerca.</param>
     /// <param name="filtri">I filtri della ricerca avanzata (solo per i risultati di una ricerca).</param>
     public ElencoDocumentiViewModel(
         IArchivioService archivio, IArchivioFileService files, IDialogService dialog, IShellService shell, int? areaId,
-        AlertService? avvisi = null, IRicercaService? ricerca = null, string? testoRicerca = null, FiltriRicerca? filtri = null)
+        AlertService? avvisi = null, IRicercaService? ricerca = null, string? testoRicerca = null, FiltriRicerca? filtri = null,
+        bool soloArchiviate = false)
     {
+        _soloArchiviate = soloArchiviate;
         _archivio = archivio;
         _files = files;
         _azioni = new AzioniDocumenti(archivio, files, dialog, shell);
@@ -111,9 +115,13 @@ public class ElencoDocumentiViewModel
             : HaFiltri
                 ? $"Nessun documento trovato per «{_testoRicerca}» con i filtri scelti."
                 : $"Nessun documento trovato per «{_testoRicerca}»."
-        : _areaId is null
-            ? "Nessun documento nell'archivio."
-            : "Nessun documento in quest'area.";
+        : _soloArchiviate
+            ? _areaId is null
+                ? "Nessuna cartella archiviata. Una cartella completata si archivia dal menu con il tasto destro («Archivia») o dal suo form."
+                : "Nessun documento archiviato in quest'area."
+            : _areaId is null
+                ? "Nessun documento nell'archivio."
+                : "Nessun documento in quest'area.";
 
     public ObservableCollection<DocumentoElencoViewModel> Documenti { get; } = [];
 
@@ -155,7 +163,10 @@ public class ElencoDocumentiViewModel
         }
         else
         {
-            righe = (await _archivio.CaricaDocumentiAsync(_areaId)).Select(d => (d, (string?)null)).ToList();
+            var documenti = _soloArchiviate
+                ? await _archivio.CaricaDocumentiArchiviatiAsync(_areaId)
+                : await _archivio.CaricaDocumentiAsync(_areaId);
+            righe = documenti.Select(d => (d, (string?)null)).ToList();
         }
 
         // Un controllo su disco per ogni documento: fuori dal thread dell'interfaccia, con migliaia di file non deve bloccarla.

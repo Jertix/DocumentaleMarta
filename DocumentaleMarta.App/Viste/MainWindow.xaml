@@ -267,6 +267,16 @@
                         <MenuItem Header="Elimina" InputGestureText="Canc" Command="{Binding EliminaCommand}"
                                   Visibility="{Binding PuoModificare, Converter={StaticResource BoolToVis}}"/>
                         <Separator Visibility="{Binding PuoModificare, Converter={StaticResource BoolToVis}}"/>
+                        <!-- Archivio completati: le cartelle compaiono in fondo all'albero, i file non si spostano -->
+                        <MenuItem Header="Archivia" Command="{Binding ArchiviaCommand}"
+                                  ToolTip="Mette la cartella completata in «Archivio completati»: non sposta nessun file"
+                                  Visibility="{Binding PuoArchiviare, Converter={StaticResource BoolToVis}}"/>
+                        <MenuItem Header="Ripristina nell'area" Command="{Binding RipristinaCommand}"
+                                  ToolTip="Rimette la cartella nella sua area dell'albero"
+                                  Visibility="{Binding PuoRipristinare, Converter={StaticResource BoolToVis}}"/>
+                        <MenuItem Header="Archivia le cartelle completate" Command="{Binding ArchiviaCompletateCommand}"
+                                  ToolTip="Mette in «Archivio completati» tutte le cartelle completate: non sposta nessun file"
+                                  Visibility="{Binding PuoArchiviareCompletate, Converter={StaticResource BoolToVis}}"/>
                         <MenuItem Header="Apri in Esplora file" Command="{Binding ApriInEsploraCommand}"
                                   Visibility="{Binding HaPercorsoFisico, Converter={StaticResource BoolToVis}}"/>
                         <MenuItem Header="Aggiorna" InputGestureText="F5" Command="{Binding AggiornaCommand}"/>

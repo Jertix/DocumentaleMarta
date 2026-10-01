@@ -47,6 +47,7 @@ public partial class CartellaFormViewModel : CartellaCampiViewModel
         _duplicati = new ControlloDuplicati(archivio, dialog);
 
         Id = dettaglio.Id;
+        _archiviata = dettaglio.Archiviata;
         _areaId = dettaglio.AreaId;
         NomeArea = dettaglio.NomeArea;
         PercorsoRelativo = dettaglio.PercorsoRelativo;
@@ -99,6 +100,48 @@ public partial class CartellaFormViewModel : CartellaCampiViewModel
 
     public string TitoloDocumenti => $"Documenti ({Documenti.Count})";
 
+    // ---------- Archivio completati ----------
+
+    /// <summary>La cartella sta nell'"Archivio completati" (resta nella sua area e nella sua cartella su disco).</summary>
+    [ObservableProperty]
+    [NotifyPropertyChangedFor(nameof(PuoArchiviare), nameof(PuoRipristinare))]
+    private bool _archiviata;
+
+    /// <summary>Una cartella completata e non ancora archiviata si può archiviare.</summary>
+    public bool PuoArchiviare => Completato && !Archiviata;
+
+    /// <summary>Una cartella archiviata si può rimettere nella sua area.</summary>
+    public bool PuoRipristinare => Archiviata;
+
+    /// <summary>La cartella è stata archiviata o ripristinata (o riaperta, e quindi tolta dall'archivio): l'albero va rifatto.</summary>
+    public event Action? ArchiviataCambiato;
+
+    [RelayCommand]
+    private async Task ArchiviaAsync()
+    {
+        // Se "Completato" è stato appena spuntato il salvataggio può essere ancora in corso: si aspetta.
+        await AttendiSalvataggioAsync();
+        await CambiaArchiviazioneAsync(() => _archivio.ArchiviaCartellaAsync(Id), archiviata: true);
+    }
+
+    [RelayCommand]
+    private Task RipristinaAsync() => CambiaArchiviazioneAsync(() => _archivio.RipristinaCartellaAsync(Id), archiviata: false);
+
+    private async Task CambiaArchiviazioneAsync(Func<Task> operazione, bool archiviata)
+    {
+        try
+        {
+            await operazione();
+            Archiviata = archiviata;
+            ArchiviataCambiato?.Invoke();
+        }
+        catch (ArchivioException ex)
+        {
+            _dialog.MostraErrore(ex.Message);
+            RicaricaRichiesta?.Invoke();
+        }
+    }
+
     /// <summary>La riga selezionata nella griglia: se ne mostra l'anteprima.</summary>
     [ObservableProperty]
     private DocumentoViewModel? _documentoSelezionato;
@@ -130,6 +173,8 @@ public partial class CartellaFormViewModel : CartellaCampiViewModel
         // Il testo della scadenza segue subito ciò che si vede nel form, anche prima del salvataggio.
         if (e.PropertyName is nameof(DataScadenza) or nameof(Completato))
             AggiornaAvviso();
+        if (e.PropertyName is nameof(Completato))
+            OnPropertyChanged(nameof(PuoArchiviare)); // "Archivia" compare appena si spunta "Completato"
 
         if (InCaricamento)
             return;
@@ -238,6 +283,13 @@ public partial class CartellaFormViewModel : CartellaCampiViewModel
         if (titoloCambiato || percorsoCambiato)
             TitoloSalvato?.Invoke(dettaglio.Dati.Titolo, dettaglio.PercorsoRelativo);
         DatiSalvati?.Invoke(dettaglio.Dati);
+
+        // Riaprire una cartella archiviata la toglie dall'archivio: l'albero deve rifarla.
+        if (dettaglio.Archiviata != Archiviata)
+        {
+            Archiviata = dettaglio.Archiviata;
+            ArchiviataCambiato?.Invoke();
+        }
     }
 
     // ---------- Cartelle che si ripetono ----------

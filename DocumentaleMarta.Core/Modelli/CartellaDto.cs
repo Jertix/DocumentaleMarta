@@ -24,4 +24,5 @@ public record CartellaDettaglio(
     string NomeArea,
     string PercorsoRelativo,
     DatiCartella Dati,
-    IReadOnlyList<DocumentoDettaglio> Documenti);
+    IReadOnlyList<DocumentoDettaglio> Documenti,
+    bool Archiviata = false);

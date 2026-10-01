@@ -67,6 +67,28 @@ public interface IArchivioService
     Task<IReadOnlyList<DocumentoElenco>> CaricaDocumentiAsync(int? areaId);
 
     /// <summary>
+    /// I documenti delle sole cartelle archiviate (dell'area indicata, o di tutte se <paramref name="areaId"/> è null),
+    /// dal più recente al più vecchio.
+    /// </summary>
+    Task<IReadOnlyList<DocumentoElenco>> CaricaDocumentiArchiviatiAsync(int? areaId);
+
+    /// <summary>
+    /// Mette la cartella nell'"Archivio completati" dell'albero. Non sposta niente: la cartella e i suoi file restano
+    /// nell'area e nella cartella su disco. Se è già archiviata non fa nulla.
+    /// </summary>
+    /// <exception cref="ArchivioException">La cartella non è completata (si archiviano solo quelle completate) o non esiste più.</exception>
+    Task ArchiviaCartellaAsync(int cartellaId);
+
+    /// <summary>Toglie la cartella dall'archivio: torna a comparire nella sua area. Se non è archiviata non fa nulla.</summary>
+    Task RipristinaCartellaAsync(int cartellaId);
+
+    /// <summary>
+    /// Archivia tutte le cartelle completate non ancora archiviate (di un'area, o di tutte se <paramref name="areaId"/> è null).
+    /// Restituisce quante ne ha archiviate.
+    /// </summary>
+    Task<int> ArchiviaCompletateAsync(int? areaId);
+
+    /// <summary>
     /// Le cartelle non completate che hanno una scadenza, dalla più vicina (o più scaduta) alla più lontana.
     /// Quali siano "in scadenza" lo decide <see cref="AlertService"/>, non il database.
     /// </summary>

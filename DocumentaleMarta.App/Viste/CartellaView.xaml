@@ -85,10 +85,23 @@
             <RowDefinition Height="*"/>
         </Grid.RowDefinitions>
 
-        <!-- Intestazione -->
-        <TextBlock Grid.Row="0" Foreground="#777" FontSize="13" Margin="0,0,0,10">
-            <Run Text="Cartella in "/><Run Text="{Binding NomeArea, Mode=OneWay}"/>
-        </TextBlock>
+        <!-- Intestazione, con i pulsanti dell'archivio completati -->
+        <DockPanel Grid.Row="0" Margin="0,0,0,10">
+            <Button DockPanel.Dock="Right" Content="Ripristina nell'area" Command="{Binding RipristinaCommand}"
+                    Padding="12,3" Margin="12,0,0,0" ToolTip="Rimette la cartella nella sua area dell'albero"
+                    Visibility="{Binding PuoRipristinare, Converter={StaticResource BoolToVis}}"/>
+            <Button DockPanel.Dock="Right" Content="Archivia" Command="{Binding ArchiviaCommand}"
+                    Padding="12,3" Margin="12,0,0,0"
+                    ToolTip="Mette la cartella completata in «Archivio completati»: non sposta nessun file"
+                    Visibility="{Binding PuoArchiviare, Converter={StaticResource BoolToVis}}"/>
+            <StackPanel Orientation="Horizontal" VerticalAlignment="Center">
+                <TextBlock Foreground="#777" FontSize="13">
+                    <Run Text="Cartella in "/><Run Text="{Binding NomeArea, Mode=OneWay}"/>
+                </TextBlock>
+                <TextBlock Text="·  archiviata in «Archivio completati»" Foreground="#2E7D32" FontSize="13" Margin="8,0,0,0"
+                           Visibility="{Binding Archiviata, Converter={StaticResource BoolToVis}}"/>
+            </StackPanel>
+        </DockPanel>
 
         <!-- Campi: si salvano da soli -->
         <Grid Grid.Row="1">

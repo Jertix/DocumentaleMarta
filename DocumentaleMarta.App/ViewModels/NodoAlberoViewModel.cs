@@ -13,10 +13,22 @@ public enum TipoNodo
     Scadenze,
 
     Area,
-    Cartella
+    Cartella,
+
+    /// <summary>
+    /// Nodo speciale in fondo alla radice: raccoglie le cartelle completate e archiviate. Non corrisponde a nessuna cartella su disco:
+    /// le cartelle archiviate restano nella loro area e nella loro cartella fisica.
+    /// </summary>
+    Archivio,
+
+    /// <summary>Dentro l'archivio, raggruppa le cartelle archiviate di una stessa area (ha lo stesso id e nome dell'area vera).</summary>
+    AreaArchivio
 }
 
-/// <summary>Un nodo dell'albero a sinistra: la radice "Tutti i documenti", il nodo "Scadenze", un'area o una cartella.</summary>
+/// <summary>
+/// Un nodo dell'albero a sinistra: la radice "Tutti i documenti", il nodo "Scadenze", un'area, una cartella,
+/// l'"Archivio completati" e i suoi gruppi per area.
+/// </summary>
 public partial class NodoAlberoViewModel(
     TipoNodo tipo, int id, string nome, string percorsoRelativo, NodoAlberoViewModel? padre,
     Action<NodoAlberoViewModel> selezionato) : ObservableObject
@@ -58,8 +70,15 @@ public partial class NodoAlberoViewModel(
         OnPropertyChanged(nameof(NomeAccessibile));
     }
 
+    /// <summary>La cartella sta nell'"Archivio completati" invece che nella sua area (solo per i nodi cartella).</summary>
+    public bool Archiviata { get; private set; }
+
+    public void ImpostaArchiviata(bool archiviata) => Archiviata = archiviata;
+
     /// <summary>Per le cartelle completate: la spiegazione dell'icona, per il suggerimento che compare passandoci il mouse.</summary>
-    public string DescrizioneStato => Tipo == TipoNodo.Cartella && Completato ? "Cartella completata" : "";
+    public string DescrizioneStato => Tipo != TipoNodo.Cartella || !Completato
+        ? ""
+        : Archiviata ? "Cartella completata e archiviata" : "Cartella completata";
 
     /// <summary>Il nome letto dai programmi per ipovedenti: dice anche se la cartella è completata (l'icona da sola non si legge).</summary>
     public string NomeAccessibile => Tipo == TipoNodo.Cartella && Completato ? $"{Testo} (completata)" : Testo;
@@ -82,24 +101,61 @@ public partial class NodoAlberoViewModel(
     [NotifyPropertyChangedFor(nameof(Testo))]
     private int _numeroAvvisi;
 
-    /// <summary>Il testo mostrato nell'albero: per "Scadenze" comprende il numero, es. "Scadenze (3)".</summary>
-    public string Testo => Tipo == TipoNodo.Scadenze && NumeroAvvisi > 0 ? $"{Nome} ({NumeroAvvisi})" : Nome;
+    /// <summary>Il testo mostrato nell'albero: per "Scadenze" e "Archivio completati" comprende il numero, es. "Scadenze (3)".</summary>
+    public string Testo => Tipo switch
+    {
+        TipoNodo.Scadenze when NumeroAvvisi > 0 => $"{Nome} ({NumeroAvvisi})",
+        TipoNodo.Archivio when NumeroCartelle > 0 => $"{Nome} ({NumeroCartelle})",
+        _ => Nome
+    };
 
     // ---------- Contatori ----------
 
-    /// <summary>Aree contenute (per la radice): il nodo "Scadenze" non è un'area.</summary>
+    /// <summary>Aree contenute (per la radice): i nodi "Scadenze" e "Archivio completati" non sono aree.</summary>
     public IEnumerable<NodoAlberoViewModel> Aree => Figli.Where(f => f.Tipo == TipoNodo.Area);
 
-    /// <summary>Cartelle contenute (per la radice e le aree). Serve ai riepiloghi e alle conferme di eliminazione.</summary>
-    public int NumeroCartelle => Tipo switch
+    private int _cartelleArchiviate;
+    private int _documentiArchiviati;
+
+    /// <summary>
+    /// Di un'area: quante sue cartelle (e documenti) sono nell'archivio. Non sono tra i suoi figli nell'albero,
+    /// ma contano nei totali e nell'avviso prima di eliminarla.
+    /// </summary>
+    public void ImpostaArchiviate(int cartelle, int documenti)
     {
-        TipoNodo.Radice => Aree.Sum(a => a.Figli.Count),
-        TipoNodo.Area => Figli.Count,
+        _cartelleArchiviate = cartelle;
+        _documentiArchiviati = documenti;
+    }
+
+    /// <summary>Cartelle archiviate: per un'area le sue, per la radice quelle di tutte le aree.</summary>
+    public int CartelleArchiviate => Tipo switch
+    {
+        TipoNodo.Radice => Aree.Sum(a => a.CartelleArchiviate),
+        TipoNodo.Area => _cartelleArchiviate,
         _ => 0
     };
 
-    /// <summary>Documenti contenuti: per radice e aree la somma delle cartelle sottostanti.</summary>
-    public int NumeroDocumenti => Tipo == TipoNodo.Cartella ? _documentiDellaCartella : Figli.Sum(f => f.NumeroDocumenti);
+    /// <summary>Cartelle contenute, archiviate comprese (per la radice e le aree). Serve ai riepiloghi e alle conferme di eliminazione.</summary>
+    public int NumeroCartelle => Tipo switch
+    {
+        TipoNodo.Radice => Aree.Sum(a => a.NumeroCartelle),
+        TipoNodo.Area => Figli.Count + _cartelleArchiviate,
+        TipoNodo.Archivio => Figli.Sum(g => g.Figli.Count),
+        TipoNodo.AreaArchivio => Figli.Count,
+        _ => 0
+    };
+
+    /// <summary>
+    /// Documenti contenuti, anche quelli delle cartelle archiviate: una radice e un'area li comprendono tutti,
+    /// l'archivio e i suoi gruppi contano solo quelli archiviati.
+    /// </summary>
+    public int NumeroDocumenti => Tipo switch
+    {
+        TipoNodo.Cartella => _documentiDellaCartella,
+        TipoNodo.Radice => Aree.Sum(a => a.NumeroDocumenti),
+        TipoNodo.Area => Figli.Sum(f => f.NumeroDocumenti) + _documentiArchiviati,
+        _ => Figli.Sum(f => f.NumeroDocumenti)
+    };
 
     public void ImpostaNumeroDocumenti(int numero) => _documentiDellaCartella = numero;
 
@@ -126,12 +182,14 @@ public partial class NodoAlberoViewModel(
     public const string IconaArea = "\uE8F1";
     public const string IconaCartella = "\uE8B7";
     public const string IconaCartellaCompletata = "\uE930";
+    public const string IconaArchivio = "\uE7B8"; // la scatola d'archivio
 
     public string Icona => Tipo switch
     {
         TipoNodo.Radice => IconaRadice,
         TipoNodo.Scadenze => IconaScadenze,
-        TipoNodo.Area => IconaArea,
+        TipoNodo.Area or TipoNodo.AreaArchivio => IconaArea,
+        TipoNodo.Archivio => IconaArchivio,
         _ when Completato => IconaCartellaCompletata,
         _ => IconaCartella
     };

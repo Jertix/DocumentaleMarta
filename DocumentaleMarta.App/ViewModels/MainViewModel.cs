@@ -54,9 +54,11 @@ public partial class MainViewModel(
     [ObservableProperty]
     [NotifyPropertyChangedFor(nameof(HaSelezione), nameof(RadiceSelezionata), nameof(AreaSelezionata),
         nameof(PuoCreareCartella), nameof(PuoModificare), nameof(HaPercorsoFisico), nameof(RiepilogoVisibile),
-        nameof(TipoDettaglio), nameof(TitoloDettaglio), nameof(RiepilogoDettaglio), nameof(PercorsoDettaglio))]
+        nameof(TipoDettaglio), nameof(TitoloDettaglio), nameof(RiepilogoDettaglio), nameof(PercorsoDettaglio),
+        nameof(PuoArchiviare), nameof(PuoRipristinare), nameof(PuoArchiviareCompletate))]
     [NotifyCanExecuteChangedFor(nameof(NuovaCartellaCommand), nameof(RinominaCommand),
-        nameof(EliminaCommand), nameof(ApriInEsploraCommand))]
+        nameof(EliminaCommand), nameof(ApriInEsploraCommand), nameof(ArchiviaCommand), nameof(RipristinaCommand),
+        nameof(ArchiviaCompletateCommand))]
     private NodoAlberoViewModel? _nodoSelezionato;
 
     // ---------- Cosa c'è nel pannello di destra ----------
@@ -118,7 +120,7 @@ public partial class MainViewModel(
             case TipoNodo.Cartella:
                 _caricamentoForm = CaricaFormAsync(nodo);
                 break;
-            case TipoNodo.Radice or TipoNodo.Area:
+            case TipoNodo.Radice or TipoNodo.Area or TipoNodo.Archivio or TipoNodo.AreaArchivio:
                 _caricamentoElenco = CaricaElencoAsync(nodo);
                 break;
             case TipoNodo.Scadenze:
@@ -131,8 +133,11 @@ public partial class MainViewModel(
     {
         try
         {
+            // Un'area e il suo gruppo nell'archivio mostrano i documenti di quell'area; radice e archivio quelli di tutte.
+            // L'archivio e i suoi gruppi mostrano solo i documenti delle cartelle archiviate.
             var elenco = new ElencoDocumentiViewModel(
-                archivio, files, dialog, shell, nodo.Tipo == TipoNodo.Area ? nodo.Id : null, _avvisi);
+                archivio, files, dialog, shell, nodo.Tipo is TipoNodo.Area or TipoNodo.AreaArchivio ? nodo.Id : null, _avvisi,
+                soloArchiviate: nodo.Tipo is TipoNodo.Archivio or TipoNodo.AreaArchivio);
             await elenco.CaricaAsync();
             if (!ReferenceEquals(NodoSelezionato, nodo) || RicercaAttiva)
                 return; // nel frattempo l'utente ha scelto un altro elemento o ha iniziato una ricerca
@@ -188,7 +193,9 @@ public partial class MainViewModel(
                 // Scadenza o "completato" sono cambiati: le icone di avviso dell'albero vanno rifatte.
                 nodo.ImpostaScadenza(dati.DataScadenza, dati.Completato);
                 RicalcolaAvvisi();
+                AggiornaStatoArchiviazione(); // "Archivia" si offre solo per le cartelle completate
             };
+            form.ArchiviataCambiato += () => _ = RicaricaSicuraAsync(nodo.Chiave);
             form.RicaricaRichiesta += () => _ = RicaricaSicuraAsync();
             form.CartellaSuccessivaCreata += () => _ = RicaricaSicuraAsync();
             form.DocumentoSelezionatoCambiato += documento => Anteprima?.Mostra(documento);
@@ -233,9 +240,9 @@ public partial class MainViewModel(
         OnPropertyChanged(nameof(RiepilogoDettaglio));
     }
 
-    private async Task RicaricaSicuraAsync()
+    private async Task RicaricaSicuraAsync(string? chiaveDaSelezionare = null)
     {
-        try { await RicaricaAsync(); }
+        try { await RicaricaAsync(chiaveDaSelezionare); }
         catch (Exception ex) { dialog.MostraErrore($"Non è stato possibile aggiornare l'elenco: {ex.Message}"); }
     }
 
@@ -273,8 +280,26 @@ public partial class MainViewModel(
 
     public bool PuoModificare => NodoSelezionato?.Tipo is TipoNodo.Area or TipoNodo.Cartella;
 
-    /// <summary>Il nodo "Scadenze" non corrisponde a nessuna cartella su disco.</summary>
-    public bool HaPercorsoFisico => !InRicerca && NodoSelezionato is { Tipo: not TipoNodo.Scadenze };
+    /// <summary>I nodi "Scadenze" e "Archivio completati" non corrispondono a nessuna cartella su disco.</summary>
+    public bool HaPercorsoFisico => !InRicerca && NodoSelezionato is { Tipo: not (TipoNodo.Scadenze or TipoNodo.Archivio) };
+
+    /// <summary>Una cartella completata e non ancora archiviata si può mettere nell'"Archivio completati".</summary>
+    public bool PuoArchiviare => NodoSelezionato is { Tipo: TipoNodo.Cartella, Completato: true, Archiviata: false };
+
+    /// <summary>Una cartella dell'archivio si può rimettere nella sua area.</summary>
+    public bool PuoRipristinare => NodoSelezionato is { Tipo: TipoNodo.Cartella, Archiviata: true };
+
+    /// <summary>Da radice e aree si possono archiviare in una volta tutte le cartelle completate.</summary>
+    public bool PuoArchiviareCompletate => NodoSelezionato?.Tipo is TipoNodo.Radice or TipoNodo.Area;
+
+    /// <summary>Lo stato "completata" della cartella selezionata è cambiato: menu e pulsanti di archiviazione si aggiornano.</summary>
+    private void AggiornaStatoArchiviazione()
+    {
+        OnPropertyChanged(nameof(PuoArchiviare));
+        OnPropertyChanged(nameof(PuoRipristinare));
+        ArchiviaCommand.NotifyCanExecuteChanged();
+        RipristinaCommand.NotifyCanExecuteChanged();
+    }
 
     // ---------- Intestazione del pannello di destra ----------
 
@@ -284,6 +309,8 @@ public partial class MainViewModel(
         TipoNodo.Scadenze => "Promemoria",
         TipoNodo.Area => "Area",
         TipoNodo.Cartella => "Cartella",
+        TipoNodo.Archivio => "Cartelle completate",
+        TipoNodo.AreaArchivio => "Archiviate dall'area",
         _ => ""
     };
 
@@ -294,8 +321,10 @@ public partial class MainViewModel(
         : NodoSelezionato switch
     {
         { Tipo: TipoNodo.Radice } n =>
-            $"{Conta(n.Aree.Count(), "area", "aree")}  ·  {Conta(n.NumeroCartelle, "cartella", "cartelle")}  ·  {Conta(n.NumeroDocumenti, "documento", "documenti")}",
+            $"{Conta(n.Aree.Count(), "area", "aree")}  ·  {Cartelle(n)}  ·  {Conta(n.NumeroDocumenti, "documento", "documenti")}",
         { Tipo: TipoNodo.Area } n =>
+            $"{Cartelle(n)}  ·  {Conta(n.NumeroDocumenti, "documento", "documenti")}",
+        { Tipo: TipoNodo.Archivio or TipoNodo.AreaArchivio } n =>
             $"{Conta(n.NumeroCartelle, "cartella", "cartelle")}  ·  {Conta(n.NumeroDocumenti, "documento", "documenti")}",
         { Tipo: TipoNodo.Cartella } n => Conta(n.NumeroDocumenti, "documento", "documenti"),
         { Tipo: TipoNodo.Scadenze } => DescriviAvvisi(ContaAvvisi()) is { Count: > 0 } righe
@@ -305,7 +334,16 @@ public partial class MainViewModel(
     };
 
     public string PercorsoDettaglio =>
-        !InRicerca && NodoSelezionato is { Tipo: not TipoNodo.Scadenze } n ? files.PercorsoAssoluto(n.PercorsoRelativo) : "";
+        !InRicerca && NodoSelezionato is { Tipo: not (TipoNodo.Scadenze or TipoNodo.Archivio) } n ? files.PercorsoAssoluto(n.PercorsoRelativo) : "";
+
+    /// <summary>"3 cartelle", o "3 cartelle (1 archiviata)" se alcune sono nell'archivio.</summary>
+    private static string Cartelle(NodoAlberoViewModel nodo)
+    {
+        var testo = Conta(nodo.NumeroCartelle, "cartella", "cartelle");
+        return nodo.CartelleArchiviate == 0
+            ? testo
+            : $"{testo} ({Conta(nodo.CartelleArchiviate, "archiviata", "archiviate")})";
+    }
 
     // ---------- Caricamento ----------
 
@@ -339,19 +377,46 @@ public partial class MainViewModel(
             if (_avvisi.Attivo)
                 radice.Figli.Add(new NodoAlberoViewModel(TipoNodo.Scadenze, 0, "Scadenze", "", radice, Seleziona));
 
+            // "Archivio completati" sta in fondo, dopo le aree: le cartelle archiviate compaiono lì (raggruppate per area)
+            // e non più nella loro area. Su disco restano dove sono.
+            var nodoArchivio = new NodoAlberoViewModel(TipoNodo.Archivio, 0, "Archivio completati", "", radice, Seleziona);
+
             foreach (var area in aree)
             {
                 var nodoArea = new NodoAlberoViewModel(TipoNodo.Area, area.Id, area.Nome, area.PercorsoRelativo, radice, Seleziona);
+                NodoAlberoViewModel? gruppoArchivio = null;
+
                 foreach (var cartella in area.Cartelle)
                 {
+                    NodoAlberoViewModel genitore;
+                    if (cartella.Archiviata)
+                    {
+                        gruppoArchivio ??= new NodoAlberoViewModel(
+                            TipoNodo.AreaArchivio, area.Id, area.Nome, area.PercorsoRelativo, nodoArchivio, Seleziona);
+                        genitore = gruppoArchivio;
+                    }
+                    else
+                    {
+                        genitore = nodoArea;
+                    }
+
                     var nodoCartella = new NodoAlberoViewModel(
-                        TipoNodo.Cartella, cartella.Id, cartella.Titolo, cartella.PercorsoRelativo, nodoArea, Seleziona);
+                        TipoNodo.Cartella, cartella.Id, cartella.Titolo, cartella.PercorsoRelativo, genitore, Seleziona);
                     nodoCartella.ImpostaNumeroDocumenti(cartella.NumeroDocumenti);
                     nodoCartella.ImpostaScadenza(cartella.DataScadenza, cartella.Completato);
-                    nodoArea.Figli.Add(nodoCartella);
+                    nodoCartella.ImpostaArchiviata(cartella.Archiviata);
+                    genitore.Figli.Add(nodoCartella);
                 }
+
+                // L'area ricorda quante cartelle (e documenti) ha nell'archivio: contano nei totali e prima di eliminarla.
+                var archiviate = area.Cartelle.Where(c => c.Archiviata).ToList();
+                nodoArea.ImpostaArchiviate(archiviate.Count, archiviate.Sum(c => c.NumeroDocumenti));
+
                 radice.Figli.Add(nodoArea);
+                if (gruppoArchivio is not null)
+                    nodoArchivio.Figli.Add(gruppoArchivio);
             }
+            radice.Figli.Add(nodoArchivio);
 
             foreach (var nodo in radice.ConDiscendenti())
                 nodo.IsExpanded = espansi.Contains(nodo.Chiave);
@@ -892,7 +957,7 @@ public partial class MainViewModel(
     [RelayCommand(CanExecute = nameof(HaPercorsoFisico))]
     private void ApriInEsplora()
     {
-        if (NodoSelezionato is not { Tipo: not TipoNodo.Scadenze } nodo)
+        if (NodoSelezionato is not { Tipo: not (TipoNodo.Scadenze or TipoNodo.Archivio) } nodo)
             return;
 
         var percorso = files.PercorsoAssoluto(nodo.PercorsoRelativo);
@@ -910,6 +975,71 @@ public partial class MainViewModel(
         {
             dialog.MostraErrore($"Impossibile aprire Esplora file: {ex.Message}");
         }
+    }
+
+    // ---------- Archivio completati ----------
+
+    /// <summary>
+    /// Mette la cartella completata nell'"Archivio completati": sparisce dalla sua area nell'albero e compare lì.
+    /// Non sposta niente su disco. Si resta sulla cartella, che ora si trova nell'archivio.
+    /// </summary>
+    [RelayCommand(CanExecute = nameof(PuoArchiviare))]
+    private async Task ArchiviaAsync()
+    {
+        if (NodoSelezionato is not { Tipo: TipoNodo.Cartella, Completato: true, Archiviata: false } nodo)
+            return;
+
+        await EseguiAsync(async () =>
+        {
+            await archivio.ArchiviaCartellaAsync(nodo.Id);
+            await RicaricaAsync(nodo.Chiave);
+        });
+    }
+
+    /// <summary>Rimette la cartella archiviata nella sua area (resta completata). Si resta sulla cartella.</summary>
+    [RelayCommand(CanExecute = nameof(PuoRipristinare))]
+    private async Task RipristinaAsync()
+    {
+        if (NodoSelezionato is not { Tipo: TipoNodo.Cartella, Archiviata: true } nodo)
+            return;
+
+        await EseguiAsync(async () =>
+        {
+            await archivio.RipristinaCartellaAsync(nodo.Id);
+            await RicaricaAsync(nodo.Chiave);
+        });
+    }
+
+    /// <summary>Archivia in una volta tutte le cartelle completate di un'area (o di tutte le aree, dalla radice), dopo aver chiesto.</summary>
+    [RelayCommand(CanExecute = nameof(PuoArchiviareCompletate))]
+    private async Task ArchiviaCompletateAsync()
+    {
+        if (NodoSelezionato is not { Tipo: TipoNodo.Radice or TipoNodo.Area } nodo)
+            return;
+
+        var eArea = nodo.Tipo == TipoNodo.Area;
+        var daArchiviare = eArea
+            ? nodo.Figli.Count(c => c.Completato)
+            : nodo.Aree.Sum(a => a.Figli.Count(c => c.Completato));
+
+        if (daArchiviare == 0)
+        {
+            dialog.MostraMessaggio("Archivio completati", "Non ci sono cartelle completate da archiviare.");
+            return;
+        }
+
+        var dove = eArea ? $" di «{nodo.Nome}»" : "";
+        if (!dialog.Chiedi(
+                "Archivia cartelle completate",
+                $"Archiviare {Conta(daArchiviare, "cartella completata", "cartelle completate")}{dove}?\n\n"
+                + "Non si sposta nessun file: le cartelle compaiono in «Archivio completati» e si possono ripristinare una per una."))
+            return;
+
+        await EseguiAsync(async () =>
+        {
+            await archivio.ArchiviaCompletateAsync(eArea ? nodo.Id : null);
+            await RicaricaAsync(nodo.Chiave);
+        });
     }
 
     // ---------- Impostazioni e informazioni ----------
@@ -1185,6 +1315,10 @@ public partial class MainViewModel(
         var testo = $"Eliminare {tipo} «{nodo.Nome}»?";
         if (contenuto.Count > 0)
             testo += $"\n\nVerranno eliminati anche: {string.Join(" e ", contenuto)}.";
+
+        // Le cartelle archiviate non si vedono tra i figli dell'area ma si eliminano con lei: meglio dirlo.
+        if (nodo.Tipo == TipoNodo.Area && nodo.CartelleArchiviate > 0)
+            testo += $"\n\nCi sono anche {Conta(nodo.CartelleArchiviate, "cartella archiviata", "cartelle archiviate")} in «Archivio completati».";
         return testo + "\n\nI file vengono spostati nel Cestino di Windows.";
     }
 
