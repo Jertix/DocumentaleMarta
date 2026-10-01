@@ -41,14 +41,28 @@ public partial class NodoAlberoViewModel(
     /// <summary>Scadenza della cartella (solo per i nodi cartella).</summary>
     public DateOnly? DataScadenza { get; private set; }
 
-    /// <summary>La cartella è completata: non genera più avvisi.</summary>
+    /// <summary>La cartella è completata: non genera più avvisi e nell'albero ha un'icona e un colore suoi.</summary>
     public bool Completato { get; private set; }
 
     public void ImpostaScadenza(DateOnly? dataScadenza, bool completato)
     {
         DataScadenza = dataScadenza;
+        if (Completato == completato)
+            return;
+
+        // Spuntando "Completato" nel form l'icona cambia subito, senza rileggere l'albero.
         Completato = completato;
+        OnPropertyChanged(nameof(Completato));
+        OnPropertyChanged(nameof(Icona));
+        OnPropertyChanged(nameof(DescrizioneStato));
+        OnPropertyChanged(nameof(NomeAccessibile));
     }
+
+    /// <summary>Per le cartelle completate: la spiegazione dell'icona, per il suggerimento che compare passandoci il mouse.</summary>
+    public string DescrizioneStato => Tipo == TipoNodo.Cartella && Completato ? "Cartella completata" : "";
+
+    /// <summary>Il nome letto dai programmi per ipovedenti: dice anche se la cartella è completata (l'icona da sola non si legge).</summary>
+    public string NomeAccessibile => Tipo == TipoNodo.Cartella && Completato ? $"{Testo} (completata)" : Testo;
 
     // ---------- Avvisi di scadenza ----------
 
@@ -106,13 +120,20 @@ public partial class NodoAlberoViewModel(
 
     public static string CreaChiave(TipoNodo tipo, int id) => $"{tipo}:{id}";
 
-    // Glifi di Segoe Fluent Icons / Segoe MDL2 Assets: casa, calendario, libreria, cartella.
+    // Glifi di Segoe Fluent Icons / Segoe MDL2 Assets: casa, calendario, libreria, cartella e, per le completate, un cerchio con la spunta.
+    public const string IconaRadice = "\uE80F";
+    public const string IconaScadenze = "\uE787";
+    public const string IconaArea = "\uE8F1";
+    public const string IconaCartella = "\uE8B7";
+    public const string IconaCartellaCompletata = "\uE930";
+
     public string Icona => Tipo switch
     {
-        TipoNodo.Radice => "",
-        TipoNodo.Scadenze => "",
-        TipoNodo.Area => "",
-        _ => ""
+        TipoNodo.Radice => IconaRadice,
+        TipoNodo.Scadenze => IconaScadenze,
+        TipoNodo.Area => IconaArea,
+        _ when Completato => IconaCartellaCompletata,
+        _ => IconaCartella
     };
 
     public IEnumerable<NodoAlberoViewModel> ConDiscendenti()

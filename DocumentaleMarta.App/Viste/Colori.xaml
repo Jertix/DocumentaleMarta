@@ -7,4 +7,8 @@
     <SolidColorBrush x:Key="TestoArancione" Color="#A85800"/>
     <SolidColorBrush x:Key="IconaRossa" Color="#C42B1C"/>
     <SolidColorBrush x:Key="TestoRosso" Color="#B42318"/>
+
+    <!-- Cartelle completate nell'albero: spunta verde e nome in grigio, per far risaltare quelle ancora aperte -->
+    <SolidColorBrush x:Key="IconaCompletata" Color="#2E7D32"/>
+    <SolidColorBrush x:Key="TestoCompletata" Color="#777777"/>
 </ResourceDictionary>

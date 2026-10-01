@@ -22,7 +22,7 @@
             <Style TargetType="TreeViewItem">
                 <Setter Property="IsExpanded" Value="{Binding IsExpanded, Mode=TwoWay}"/>
                 <Setter Property="IsSelected" Value="{Binding IsSelected, Mode=TwoWay}"/>
-                <Setter Property="AutomationProperties.Name" Value="{Binding Testo}"/>
+                <Setter Property="AutomationProperties.Name" Value="{Binding NomeAccessibile}"/>
                 <EventSetter Event="Selected" Handler="NodoAlbero_Selected"/>
                 <Style.Triggers>
                     <!-- Il nodo su cui si sta per rilasciare un documento o dei file -->
@@ -59,11 +59,42 @@
                 </Style.Triggers>
             </Style>
 
+            <!-- L'icona di un nodo; verde se è una cartella completata -->
+            <Style x:Key="IconaNodoAlbero" TargetType="TextBlock">
+                <Setter Property="FontFamily" Value="{StaticResource FontIcone}"/>
+                <Setter Property="FontSize" Value="15"/>
+                <Setter Property="Margin" Value="0,0,7,0"/>
+                <Setter Property="VerticalAlignment" Value="Center"/>
+                <Style.Triggers>
+                    <!-- Da selezionata la cartella ha i colori della selezione: il verde sul blu non si leggerebbe -->
+                    <MultiDataTrigger>
+                        <MultiDataTrigger.Conditions>
+                            <Condition Binding="{Binding Completato}" Value="True"/>
+                            <Condition Binding="{Binding IsSelected}" Value="False"/>
+                        </MultiDataTrigger.Conditions>
+                        <Setter Property="Foreground" Value="{StaticResource IconaCompletata}"/>
+                    </MultiDataTrigger>
+                </Style.Triggers>
+            </Style>
+
+            <!-- Il nome di un nodo; grigio se è una cartella completata (a meno che sia selezionata: lì vale il colore della selezione) -->
+            <Style x:Key="TestoNodoAlbero" TargetType="TextBlock">
+                <Setter Property="VerticalAlignment" Value="Center"/>
+                <Style.Triggers>
+                    <MultiDataTrigger>
+                        <MultiDataTrigger.Conditions>
+                            <Condition Binding="{Binding Completato}" Value="True"/>
+                            <Condition Binding="{Binding IsSelected}" Value="False"/>
+                        </MultiDataTrigger.Conditions>
+                        <Setter Property="Foreground" Value="{StaticResource TestoCompletata}"/>
+                    </MultiDataTrigger>
+                </Style.Triggers>
+            </Style>
+
             <HierarchicalDataTemplate DataType="{x:Type vm:NodoAlberoViewModel}" ItemsSource="{Binding Figli}">
                 <StackPanel Orientation="Horizontal" Margin="0,2">
-                    <TextBlock Text="{Binding Icona}" FontFamily="{StaticResource FontIcone}" FontSize="15"
-                               Margin="0,0,7,0" VerticalAlignment="Center"/>
-                    <TextBlock Text="{Binding Testo}" VerticalAlignment="Center"/>
+                    <TextBlock Text="{Binding Icona}" Style="{StaticResource IconaNodoAlbero}" ToolTip="{Binding DescrizioneStato}"/>
+                    <TextBlock Text="{Binding Testo}" Style="{StaticResource TestoNodoAlbero}"/>
                     <TextBlock Style="{StaticResource IconaAvvisoAlbero}" ToolTip="{Binding DescrizioneAvviso}"/>
                 </StackPanel>
             </HierarchicalDataTemplate>
