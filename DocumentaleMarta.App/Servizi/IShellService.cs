@@ -11,4 +11,7 @@ public interface IShellService
 
     /// <summary>Apre Esplora file nella cartella del file, con il file evidenziato.</summary>
     void MostraFileInEsplora(string percorso);
+
+    /// <summary>Chiude Documentale e lo riapre (serve a usare un archivio diverso: le impostazioni si leggono all'avvio).</summary>
+    void RiavviaApplicazione();
 }

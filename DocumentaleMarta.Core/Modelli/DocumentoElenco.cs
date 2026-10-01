@@ -13,4 +13,5 @@ public record DocumentoElenco(
     int AreaId,
     string NomeArea,
     DateOnly? ScadenzaCartella,
-    bool CartellaCompletata);
+    bool CartellaCompletata,
+    bool CartellaArchiviata = false);

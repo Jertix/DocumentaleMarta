@@ -82,10 +82,19 @@ public class FintoDialogService : IDialogService
         return RispostaConferma;
     }
 
+    private readonly Queue<bool> _risposteDomande = new();
+
+    /// <summary>Prepara le risposte a domande successive (sì/no); finite quelle, vale <see cref="RispostaDomanda"/>.</summary>
+    public void RispondiDomande(params bool[] risposte)
+    {
+        foreach (var risposta in risposte)
+            _risposteDomande.Enqueue(risposta);
+    }
+
     public bool Chiedi(string titolo, string messaggio)
     {
         Domande.Add(messaggio);
-        return RispostaDomanda;
+        return _risposteDomande.Count > 0 ? _risposteDomande.Dequeue() : RispostaDomanda;
     }
 
     public void MostraErrore(string messaggio) => Errori.Add(messaggio);
@@ -106,7 +115,25 @@ public class FintoDialogService : IDialogService
     public string? SelezionaCartella(string titolo, string? percorsoIniziale)
     {
         SceltaCartellaChiesta.Add(titolo);
+        CartellaInizialeChiesta = percorsoIniziale;
         return _cartelle.Count > 0 ? _cartelle.Dequeue() : null;
+    }
+
+    /// <summary>La cartella da cui si è chiesto di partire nell'ultima scelta di una cartella.</summary>
+    public string? CartellaInizialeChiesta { get; private set; }
+
+    private readonly Queue<string?> _fileBackup = new();
+
+    /// <summary>Prepara il file di backup che l'utente sceglierà alla prossima richiesta (null = annulla).</summary>
+    public void RispondiFileBackup(string? percorso) => _fileBackup.Enqueue(percorso);
+
+    /// <summary>Quante volte si è chiesto di scegliere un file di backup, e da quale cartella si partiva.</summary>
+    public List<string?> SceltaFileBackupChiesta { get; } = [];
+
+    public string? SelezionaFileBackup(string? cartellaIniziale)
+    {
+        SceltaFileBackupChiesta.Add(cartellaIniziale);
+        return _fileBackup.Count > 0 ? _fileBackup.Dequeue() : null;
     }
 
     public IReadOnlyList<string> SelezionaFile(string titolo) =>
@@ -173,4 +200,9 @@ public class FintoShellService : IShellService
     }
 
     public void MostraFileInEsplora(string percorso) => FileMostrati.Add(percorso);
+
+    /// <summary>Quante volte il programma ha chiesto di riavviarsi.</summary>
+    public int RiavviiRichiesti { get; private set; }
+
+    public void RiavviaApplicazione() => RiavviiRichiesti++;
 }

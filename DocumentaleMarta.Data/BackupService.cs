@@ -5,8 +5,10 @@ using Microsoft.EntityFrameworkCore;
 namespace DocumentaleMarta.Data;
 
 /// <param name="adesso">L'ora corrente; si cambia solo nei test.</param>
-public class BackupService(
-    IDbContextFactory<AppDbContext> dbFactory, IArchivioFileService files, Func<DateTime>? adesso = null) : IBackupService
+/// <param name="cartellaTemporanea">Dove si fa la copia temporanea del database durante il backup; di norma quella di Windows. Si cambia solo nei test.</param>
+public partial class BackupService(
+    IDbContextFactory<AppDbContext> dbFactory, IArchivioFileService files, Func<DateTime>? adesso = null,
+    string? cartellaTemporanea = null) : IBackupService
 {
     /// <summary>Il file di istruzioni che si mette nello ZIP, accanto ai documenti.</summary>
     public const string NomeLeggimi = "_LEGGIMI-ripristino.txt";
@@ -20,7 +22,7 @@ public class BackupService(
         Directory.CreateDirectory(destinazione);
         var ora = (adesso ?? (() => DateTime.Now))();
 
-        var copiaDatabase = Path.Combine(Path.GetTempPath(), $"documentale-backup-{Guid.NewGuid():N}.db");
+        var copiaDatabase = Path.Combine(cartellaTemporanea ?? Path.GetTempPath(), $"documentale-backup-{Guid.NewGuid():N}.db");
         string? zipTemporaneo = null;
         try
         {
@@ -176,7 +178,10 @@ public class BackupService(
         "",
         "Questo file ZIP contiene tutto l'archivio: i documenti, con le loro cartelle, e il database (cartella _dati).",
         "",
-        "Per ripristinarlo:",
+        "Il modo più semplice per ripristinarlo: apri Documentale, premi «Ripristina…» nella barra in alto e scegli questo file.",
+        "Il programma lo estrae in una cartella nuova, senza toccare l'archivio attuale, e ti chiede se vuoi usarlo.",
+        "",
+        "Oppure, a mano:",
         "1. Chiudi Documentale.",
         "2. Estrai tutto il contenuto di questo ZIP in una cartella vuota, ad esempio C:/Documentale-ripristino",
         "3. Apri il file delle impostazioni (in Documentale: pulsante «i», voce «File delle impostazioni»).",

@@ -26,6 +26,9 @@ public interface IDialogService
     /// <summary>Scelta di una cartella. Restituisce null se l'utente annulla.</summary>
     string? SelezionaCartella(string titolo, string? percorsoIniziale);
 
+    /// <summary>Scelta di un file di backup (ZIP). Restituisce null se l'utente annulla.</summary>
+    string? SelezionaFileBackup(string? cartellaIniziale);
+
     /// <summary>Scelta di uno o più file da allegare. Lista vuota se l'utente annulla.</summary>
     IReadOnlyList<string> SelezionaFile(string titolo);
 

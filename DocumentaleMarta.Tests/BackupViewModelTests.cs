@@ -23,6 +23,38 @@ public class FintoBackup : IBackupService
             throw Errore;
         return new EsitoBackup(Path.Combine(cartellaDestinazione, "backup.zip"), FilePerBackup, 2048, new DateTime(2026, 10, 1, 9, 30, 0));
     }
+
+    // ---------- Ripristino ----------
+
+    /// <summary>Cosa "contiene" il backup letto.</summary>
+    public InfoBackup InfoLetta { get; set; } = new("backup.zip", new DateTime(2026, 9, 12, 14, 30, 0), 12, 3L * 1024 * 1024);
+
+    public Exception? ErroreLettura { get; set; }
+    public List<string> Lette { get; } = [];
+
+    public Task<InfoBackup> LeggiBackupAsync(string percorsoZip, CancellationToken annullamento = default)
+    {
+        Lette.Add(percorsoZip);
+        if (ErroreLettura is not null)
+            throw ErroreLettura;
+        return Task.FromResult(InfoLetta with { PercorsoZip = percorsoZip });
+    }
+
+    public List<(string Zip, string Destinazione)> Ripristini { get; } = [];
+    public Func<string, string, IProgress<int>?, Task>? DuranteIlRipristino { get; set; }
+    public Exception? ErroreRipristino { get; set; }
+    public int DocumentiMancanti { get; set; }
+
+    public async Task<EsitoRipristino> RipristinaAsync(
+        string percorsoZip, string cartellaDestinazione, IProgress<int>? avanzamento = null, CancellationToken annullamento = default)
+    {
+        Ripristini.Add((percorsoZip, cartellaDestinazione));
+        if (DuranteIlRipristino is not null)
+            await DuranteIlRipristino(percorsoZip, cartellaDestinazione, avanzamento);
+        if (ErroreRipristino is not null)
+            throw ErroreRipristino;
+        return new EsitoRipristino(cartellaDestinazione, InfoLetta.NumeroFile, DocumentiMancanti);
+    }
 }
 
 public class BackupViewModelTests : IDisposable

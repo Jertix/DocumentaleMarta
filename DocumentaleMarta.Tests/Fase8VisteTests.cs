@@ -425,4 +425,75 @@ public class Fase8VisteTests
         await vm.Anteprima!.Completamento;
         Assert.Equal("fattura.pdf", vm.Anteprima.Titolo);
     }
+
+    // ---------- Ripristina da backup e filtro "Archiviate" ----------
+
+    [Fact]
+    public async Task FinestraPrincipale_ConBackup_HaIlPulsanteRipristina_AccantoABackup()
+    {
+        var (vm, a) = await PrincipaleAsync();
+        using var _ = a;
+
+        var errori = VisteTests.InSta(() =>
+        {
+            var finestra = new MainWindow(vm);
+            var contenuto = (FrameworkElement)finestra.Content;
+            VisteTests.Disegna(contenuto, 1180, 680, "barra-con-ripristina");
+
+            var ripristina = Tutti<Button>(contenuto).First(b => b.Content is "Ripristina…");
+            Assert.Equal(Visibility.Visible, ripristina.Visibility);
+            Assert.Same(vm.RipristinaDaBackupCommand, ripristina.Command);
+            Assert.Contains("non tocca l'archivio attuale", (string)ripristina.ToolTip);
+            Assert.True(ripristina.IsEnabled);
+
+            // Sta nella stessa barra di "Backup", subito dopo.
+            var barra = (Panel)System.Windows.Media.VisualTreeHelper.GetParent(Tutti<Button>(contenuto).First(b => b.Content is "Backup"));
+            var nomi = barra.Children.OfType<Button>().Select(b => b.Content as string).ToList();
+            Assert.Equal(nomi.IndexOf("Backup") + 1, nomi.IndexOf("Ripristina…"));
+        });
+
+        Assert.Empty(errori);
+    }
+
+    [Fact]
+    public async Task FinestraPrincipale_SenzaServizioDiBackup_NonHaIlPulsanteRipristina()
+    {
+        var (vm, a) = await PrincipaleAsync(backup: false);
+        using var _ = a;
+
+        var errori = VisteTests.InSta(() =>
+        {
+            var finestra = new MainWindow(vm);
+            var contenuto = (FrameworkElement)finestra.Content;
+            VisteTests.Disegna(contenuto, 1180, 680, "barra-senza-ripristina");
+
+            Assert.Equal(Visibility.Collapsed, Tutti<Button>(contenuto).First(b => b.Content is "Ripristina…").Visibility);
+        });
+
+        Assert.Empty(errori);
+    }
+
+    [Fact]
+    public async Task RicercaAvanzata_ILMenuDelloStato_HaLaVoceArchiviate_ELoSpiega()
+    {
+        var (vm, a) = await PrincipaleAsync();
+        using var _ = a;
+        vm.PannelloFiltriAperto = true;
+
+        var errori = VisteTests.InSta(() =>
+        {
+            var finestra = new MainWindow(vm);
+            var contenuto = (FrameworkElement)finestra.Content;
+            VisteTests.Disegna(contenuto, 1180, 680, "ricerca-avanzata-con-archiviate");
+
+            var menu = Tutti<ComboBox>(contenuto).Single(c => c.Items.OfType<StatoOpzione>().Any());
+            Assert.Equal(
+                ["Qualsiasi", "Non completate", "Completate", "In scadenza", "Scadute", "Archiviate"],
+                menu.Items.OfType<StatoOpzione>().Select(o => o.Testo));
+            Assert.Contains("«Archiviate»", (string)menu.ToolTip);
+            Assert.Contains("«Archivio completati»", (string)menu.ToolTip);
+        });
+
+        Assert.Empty(errori);
+    }
 }

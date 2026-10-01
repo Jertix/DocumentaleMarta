@@ -23,7 +23,10 @@ public enum StatoRicerca
     InScadenza,
 
     /// <summary>Non completate, con la scadenza già passata.</summary>
-    Scadute
+    Scadute,
+
+    /// <summary>Le cartelle che stanno nell'"Archivio completati".</summary>
+    Archiviate
 }
 
 /// <summary>Una voce del menu "Stato".</summary>
@@ -35,7 +38,8 @@ public record StatoOpzione(StatoRicerca Valore, string Testo)
         new(StatoRicerca.NonCompletate, "Non completate"),
         new(StatoRicerca.Completate, "Completate"),
         new(StatoRicerca.InScadenza, "In scadenza"),
-        new(StatoRicerca.Scadute, "Scadute")
+        new(StatoRicerca.Scadute, "Scadute"),
+        new(StatoRicerca.Archiviate, "Archiviate")
     ];
 }
 
@@ -132,6 +136,9 @@ public partial class FiltriRicercaViewModel : ObservableObject
             case StatoRicerca.Scadute:
                 stato = StatoCartella.Aperta;
                 al = Minimo(al, oggi.AddDays(-1));
+                break;
+            case StatoRicerca.Archiviate:
+                stato = StatoCartella.Archiviata;
                 break;
         }
 

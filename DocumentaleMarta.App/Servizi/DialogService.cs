@@ -44,6 +44,21 @@ public class DialogService : IDialogService
         return confermato == true ? dialogo.FolderName : null;
     }
 
+    public string? SelezionaFileBackup(string? cartellaIniziale)
+    {
+        var dialogo = new OpenFileDialog
+        {
+            Title = "Scegli il backup da ripristinare",
+            CheckFileExists = true,
+            Multiselect = false,
+            Filter = "Backup di Documentale (*.zip)|*.zip|Tutti i file|*.*"
+        };
+        if (!string.IsNullOrWhiteSpace(cartellaIniziale) && Directory.Exists(cartellaIniziale))
+            dialogo.InitialDirectory = cartellaIniziale;
+        var confermato = Proprietaria is { } finestra ? dialogo.ShowDialog(finestra) : dialogo.ShowDialog();
+        return confermato == true ? dialogo.FileName : null;
+    }
+
     public IReadOnlyList<string> SelezionaFile(string titolo)
     {
         var dialogo = new OpenFileDialog

@@ -22,6 +22,9 @@ public partial class DocumentoElencoViewModel(
     public string Tipo { get; } = dati.Estensione.TrimStart('.').ToUpperInvariant();
 
     public string TitoloCartella { get; } = dati.TitoloCartella;
+
+    /// <summary>La cartella del documento sta nell'"Archivio completati": nelle griglie lo dice un'icona accanto al nome.</summary>
+    public bool CartellaArchiviata { get; } = dati.CartellaArchiviata;
     public string NomeArea { get; } = dati.NomeArea;
 
     public DateTime DataCaricamento { get; } = dati.DataCaricamento;

@@ -15,7 +15,7 @@ public class RicercaService(IDbContextFactory<AppDbContext> dbFactory) : IRicerc
     private record Riga(
         int Id, string NomeFile, string Estensione, long Dimensione, DateTime DataCaricamento, string PercorsoRelativo,
         int CartellaId, string TitoloCartella, string? DescrizioneCartella, int AreaId, string NomeArea,
-        DateOnly? Scadenza, bool Completata);
+        DateOnly? Scadenza, bool Completata, bool Archiviata);
 
     private record RigaEstratto(long Id, string Estratto);
 
@@ -32,7 +32,7 @@ public class RicercaService(IDbContextFactory<AppDbContext> dbFactory) : IRicerc
             .Select(d => new Riga(
                 d.Id, d.NomeFile, d.Estensione, d.Dimensione, d.DataCaricamento, d.PercorsoRelativo,
                 d.CartellaId, d.Cartella.Titolo, d.Cartella.Descrizione, d.Cartella.AreaId, d.Cartella.Area.Nome,
-                d.Cartella.DataScadenza, d.Cartella.Completato))
+                d.Cartella.DataScadenza, d.Cartella.Completato, d.Cartella.Archiviata))
             .ToListAsync())
             .Where(r => RispettaIFiltri(r, filtri))
             .ToList();
@@ -80,7 +80,7 @@ public class RicercaService(IDbContextFactory<AppDbContext> dbFactory) : IRicerc
             var r = t.Riga;
             var documento = new DocumentoElenco(
                 r.Id, r.NomeFile, r.Estensione, r.Dimensione, r.DataCaricamento, r.PercorsoRelativo,
-                r.CartellaId, r.TitoloCartella, r.AreaId, r.NomeArea, r.Scadenza, r.Completata);
+                r.CartellaId, r.TitoloCartella, r.AreaId, r.NomeArea, r.Scadenza, r.Completata, r.Archiviata);
             var trovato = estratti.TryGetValue(r.Id, out var estratto) ? estratto : t.Dove;
             return new RisultatoRicerca(documento, trovato);
         }).ToList();
@@ -97,6 +97,8 @@ public class RicercaService(IDbContextFactory<AppDbContext> dbFactory) : IRicerc
         if (filtri.Stato == StatoCartella.Aperta && riga.Completata)
             return false;
         if (filtri.Stato == StatoCartella.Completata && !riga.Completata)
+            return false;
+        if (filtri.Stato == StatoCartella.Archiviata && !riga.Archiviata)
             return false;
 
         // Un intervallo di scadenza vale solo per le cartelle che una scadenza ce l'hanno.

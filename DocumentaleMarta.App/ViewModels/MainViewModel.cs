@@ -638,7 +638,8 @@ public partial class MainViewModel(
     /// <summary>Spiega cosa significano "In scadenza" e "Scadute" nel menu dello stato.</summary>
     public string SuggerimentoStatoRicerca =>
         $"«In scadenza»: non completate, con la scadenza entro {Giorni(_avvisi.SogliaArancioneGiorni)} (la soglia arancione delle impostazioni).\n" +
-        "«Scadute»: non completate, con la scadenza già passata.";
+        "«Scadute»: non completate, con la scadenza già passata.\n" +
+        "«Completate»: anche quelle archiviate. «Archiviate»: solo quelle messe in «Archivio completati».";
 
     /// <summary>Il pannello dei filtri è aperto.</summary>
     [ObservableProperty]
@@ -1126,7 +1127,7 @@ public partial class MainViewModel(
     /// <summary>Il pulsante "Backup" compare solo se c'è il servizio che lo esegue.</summary>
     public bool BackupDisponibile => servizioBackup is not null;
 
-    /// <summary>"Backup in corso… 12 file" mentre il backup lavora (nella barra in fondo); vuoto altrimenti.</summary>
+    /// <summary>"Backup in corso… 12 file" o "Ripristino in corso…" mentre l'operazione lavora (nella barra in fondo); vuoto altrimenti.</summary>
     [ObservableProperty]
     private string _testoBackup = "";
 
@@ -1245,6 +1246,139 @@ public partial class MainViewModel(
         {
             return $"\n\nAttenzione: non è stato possibile salvare la data del backup nelle impostazioni ({ex.Message}).";
         }
+    }
+
+    /// <summary>
+    /// Ripristina un backup. Non sovrascrive mai niente: il backup si estrae in una cartella NUOVA (dentro quella che l'utente
+    /// sceglie), si controlla, e solo se l'utente lo vuole il programma passa a usarla (si riavvia). L'archivio attuale resta
+    /// dov'è, intatto.
+    /// </summary>
+    [RelayCommand(CanExecute = nameof(BackupDisponibile))]
+    private async Task RipristinaDaBackupAsync()
+    {
+        if (servizioBackup is null || _backupInCorso)
+            return;
+
+        // 1. Quale backup.
+        var zip = dialog.SelezionaFileBackup(impostazioni.CartellaBackup);
+        if (zip is null)
+            return;
+
+        InfoBackup info;
+        try
+        {
+            info = await servizioBackup.LeggiBackupAsync(zip);
+        }
+        catch (ArchivioException ex)
+        {
+            dialog.MostraErrore(ex.Message);
+            return;
+        }
+        catch (Exception ex) when (ex is IOException or UnauthorizedAccessException)
+        {
+            dialog.MostraErrore($"Non è stato possibile leggere il file: {ex.Message}");
+            return;
+        }
+
+        // 2. Dove: si sceglie una cartella e dentro se ne crea una nuova, così non si può mescolare niente con file esistenti.
+        var madre = dialog.SelezionaCartella(
+            "Scegli dove ripristinare l'archivio (ci verrà creata una nuova cartella)", Directory.GetParent(files.PercorsoRadice)?.FullName);
+        if (madre is null)
+            return;
+
+        var nome = NomiFileSicuri.RendiUnivoco($"Documentale ripristinato {_avvisi.Oggi:yyyy-MM-dd}", n => Path.Exists(Path.Combine(madre, n)));
+        var destinazione = Path.Combine(madre, nome);
+
+        // 3. Conferma, dicendo bene cosa succede e cosa no.
+        var quando = info.Data is { } data ? $"del {data:dd/MM/yyyy} alle {data:HH:mm}: " : ": ";
+        if (!dialog.Chiedi(
+                "Ripristina da backup",
+                $"Ripristinare il backup {quando}{Conta(info.NumeroFile, "file", "file")} ({FormatiTesto.Dimensione(info.DimensioneDecompressa)})?\n\n"
+                + $"Si crea la cartella:\n{destinazione}\n\n"
+                + $"L'archivio attuale ({files.PercorsoRadice}) non viene toccato."))
+            return;
+
+        // 4. Il ripristino vero.
+        EsitoRipristino esito;
+        _backupInCorso = true;
+        TestoBackup = "Ripristino in corso…";
+        try
+        {
+            var progresso = new ProgressoSuInterfaccia(
+                n => TestoBackup = $"Ripristino in corso… {Conta(n, "file", "file")}", SynchronizationContext.Current);
+            esito = await servizioBackup.RipristinaAsync(zip, destinazione, progresso);
+        }
+        catch (ArchivioException ex)
+        {
+            dialog.MostraErrore(ex.Message);
+            return;
+        }
+        catch (Exception ex) when (ex is IOException or UnauthorizedAccessException)
+        {
+            dialog.MostraErrore($"Il ripristino non è riuscito: {ex.Message}\n\nNon è stato creato nulla. Controlla che ci sia spazio libero.");
+            return;
+        }
+        catch (OperationCanceledException)
+        {
+            return;
+        }
+        finally
+        {
+            _backupInCorso = false;
+            TestoBackup = "";
+        }
+
+        // 5. Usarlo subito oppure no.
+        ProponiDiUsareLArchivioRipristinato(esito);
+    }
+
+    /// <summary>Dopo un ripristino riuscito: avvisa se mancano dei file e chiede se passare subito al nuovo archivio.</summary>
+    private void ProponiDiUsareLArchivioRipristinato(EsitoRipristino esito)
+    {
+        var avviso = esito.DocumentiMancanti switch
+        {
+            0 => "",
+            1 => "\n\nAttenzione: 1 documento elencato nel database non ha il suo file nel backup.",
+            var n => $"\n\nAttenzione: {n} documenti elencati nel database non hanno il loro file nel backup."
+        };
+
+        var percorsoImpostazioni = servizioImpostazioni?.PercorsoFile ?? "";
+        var comeUsarlo =
+            $"Per usarlo cambia «PercorsoRadice» nel file delle impostazioni ({percorsoImpostazioni}) e riavvia Documentale.";
+
+        if (servizioImpostazioni is null
+            || !dialog.Chiedi(
+                "Ripristino completato",
+                $"L'archivio è stato ripristinato in:\n{esito.Cartella}{avviso}\n\n"
+                + "Vuoi usarlo subito? Documentale si riavvia. L'archivio attuale resta dov'è."))
+        {
+            dialog.MostraMessaggio(
+                "Ripristino completato", $"L'archivio ripristinato è in:\n{esito.Cartella}{avviso}\n\n{comeUsarlo}");
+            return;
+        }
+
+        // Si cambia solo il file: le impostazioni in uso restano quelle di adesso fino al riavvio.
+        var nuove = impostazioni.Clona();
+        nuove.PercorsoRadice = esito.Cartella;
+        if (nuove.Valida() is { Count: > 0 } problemi)
+        {
+            dialog.MostraErrore(
+                $"L'archivio è stato ripristinato in:\n{esito.Cartella}\n\nMa non si può usare subito: {problemi[0]}\n\n{comeUsarlo}");
+            return;
+        }
+
+        try
+        {
+            servizioImpostazioni.Salva(nuove);
+        }
+        catch (Exception ex) when (ex is IOException or UnauthorizedAccessException)
+        {
+            dialog.MostraErrore(
+                $"L'archivio è stato ripristinato in:\n{esito.Cartella}\n\nMa non è stato possibile salvare le impostazioni ({ex.Message}).\n\n{comeUsarlo}");
+            return;
+        }
+
+        shell.RiavviaApplicazione();
     }
 
     /// <summary>Riporta l'avanzamento sul thread dell'interfaccia (i file vengono copiati in background).</summary>

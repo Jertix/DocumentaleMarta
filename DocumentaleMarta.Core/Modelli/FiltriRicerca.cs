@@ -42,7 +42,11 @@ public enum StatoCartella
     /// <summary>La cartella non è completata.</summary>
     Aperta = 1,
 
-    Completata = 2
+    /// <summary>La cartella è completata (anche se poi è stata archiviata).</summary>
+    Completata = 2,
+
+    /// <summary>La cartella è nell'"Archivio completati".</summary>
+    Archiviata = 3
 }
 
 /// <summary>

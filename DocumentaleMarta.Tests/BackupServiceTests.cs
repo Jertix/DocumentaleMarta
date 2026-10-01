@@ -12,6 +12,7 @@ public class BackupServiceTests : IDisposable
     private readonly ArchivioDiProva _a;
     private readonly BackupService _backup;
     private readonly string _destinazione;
+    private readonly string _temporanea;
 
     public BackupServiceTests()
     {
@@ -20,7 +21,9 @@ public class BackupServiceTests : IDisposable
             Logica = (p, _) => Task.FromResult("Preventivo carpenteria zincata per il cancello Rossi")
         };
         _a = new ArchivioDiProva(estrattore);
-        _backup = new BackupService(_a.Factory, _a.Files, () => Adesso);
+        _temporanea = _a.Tmp.Combina("temporanea");
+        Directory.CreateDirectory(_temporanea);
+        _backup = new BackupService(_a.Factory, _a.Files, () => Adesso, _temporanea);
         _destinazione = _a.Tmp.Combina("backup");
     }
 
@@ -197,12 +200,11 @@ public class BackupServiceTests : IDisposable
     public async Task NonRestanoFileTemporanei_NeInDestinazioneNeInTemp()
     {
         await CreaArchivioAsync();
-        var prima = Directory.GetFiles(Path.GetTempPath(), "documentale-backup-*").Length;
 
         await _backup.CreaBackupAsync(_destinazione);
 
         Assert.Equal(["Documentale-backup-2026-10-01-1430.zip"], Directory.GetFiles(_destinazione).Select(Path.GetFileName));
-        Assert.Equal(prima, Directory.GetFiles(Path.GetTempPath(), "documentale-backup-*").Length);
+        Assert.Empty(Directory.GetFileSystemEntries(_temporanea)); // la copia temporanea del database è sparita
     }
 
     [Fact]

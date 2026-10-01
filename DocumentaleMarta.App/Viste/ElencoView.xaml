@@ -72,8 +72,20 @@
                                     ElementStyle="{StaticResource CellaTesto}"/>
                 <DataGridTextColumn Header="Tipo" Binding="{Binding Tipo}" Width="55"
                                     ElementStyle="{StaticResource CellaTesto}"/>
-                <DataGridTextColumn Header="Cartella" Binding="{Binding TitoloCartella}" Width="0.8*" MinWidth="70"
-                                    ElementStyle="{StaticResource CellaTesto}"/>
+                <!-- Il titolo della cartella, con la scatola d'archivio se la cartella è nell'"Archivio completati" -->
+                <DataGridTemplateColumn Header="Cartella" Width="0.8*" MinWidth="70" SortMemberPath="TitoloCartella">
+                    <DataGridTemplateColumn.CellTemplate>
+                        <DataTemplate>
+                            <DockPanel>
+                                <TextBlock DockPanel.Dock="Left" Text="&#xE7B8;" FontFamily="{StaticResource FontIcone}" Foreground="#777"
+                                           Margin="4,0,0,0" VerticalAlignment="Center"
+                                           ToolTip="Cartella archiviata in «Archivio completati»"
+                                           Visibility="{Binding CartellaArchiviata, Converter={StaticResource BoolToVis}}"/>
+                                <TextBlock Text="{Binding TitoloCartella}" Style="{StaticResource CellaTesto}"/>
+                            </DockPanel>
+                        </DataTemplate>
+                    </DataGridTemplateColumn.CellTemplate>
+                </DataGridTemplateColumn>
                 <DataGridTextColumn x:Name="ColonnaArea" Header="Area" Binding="{Binding NomeArea}" Width="0.6*" MinWidth="60"
                                     ElementStyle="{StaticResource CellaTesto}"/>
 

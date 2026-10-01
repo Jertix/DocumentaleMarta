@@ -413,7 +413,8 @@ public class ArchivioService(
                 d.Cartella.AreaId,
                 NomeArea = d.Cartella.Area.Nome,
                 Scadenza = d.Cartella.DataScadenza,
-                d.Cartella.Completato
+                d.Cartella.Completato,
+                d.Cartella.Archiviata
             })
             .ToListAsync();
 
@@ -421,7 +422,7 @@ public class ArchivioService(
             .OrderByDescending(d => d.DataCaricamento).ThenByDescending(d => d.Id)
             .Select(d => new DocumentoElenco(
                 d.Id, d.NomeFile, d.Estensione, d.Dimensione, d.DataCaricamento, d.PercorsoRelativo,
-                d.CartellaId, d.TitoloCartella, d.AreaId, d.NomeArea, d.Scadenza, d.Completato))
+                d.CartellaId, d.TitoloCartella, d.AreaId, d.NomeArea, d.Scadenza, d.Completato, d.Archiviata))
             .ToList();
     }
 
