@@ -44,7 +44,13 @@ public interface IGeneratoreAnteprima
     bool Supporta(string estensione);
 
     /// <summary>L'anteprima di una pagina (la prima è la 0). Non tiene il file aperto: il documento si può spostare o eliminare.</summary>
-    Task<RisultatoAnteprima> GeneraAsync(string percorsoAssoluto, int pagina, CancellationToken annullamento);
+    /// <param name="larghezzaMassima">
+    /// Larghezza in pixel a cui si disegna una pagina PDF (e oltre la quale un'immagine si rimpicciolisce): il pannello usa il valore
+    /// predefinito, la finestra ingrandita uno più alto per vedere il testo nitido.
+    /// </param>
+    Task<RisultatoAnteprima> GeneraAsync(
+        string percorsoAssoluto, int pagina, CancellationToken annullamento,
+        int larghezzaMassima = GeneratoreAnteprima.LarghezzaMassima);
 }
 
 /// <summary>
@@ -56,6 +62,9 @@ public class GeneratoreAnteprima : IGeneratoreAnteprima
     /// <summary>Larghezza in pixel a cui si disegna una pagina: abbastanza per leggere il testo in un pannello largo, senza sprecare memoria.</summary>
     public const int LarghezzaMassima = 1100;
 
+    /// <summary>Larghezza a cui si disegna una pagina nella finestra ingrandita: il testo si legge anche ingrandendo.</summary>
+    public const int LarghezzaIngrandita = 2600;
+
     /// <summary>Oltre questa dimensione il file non si carica in memoria per l'anteprima (si apre con il suo programma).</summary>
     public const long DimensioneMassima = 150L * 1024 * 1024;
 
@@ -66,7 +75,8 @@ public class GeneratoreAnteprima : IGeneratoreAnteprima
         estensione.Equals(".pdf", StringComparison.OrdinalIgnoreCase) || Immagini.Contains(estensione)
         || FormatiOpenDocument.Contiene(estensione);
 
-    public async Task<RisultatoAnteprima> GeneraAsync(string percorsoAssoluto, int pagina, CancellationToken annullamento)
+    public async Task<RisultatoAnteprima> GeneraAsync(
+        string percorsoAssoluto, int pagina, CancellationToken annullamento, int larghezzaMassima = LarghezzaMassima)
     {
         var estensione = Path.GetExtension(percorsoAssoluto).ToLowerInvariant();
         if (!Supporta(estensione))
@@ -82,7 +92,7 @@ public class GeneratoreAnteprima : IGeneratoreAnteprima
             // Un file di OpenOffice o LibreOffice porta con sé la miniatura della prima pagina: si legge solo quella,
             // senza caricare il documento (che può essere grande).
             if (FormatiOpenDocument.Contiene(estensione))
-                return await Task.Run(() => DisegnaMiniaturaOpenDocument(percorsoAssoluto), annullamento);
+                return await Task.Run(() => DisegnaMiniaturaOpenDocument(percorsoAssoluto, larghezzaMassima), annullamento);
 
             if (info.Length > DimensioneMassima)
                 return RisultatoAnteprima.NonDisponibile(
@@ -93,8 +103,8 @@ public class GeneratoreAnteprima : IGeneratoreAnteprima
             annullamento.ThrowIfCancellationRequested();
 
             return estensione == ".pdf"
-                ? await DisegnaPdfAsync(byteFile, pagina, annullamento)
-                : await Task.Run(() => DisegnaImmagine(byteFile, estensione, pagina), annullamento);
+                ? await DisegnaPdfAsync(byteFile, pagina, larghezzaMassima, annullamento)
+                : await Task.Run(() => DisegnaImmagine(byteFile, estensione, pagina, larghezzaMassima), annullamento);
         }
         catch (OperationCanceledException)
         {
@@ -121,7 +131,7 @@ public class GeneratoreAnteprima : IGeneratoreAnteprima
     /// <summary>Oltre questa dimensione una "miniatura" non è credibile: si ignora.</summary>
     private const long DimensioneMassimaMiniatura = 20L * 1024 * 1024;
 
-    private static RisultatoAnteprima DisegnaMiniaturaOpenDocument(string percorso)
+    private static RisultatoAnteprima DisegnaMiniaturaOpenDocument(string percorso, int larghezzaMassima)
     {
         using var flusso = new FileStream(percorso, FileMode.Open, FileAccess.Read, FileShare.ReadWrite | FileShare.Delete);
         using var archivio = new ZipArchive(flusso, ZipArchiveMode.Read);
@@ -136,7 +146,7 @@ public class GeneratoreAnteprima : IGeneratoreAnteprima
             origine.CopyTo(miniatura);
 
         // È un'immagine PNG della prima pagina: si mostra come qualsiasi altra immagine, dicendo però che è solo una miniatura.
-        return DisegnaImmagine(miniatura.ToArray(), ".png", 0) with { Nota = NotaMiniatura };
+        return DisegnaImmagine(miniatura.ToArray(), ".png", 0, larghezzaMassima) with { Nota = NotaMiniatura };
     }
 
     private static async Task<byte[]> LeggiAsync(string percorso, CancellationToken annullamento)
@@ -149,7 +159,8 @@ public class GeneratoreAnteprima : IGeneratoreAnteprima
         return memoria.ToArray();
     }
 
-    private static async Task<RisultatoAnteprima> DisegnaPdfAsync(byte[] byteFile, int pagina, CancellationToken annullamento)
+    private static async Task<RisultatoAnteprima> DisegnaPdfAsync(
+        byte[] byteFile, int pagina, int larghezzaMassima, CancellationToken annullamento)
     {
         using var flusso = new MemoryStream(byteFile);
         var documento = await PdfDocument.LoadFromStreamAsync(flusso.AsRandomAccessStream()).AsTask(annullamento);
@@ -161,7 +172,7 @@ public class GeneratoreAnteprima : IGeneratoreAnteprima
 
         // La pagina si "stampa" in un'immagine PNG (come fa la lettura del testo); i byte si copiano fuori dal flusso di Windows.
         using var uscita = new InMemoryRandomAccessStream();
-        await paginaPdf.RenderToStreamAsync(uscita, new PdfPageRenderOptions { DestinationWidth = LarghezzaMassima })
+        await paginaPdf.RenderToStreamAsync(uscita, new PdfPageRenderOptions { DestinationWidth = (uint)larghezzaMassima })
             .AsTask(annullamento);
         uscita.Seek(0);
         using var disegno = new MemoryStream();
@@ -177,7 +188,7 @@ public class GeneratoreAnteprima : IGeneratoreAnteprima
         return new RisultatoAnteprima(StatoAnteprima.Pronta, immagine, pagine);
     }
 
-    private static RisultatoAnteprima DisegnaImmagine(byte[] byteFile, string estensione, int pagina)
+    private static RisultatoAnteprima DisegnaImmagine(byte[] byteFile, string estensione, int pagina, int larghezzaMassima)
     {
         using var flusso = new MemoryStream(byteFile);
         var decodificatore = BitmapDecoder.Create(flusso, BitmapCreateOptions.PreservePixelFormat, BitmapCacheOption.OnLoad);
@@ -187,9 +198,9 @@ public class GeneratoreAnteprima : IGeneratoreAnteprima
         BitmapSource immagine = decodificatore.Frames[Math.Clamp(pagina, 0, pagine - 1)];
 
         immagine = Ruotata(immagine);
-        if (immagine.PixelWidth > LarghezzaMassima)
+        if (immagine.PixelWidth > larghezzaMassima)
         {
-            var scala = (double)LarghezzaMassima / immagine.PixelWidth;
+            var scala = (double)larghezzaMassima / immagine.PixelWidth;
             var ridotta = new TransformedBitmap(immagine, new ScaleTransform(scala, scala));
             ridotta.Freeze();
             immagine = ridotta;

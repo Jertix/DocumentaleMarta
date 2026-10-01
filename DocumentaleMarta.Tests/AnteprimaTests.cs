@@ -406,6 +406,9 @@ public class FintoGeneratoreAnteprima : IGeneratoreAnteprima
     public static readonly ImageSource ImmagineFinta = CreaImmagine();
 
     public List<(string Percorso, int Pagina)> Richieste { get; } = [];
+
+    /// <summary>La larghezza chiesta a ogni richiesta (la stessa posizione di <see cref="Richieste"/>).</summary>
+    public List<int> Larghezze { get; } = [];
     public int Pagine { get; set; } = 1;
     public Func<string, int, CancellationToken, Task<RisultatoAnteprima>>? Comportamento { get; set; }
 
@@ -418,9 +421,11 @@ public class FintoGeneratoreAnteprima : IGeneratoreAnteprima
 
     public bool Supporta(string estensione) => estensione is ".pdf" or ".png";
 
-    public Task<RisultatoAnteprima> GeneraAsync(string percorsoAssoluto, int pagina, CancellationToken annullamento)
+    public Task<RisultatoAnteprima> GeneraAsync(
+        string percorsoAssoluto, int pagina, CancellationToken annullamento, int larghezzaMassima = GeneratoreAnteprima.LarghezzaMassima)
     {
         Richieste.Add((percorsoAssoluto, pagina));
+        Larghezze.Add(larghezzaMassima);
         if (Comportamento is not null)
             return Comportamento(percorsoAssoluto, pagina, annullamento);
         return Task.FromResult(new RisultatoAnteprima(StatoAnteprima.Pronta, ImmagineFinta, Pagine));

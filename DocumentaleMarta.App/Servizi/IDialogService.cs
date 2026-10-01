@@ -43,4 +43,7 @@ public interface IDialogService
 
     /// <summary>Mostra la finestra "Informazioni".</summary>
     void MostraInformazioni(InformazioniViewModel modello);
+
+    /// <summary>Mostra la pagina di un documento in una finestra grande (anteprima ingrandita). Torna quando la finestra si chiude.</summary>
+    void MostraAnteprimaIngrandita(AnteprimaViewModel modello);
 }

@@ -134,6 +134,11 @@ public class FintoDialogService : IDialogService
 
     public void MostraInformazioni(InformazioniViewModel modello) => UltimeInformazioni = modello;
 
+    /// <summary>Le finestre "Anteprima ingrandita" aperte (i modelli che le governano).</summary>
+    public List<AnteprimaViewModel> AnteprimeIngrandite { get; } = [];
+
+    public void MostraAnteprimaIngrandita(AnteprimaViewModel modello) => AnteprimeIngrandite.Add(modello);
+
     public bool MostraNuovaCartella(NuovaCartellaViewModel modello)
     {
         AperturaNuovaCartella++;

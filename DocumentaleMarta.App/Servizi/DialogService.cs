@@ -72,6 +72,9 @@ public class DialogService : IDialogService
     public void MostraInformazioni(InformazioniViewModel modello) =>
         new InformazioniDialog(modello) { Owner = Proprietaria }.ShowDialog();
 
+    public void MostraAnteprimaIngrandita(AnteprimaViewModel modello) =>
+        new AnteprimaIngranditaDialog(modello) { Owner = Proprietaria }.ShowDialog();
+
     private static MessageBoxResult Mostra(string messaggio, string titolo, MessageBoxButton pulsanti, MessageBoxImage icona, MessageBoxResult predefinito) =>
         Proprietaria is { } finestra
             ? MessageBox.Show(finestra, messaggio, titolo, pulsanti, icona, predefinito)

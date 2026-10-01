@@ -23,7 +23,14 @@
 
     <Border Background="#F7F7F7" BorderBrush="#D0D0D0" BorderThickness="1,0,0,0">
         <DockPanel Margin="12,12,12,10">
-            <TextBlock DockPanel.Dock="Top" Text="Anteprima" Foreground="#777" FontSize="12"/>
+            <DockPanel DockPanel.Dock="Top">
+                <!-- Il doppio clic sull'immagine fa lo stesso; il pulsante serve a chi non lo sa -->
+                <Button DockPanel.Dock="Right" Command="{Binding IngrandisciCommand}" Content="&#xE740;"
+                        FontFamily="{StaticResource FontIcone}" Width="28" Height="24" Padding="0"
+                        ToolTip="Ingrandisci (o fai doppio clic sull'anteprima)" AutomationProperties.Name="Ingrandisci l'anteprima"
+                        Visibility="{Binding HaImmagine, Converter={StaticResource BoolToVis}}"/>
+                <TextBlock Text="Anteprima" Foreground="#777" FontSize="12" VerticalAlignment="Center"/>
+            </DockPanel>
             <TextBlock DockPanel.Dock="Top" Text="{Binding Titolo}" ToolTip="{Binding Titolo}" FontWeight="SemiBold"
                        TextTrimming="CharacterEllipsis" Margin="0,2,0,8"/>
 
@@ -43,7 +50,9 @@
                        Margin="0,6,0,0" Visibility="{Binding HaNota, Converter={StaticResource BoolToVis}}"/>
 
             <Grid>
-                <Border Background="White" BorderBrush="#D8D8D8" BorderThickness="1"
+                <Border Background="White" BorderBrush="#D8D8D8" BorderThickness="1" Cursor="Hand"
+                        MouseLeftButtonDown="Immagine_MouseLeftButtonDown"
+                        ToolTip="Doppio clic per ingrandire"
                         Visibility="{Binding HaImmagine, Converter={StaticResource BoolToVis}}">
                     <Image Source="{Binding Immagine}" Stretch="Uniform" RenderOptions.BitmapScalingMode="HighQuality"/>
                 </Border>

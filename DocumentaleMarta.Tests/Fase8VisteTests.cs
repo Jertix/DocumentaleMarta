@@ -319,7 +319,7 @@ public class Fase8VisteTests
             Assert.NotNull(Tutti<Image>(pannello).Single().Source);
             Assert.Contains("fattura.pdf", TestiVisibili(pannello));
             Assert.Contains("Pagina 1 di 2", TestiVisibili(pannello)); // il PDF di prova ha due pagine
-            Assert.Equal(2, PulsantiVisibili(pannello).Count());
+            Assert.Equal(3, PulsantiVisibili(pannello).Count()); // le due frecce delle pagine e "Ingrandisci"
 
             var interruttore = Tutti<ToggleButton>(contenuto).Single(t => t.Content is "Anteprima");
             Assert.True(interruttore.IsChecked);

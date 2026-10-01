@@ -16,8 +16,13 @@ public interface IDocumentoAnteprima
 /// <summary>
 /// Il pannello di anteprima a destra: mostra la pagina del documento selezionato in una griglia (PDF e immagini),
 /// con i pulsanti per sfogliare le pagine. Per gli altri formati spiega che si usa «Apri».
+/// Con il doppio clic (o il pulsante) si apre la stessa pagina ingrandita, disegnata a una risoluzione più alta.
 /// </summary>
-public partial class AnteprimaViewModel(IGeneratoreAnteprima generatore, IArchivioFileService files) : ObservableObject
+/// <param name="larghezza">A che larghezza (in pixel) si disegnano le pagine: più alta per la finestra ingrandita.</param>
+/// <param name="mostraIngrandita">Apre la finestra ingrandita con il modello che le si passa; senza, l'ingrandimento non è disponibile.</param>
+public partial class AnteprimaViewModel(
+    IGeneratoreAnteprima generatore, IArchivioFileService files,
+    int larghezza = GeneratoreAnteprima.LarghezzaMassima, Action<AnteprimaViewModel>? mostraIngrandita = null) : ObservableObject
 {
     public const string TestoNessunDocumento = "Seleziona un documento per vederne l'anteprima.";
 
@@ -42,6 +47,7 @@ public partial class AnteprimaViewModel(IGeneratoreAnteprima generatore, IArchiv
 
     [ObservableProperty]
     [NotifyPropertyChangedFor(nameof(HaImmagine), nameof(CaricamentoVisibile), nameof(HaPagine), nameof(HaNota))]
+    [NotifyCanExecuteChangedFor(nameof(IngrandisciCommand))]
     private ImageSource? _immagine;
 
     /// <summary>Il nome del documento mostrato.</summary>
@@ -84,12 +90,30 @@ public partial class AnteprimaViewModel(IGeneratoreAnteprima generatore, IArchiv
 
     partial void OnStatoChanged(StatoAnteprima value) => OnPropertyChanged(nameof(HaPagine));
 
-    /// <summary>Mostra l'anteprima del documento (null = nessuno selezionato).</summary>
-    public void Mostra(IDocumentoAnteprima? documento)
+    /// <summary>Mostra l'anteprima del documento (null = nessuno selezionato), a partire dalla pagina indicata (la prima è la 0).</summary>
+    public void Mostra(IDocumentoAnteprima? documento, int pagina = 0)
     {
         _documento = documento;
-        _pagina = 0;
+        _pagina = Math.Max(0, pagina);
         Avvia();
+    }
+
+    /// <summary>Il documento mostrato si può ingrandire: c'è un'immagine e c'è qualcuno che sa aprire la finestra.</summary>
+    private bool PuoIngrandire => HaImmagine && _documento is not null && mostraIngrandita is not null;
+
+    /// <summary>
+    /// Apre la pagina che si sta guardando in una finestra grande, con un nuovo modello che la disegna a una risoluzione più alta
+    /// (senza attesa) e parte dalla stessa pagina. Il pannello resta com'è.
+    /// </summary>
+    [RelayCommand(CanExecute = nameof(PuoIngrandire))]
+    private void Ingrandisci()
+    {
+        if (_documento is null || mostraIngrandita is null)
+            return;
+
+        var ingrandita = new AnteprimaViewModel(generatore, files, GeneratoreAnteprima.LarghezzaIngrandita) { Ritardo = TimeSpan.Zero };
+        ingrandita.Mostra(_documento, _pagina);
+        mostraIngrandita(ingrandita);
     }
 
     /// <summary>Nessun documento da mostrare (è cambiata la schermata a sinistra).</summary>
@@ -165,7 +189,8 @@ public partial class AnteprimaViewModel(IGeneratoreAnteprima generatore, IArchiv
             }
 
             var risultato = await Task.Run(
-                () => generatore.GeneraAsync(files.PercorsoAssoluto(documento.PercorsoRelativo), pagina, annullamento), annullamento);
+                () => generatore.GeneraAsync(files.PercorsoAssoluto(documento.PercorsoRelativo), pagina, annullamento, larghezza),
+                annullamento);
             annullamento.ThrowIfCancellationRequested();
 
             Imposta(risultato.Stato, risultato.Messaggio, risultato.Immagine, documento.NomeFile, risultato.Pagine, risultato.Nota);

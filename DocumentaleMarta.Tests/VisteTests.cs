@@ -274,18 +274,21 @@ public class VisteTests
     }
 
     /// <summary>Un clic sinistro con ClickCount = 2, come lo genera Windows per il secondo clic di un doppio clic.</summary>
-    private static System.Windows.Input.MouseButtonEventArgs NuovoDoppioClic()
+    private static System.Windows.Input.MouseButtonEventArgs NuovoDoppioClic() => NuovoClic(2);
+
+    /// <summary>Un clic sinistro con il numero di clic indicato (2 = doppio clic), generato come evento <paramref name="evento"/> (MouseDown se non indicato).</summary>
+    internal static System.Windows.Input.MouseButtonEventArgs NuovoClic(int numeroClic, RoutedEvent? evento = null)
     {
-        var evento = new System.Windows.Input.MouseButtonEventArgs(
+        var clic = new System.Windows.Input.MouseButtonEventArgs(
             System.Windows.Input.Mouse.PrimaryDevice, Environment.TickCount, System.Windows.Input.MouseButton.Left)
         {
-            RoutedEvent = UIElement.MouseDownEvent
+            RoutedEvent = evento ?? UIElement.MouseDownEvent
         };
         // ClickCount si può impostare solo dall'interno di WPF.
         typeof(System.Windows.Input.MouseButtonEventArgs)
             .GetProperty(nameof(System.Windows.Input.MouseButtonEventArgs.ClickCount))!
-            .GetSetMethod(nonPublic: true)!.Invoke(evento, [2]);
-        return evento;
+            .GetSetMethod(nonPublic: true)!.Invoke(clic, [numeroClic]);
+        return clic;
     }
 
     internal static T? FindFirst<T>(DependencyObject radice) where T : DependencyObject

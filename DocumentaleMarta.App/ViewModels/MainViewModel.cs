@@ -40,7 +40,9 @@ public partial class MainViewModel(
 
     /// <summary>Il pannello con l'anteprima del documento selezionato; null se non c'è il generatore.</summary>
     public AnteprimaViewModel? Anteprima { get; } =
-        generatoreAnteprima is null ? null : new AnteprimaViewModel(generatoreAnteprima, files);
+        generatoreAnteprima is null
+            ? null
+            : new AnteprimaViewModel(generatoreAnteprima, files, mostraIngrandita: ingrandita => dialog.MostraAnteprimaIngrandita(ingrandita));
 
     public bool AnteprimaDisponibile => Anteprima is not null;
 
