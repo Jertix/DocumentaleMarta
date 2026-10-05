@@ -79,6 +79,9 @@ d'ambiente `DOCUMENTALE_MARTA_IMPOSTAZIONI`.
 - Per leggere le scansioni serve il pacchetto lingua **Italiano** con il riconoscimento del testo (Impostazioni di
   Windows → Ora e lingua → Lingua e area geografica → Italiano → Opzioni lingua → Riconoscimento del testo). Senza, tutto
   il resto funziona; le scansioni restano da leggere finché non lo si attiva.
+- Il programma pubblicato (lo ZIP di una release) è autonomo: non serve installare nient'altro. Non si installa: si estrae
+  lo ZIP in una cartella e si avvia `DocumentaleMarta.App.exe`. Per aggiornarlo basta sostituire l'`.exe`: archivio,
+  database e impostazioni stanno altrove e restano come sono.
 - Per compilarlo: [.NET 10 SDK](https://dotnet.microsoft.com/download).
 
 ## Per chi sviluppa
@@ -92,7 +95,7 @@ DocumentaleMarta.Core    Regole e modelli, senza dipendenze da interfaccia o dat
 DocumentaleMarta.Data    Database (migrazioni), archivio su disco, ricerca, backup, lettura del testo dei documenti
 DocumentaleMarta.App     L'applicazione WPF: finestre, view model, tema, servizi di Windows (OCR, anteprime)
 DocumentaleMarta.Tests   Test automatici (xUnit)
-tools                    Script di supporto (generazione dell'icona)
+tools                    Script di supporto (generazione dell'icona, pubblicazione di una nuova versione)
 ```
 
 Compilare ed eseguire i test:
@@ -102,6 +105,23 @@ dotnet build
 dotnet test
 dotnet run --project DocumentaleMarta.App
 ```
+
+### Pubblicare una nuova versione
+
+1. Aggiornare `<Version>` in `DocumentaleMarta.App\DocumentaleMarta.App.csproj` e scrivere le novità in `CHANGELOG.md`,
+   in una sezione `## <versione>` (diventa il testo della release).
+2. Salvare tutto con git, poi:
+
+   ```bash
+   powershell -NoProfile -File tools\pubblica.ps1
+   ```
+
+   Lancia i test, pubblica il programma in un solo `.exe` con il runtime incluso e lo comprime in
+   `publish\Documentale-<versione>-win-x64.zip` (con l'impronta SHA-256 e le note della versione). Con `-SenzaRuntime` si
+   ottiene la versione leggera (circa 13 MB invece di 70), che però richiede il .NET 10 Desktop Runtime sul PC.
+3. Per metterla su GitHub lo script stampa i comandi: etichetta `v<versione>`, invio dei commit e `gh release create`.
+
+Le versioni sono elencate in [`CHANGELOG.md`](CHANGELOG.md).
 
 Il progetto compila con zero avvisi (`dotnet build -warnaserror`). I test comprendono prove delle finestre WPF disegnate
 in memoria (senza mostrarle) e file veri creati con LibreOffice. Per salvare come immagini PNG quello che le prove
