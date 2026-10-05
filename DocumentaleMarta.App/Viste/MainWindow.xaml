@@ -123,12 +123,13 @@
         <!-- Barra degli strumenti -->
         <Border DockPanel.Dock="Top" Padding="8,6" BorderBrush="{DynamicResource Bordo}" BorderThickness="0,0,0,1">
             <DockPanel>
-                <!-- Ricerca: cerca in nome file, titolo e descrizione della cartella, area e testo dei documenti -->
+                <!-- Ricerca: cerca in nome file, titolo e descrizione della cartella, area e testo dei documenti.
+                     La "✕" per svuotare il campo c'è già nello stile di Windows 11 (compare quando il campo ha il cursore e del testo): non se ne aggiunge una seconda. -->
                 <StackPanel DockPanel.Dock="Right" Orientation="Horizontal"
                             Visibility="{Binding RicercaDisponibile, Converter={StaticResource BoolToVis}}">
                     <Grid Width="260">
                         <TextBox x:Name="CasellaRicerca" Text="{Binding TestoRicerca, UpdateSourceTrigger=PropertyChanged}"
-                                 Padding="6,4,28,4" VerticalContentAlignment="Center"
+                                 Padding="6,4" VerticalContentAlignment="Center"
                                  AutomationProperties.Name="Cerca nei documenti">
                             <TextBox.InputBindings>
                                 <KeyBinding Key="Enter" Command="{Binding CercaCommand}"/>
@@ -148,10 +149,6 @@
                                 </Style>
                             </TextBlock.Style>
                         </TextBlock>
-                        <Button Content="&#x2715;" Command="{Binding PulisciRicercaCommand}" ToolTip="Svuota la ricerca"
-                                Width="22" Height="22" Padding="0" Margin="0,0,3,0" HorizontalAlignment="Right" VerticalAlignment="Center"
-                                Background="Transparent" BorderThickness="0"
-                                Visibility="{Binding TestoRicercaAttivo, Converter={StaticResource BoolToVis}}"/>
                     </Grid>
                     <Button Content="Cerca" Command="{Binding CercaCommand}" Padding="14,4" Margin="6,0,0,0"/>
                     <ToggleButton Content="{Binding Filtri.TestoPulsante}" IsChecked="{Binding PannelloFiltriAperto}"
