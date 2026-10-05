@@ -23,7 +23,11 @@ public sealed class IndicizzazioneService(
     private readonly HashSet<int> _inCoda = [];
     private readonly HashSet<int> _inAttesaOcr = [];
 
+    /// <summary>Documenti che si stavano leggendo quando è stato chiesto di rifarli: finita la lettura si leggono di nuovo.</summary>
+    private readonly HashSet<int> _daRifare = [];
+
     private string? _corrente;
+    private int _idCorrente;
     private int _eliminato;
     private CancellationTokenSource? _annullamento;
     private Task? _lavoratore;
@@ -76,6 +80,28 @@ public sealed class IndicizzazioneService(
 
         if (aggiunti)
             Cambiato?.Invoke();
+    }
+
+    /// <summary>
+    /// Rimette in coda tutti i documenti di un tipo (es. ".xml"), anche quelli già letti, perché il testo nell'indice va rifatto:
+    /// cambia il modo di leggerli, oppure non si leggono più (allora, rielaborati, vengono tolti dall'indice). Un documento che si
+    /// sta leggendo proprio adesso si rilegge appena ha finito, così nell'indice resta il testo del modo nuovo.
+    /// </summary>
+    public async Task RiaccodaPerEstensioneAsync(string estensione)
+    {
+        await using var db = await dbFactory.CreateDbContextAsync();
+        var ids = await db.Documenti.AsNoTracking()
+            .Where(d => d.Estensione == estensione)
+            .Select(d => d.Id)
+            .ToListAsync();
+
+        lock (_blocco)
+        {
+            if (ids.Contains(_idCorrente))
+                _daRifare.Add(_idCorrente);
+        }
+
+        Accoda(ids);
     }
 
     /// <summary>
@@ -154,7 +180,10 @@ public sealed class IndicizzazioneService(
             return; // eliminato mentre aspettava in coda
 
         lock (_blocco)
+        {
             _corrente = documento.NomeFile;
+            _idCorrente = id;
+        }
         Cambiato?.Invoke();
 
         var estrattore = _estrattori.FirstOrDefault(e => e.Supporta(documento.Estensione));
@@ -212,15 +241,25 @@ public sealed class IndicizzazioneService(
         await transazione.CommitAsync(cancellation);
     }
 
-    /// <summary>Un documento ha finito: lo toglie dalla coda e, se la coda è vuota, avvisa chi aspetta.</summary>
+    /// <summary>
+    /// Un documento ha finito: lo toglie dalla coda e, se la coda è vuota, avvisa chi aspetta. Se nel frattempo era stato chiesto
+    /// di rifarlo, resta in coda e si rilegge.
+    /// </summary>
     private void Concludi(int id)
     {
         lock (_blocco)
         {
-            _inCoda.Remove(id);
             _corrente = null;
-            if (_inCoda.Count == 0)
-                _inattivo.TrySetResult();
+            _idCorrente = 0;
+
+            if (_daRifare.Remove(id))
+                _canale.Writer.TryWrite(id);
+            else
+            {
+                _inCoda.Remove(id);
+                if (_inCoda.Count == 0)
+                    _inattivo.TrySetResult();
+            }
         }
         Cambiato?.Invoke();
     }

@@ -14,8 +14,8 @@ public interface IDocumentoAnteprima
 }
 
 /// <summary>
-/// Il pannello di anteprima a destra: mostra la pagina del documento selezionato in una griglia (PDF e immagini),
-/// con i pulsanti per sfogliare le pagine. Per gli altri formati spiega che si usa «Apri».
+/// Il pannello di anteprima a destra: mostra la pagina del documento selezionato in una griglia (PDF e immagini), con i
+/// pulsanti per sfogliare le pagine, oppure le prime righe di un file di testo (.txt, .csv, .xml). Per gli altri formati spiega che si usa «Apri».
 /// Con il doppio clic (o il pulsante) si apre la stessa pagina ingrandita, disegnata a una risoluzione più alta.
 /// </summary>
 /// <param name="larghezza">A che larghezza (in pixel) si disegnano le pagine: più alta per la finestra ingrandita.</param>
@@ -46,9 +46,19 @@ public partial class AnteprimaViewModel(
     private StatoAnteprima _stato = StatoAnteprima.Vuota;
 
     [ObservableProperty]
-    [NotifyPropertyChangedFor(nameof(HaImmagine), nameof(CaricamentoVisibile), nameof(HaPagine), nameof(HaNota))]
+    [NotifyPropertyChangedFor(nameof(HaImmagine), nameof(HaContenuto), nameof(CaricamentoVisibile), nameof(HaPagine), nameof(HaNota))]
     [NotifyCanExecuteChangedFor(nameof(IngrandisciCommand))]
     private ImageSource? _immagine;
+
+    /// <summary>Per un file di testo: le prime righe, da mostrare al posto dell'immagine (null se il documento non è un testo).</summary>
+    [ObservableProperty]
+    [NotifyPropertyChangedFor(nameof(HaTesto), nameof(HaContenuto), nameof(CaricamentoVisibile), nameof(HaNota))]
+    [NotifyCanExecuteChangedFor(nameof(IngrandisciCommand))]
+    private string? _testo;
+
+    /// <summary>Il testo va a capo (testo semplice) oppure si scorre di lato (tabelle CSV, XML).</summary>
+    [ObservableProperty]
+    private bool _testoACapo = true;
 
     /// <summary>Il nome del documento mostrato.</summary>
     [ObservableProperty]
@@ -63,7 +73,7 @@ public partial class AnteprimaViewModel(
     [NotifyPropertyChangedFor(nameof(HaNota))]
     private string _nota = "";
 
-    public bool HaNota => HaImmagine && Nota.Length > 0;
+    public bool HaNota => HaContenuto && Nota.Length > 0;
 
     [ObservableProperty]
     [NotifyPropertyChangedFor(nameof(HaPagine), nameof(TestoPagina))]
@@ -78,8 +88,14 @@ public partial class AnteprimaViewModel(
     /// <summary>C'è un'immagine da mostrare (resta visibile mentre si carica un'altra pagina dello stesso documento).</summary>
     public bool HaImmagine => Immagine is not null;
 
+    /// <summary>C'è il testo di un file di testo da mostrare.</summary>
+    public bool HaTesto => Testo is not null;
+
+    /// <summary>C'è qualcosa da mostrare: un'immagine o un testo.</summary>
+    public bool HaContenuto => HaImmagine || HaTesto;
+
     /// <summary>"Caricamento…" si vede solo se non c'è ancora nulla da mostrare.</summary>
-    public bool CaricamentoVisibile => Stato == StatoAnteprima.Caricamento && Immagine is null;
+    public bool CaricamentoVisibile => Stato == StatoAnteprima.Caricamento && !HaContenuto;
 
     public bool HaMessaggio => Stato is StatoAnteprima.Vuota or StatoAnteprima.NonDisponibile or StatoAnteprima.Errore;
 
@@ -99,8 +115,8 @@ public partial class AnteprimaViewModel(
         Avvia();
     }
 
-    /// <summary>Il documento mostrato si può ingrandire: c'è un'immagine e c'è qualcuno che sa aprire la finestra.</summary>
-    private bool PuoIngrandire => HaImmagine && _documento is not null && mostraIngrandita is not null;
+    /// <summary>Il documento mostrato si può ingrandire: c'è un'immagine o un testo e c'è qualcuno che sa aprire la finestra.</summary>
+    private bool PuoIngrandire => HaContenuto && _documento is not null && mostraIngrandita is not null;
 
     /// <summary>
     /// Apre la pagina che si sta guardando in una finestra grande, con un nuovo modello che la disegna a una risoluzione più alta
@@ -194,7 +210,10 @@ public partial class AnteprimaViewModel(
             Stato = StatoAnteprima.Caricamento;
             Titolo = documento.NomeFile;
             if (pagina == 0)
+            {
                 Immagine = null;
+                Testo = null;
+            }
 
             if (Ritardo > TimeSpan.Zero)
                 await Task.Delay(Ritardo, annullamento);
@@ -210,7 +229,8 @@ public partial class AnteprimaViewModel(
                 annullamento);
             annullamento.ThrowIfCancellationRequested();
 
-            Imposta(risultato.Stato, risultato.Messaggio, risultato.Immagine, documento.NomeFile, risultato.Pagine, risultato.Nota);
+            Imposta(risultato.Stato, risultato.Messaggio, risultato.Immagine, documento.NomeFile, risultato.Pagine, risultato.Nota,
+                risultato.Testo, risultato.TestoACapo);
             PaginaCorrente = Math.Clamp(pagina, 0, Math.Max(0, risultato.Pagine - 1)) + 1;
         }
         catch (OperationCanceledException)
@@ -224,11 +244,14 @@ public partial class AnteprimaViewModel(
     }
 
     /// <summary>
-    /// Aggiorna in blocco tutto ciò che il pannello mostra: immagine, nota, messaggio, titolo, pagine e stato.
+    /// Aggiorna in blocco tutto ciò che il pannello mostra: immagine o testo, nota, messaggio, titolo, pagine e stato.
     /// </summary>
-    private void Imposta(StatoAnteprima stato, string messaggio, ImageSource? immagine, string titolo, int pagine, string nota = "")
+    private void Imposta(StatoAnteprima stato, string messaggio, ImageSource? immagine, string titolo, int pagine, string nota = "",
+        string? testo = null, bool testoACapo = true)
     {
         Immagine = immagine;
+        Testo = testo;
+        TestoACapo = testoACapo;
         Nota = nota;
         Messaggio = messaggio;
         Titolo = titolo;

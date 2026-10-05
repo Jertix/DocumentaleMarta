@@ -34,6 +34,8 @@ public static class Composizione
         collezione.AddSingleton<IEstrattoreTesto>(new EstrattoreTestoSemplice());
         collezione.AddSingleton<IEstrattoreTesto>(new EstrattoreOfficeOpenXml());
         collezione.AddSingleton<IEstrattoreTesto>(new EstrattoreOpenDocument());
+        // Gli XML si leggono solo se nelle impostazioni è attiva la ricerca nei file XML, e nel modo scelto (si chiede a ogni lettura).
+        collezione.AddSingleton<IEstrattoreTesto>(new EstrattoreXml(() => impostazioni.ModoXmlInUso));
         collezione.AddSingleton<IEstrattoreTesto>(new EstrattorePdf(ocr));
         collezione.AddSingleton<IEstrattoreTesto>(new EstrattoreImmagine(ocr));
         collezione.AddSingleton<IndicizzazioneService>();
@@ -48,7 +50,9 @@ public static class Composizione
 
         collezione.AddSingleton<IDialogService, DialogService>();
         collezione.AddSingleton<IShellService, ShellService>();
-        collezione.AddSingleton<IGeneratoreAnteprima, GeneratoreAnteprima>();
+        // Le righe dell'anteprima di testo si leggono dalle impostazioni a ogni anteprima: se si cambiano valgono subito.
+        collezione.AddSingleton<IGeneratoreAnteprima>(p =>
+            new GeneratoreAnteprima(() => p.GetRequiredService<ImpostazioniApp>().RigheAnteprimaTesto));
         collezione.AddSingleton<MainViewModel>();
         collezione.AddSingleton<MainWindow>();
         return collezione.BuildServiceProvider();

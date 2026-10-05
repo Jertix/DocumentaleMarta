@@ -19,6 +19,25 @@
             <Setter Property="VerticalAlignment" Value="Center"/>
             <Setter Property="Margin" Value="16,0"/>
         </Style>
+
+        <!-- Le prime righe di un file di testo: sola lettura (si può selezionare e copiare); le righe vanno a capo, tranne che in CSV e XML -->
+        <Style x:Key="TestoDocumento" TargetType="TextBox" BasedOn="{StaticResource {x:Type TextBox}}">
+            <Setter Property="IsReadOnly" Value="True"/>
+            <Setter Property="AcceptsReturn" Value="True"/>
+            <Setter Property="FontFamily" Value="Cascadia Mono, Consolas"/>
+            <Setter Property="FontSize" Value="12"/>
+            <Setter Property="Padding" Value="6"/>
+            <Setter Property="Background" Value="{DynamicResource SfondoSuperficie}"/>
+            <Setter Property="BorderBrush" Value="{DynamicResource Bordo}"/>
+            <Setter Property="TextWrapping" Value="NoWrap"/>
+            <Setter Property="HorizontalScrollBarVisibility" Value="Auto"/>
+            <Setter Property="VerticalScrollBarVisibility" Value="Auto"/>
+            <Style.Triggers>
+                <DataTrigger Binding="{Binding TestoACapo}" Value="True">
+                    <Setter Property="TextWrapping" Value="Wrap"/>
+                </DataTrigger>
+            </Style.Triggers>
+        </Style>
     </UserControl.Resources>
 
     <Border Background="{DynamicResource SfondoPannello}" BorderBrush="{DynamicResource Bordo}" BorderThickness="1,0,0,0">
@@ -28,7 +47,7 @@
                 <Button DockPanel.Dock="Right" Command="{Binding IngrandisciCommand}" Content="&#xE740;"
                         FontFamily="{StaticResource FontIcone}" Width="28" Height="24" Padding="0"
                         ToolTip="Ingrandisci (o fai doppio clic sull'anteprima)" AutomationProperties.Name="Ingrandisci l'anteprima"
-                        Visibility="{Binding HaImmagine, Converter={StaticResource BoolToVis}}"/>
+                        Visibility="{Binding HaContenuto, Converter={StaticResource BoolToVis}}"/>
                 <TextBlock Text="Anteprima" Foreground="{DynamicResource TestoTenue}" FontSize="12" VerticalAlignment="Center"/>
             </DockPanel>
             <TextBlock DockPanel.Dock="Top" Text="{Binding Titolo}" ToolTip="{Binding Titolo}" FontWeight="SemiBold"
@@ -56,6 +75,11 @@
                         Visibility="{Binding HaImmagine, Converter={StaticResource BoolToVis}}">
                     <Image Source="{Binding Immagine}" Stretch="Uniform" RenderOptions.BitmapScalingMode="HighQuality"/>
                 </Border>
+
+                <!-- File di testo: le prime righe, al posto dell'immagine (il pulsante in alto le apre in una finestra più grande) -->
+                <TextBox Text="{Binding Testo, Mode=OneWay}" Style="{StaticResource TestoDocumento}"
+                         AutomationProperties.Name="Prime righe del file di testo"
+                         Visibility="{Binding HaTesto, Converter={StaticResource BoolToVis}}"/>
 
                 <TextBlock Text="Caricamento…" Style="{StaticResource TestoCentrale}"
                            Visibility="{Binding CaricamentoVisibile, Converter={StaticResource BoolToVis}}"/>

@@ -109,6 +109,37 @@
                     </StackPanel>
                 </GroupBox>
 
+                <GroupBox Header="Ricerca nei documenti">
+                    <StackPanel>
+                        <CheckBox Content="Ricerca anche all'interno dei file XML" IsChecked="{Binding RicercaXmlAttiva}"
+                                  ToolTip="Spenta, di un file XML si cerca solo il nome: gli XML grandi non appesantiscono la ricerca"/>
+
+                        <!-- Le due scelte valgono solo se la ricerca nei file XML è attiva -->
+                        <StackPanel Margin="22,8,0,0" IsEnabled="{Binding RicercaXmlAttiva}">
+                            <RadioButton GroupName="ModoXml" Content="Ricerca solo nel testo degli XML" IsChecked="{Binding SoloTestoXml}"
+                                         ToolTip="Cerca i valori scritti nel file (testo e valori degli attributi), non i nomi dei tag"/>
+                            <RadioButton GroupName="ModoXml" Content="Ricerca su tutto il file XML, compresi i tag" IsChecked="{Binding TuttoIlFileXml}"
+                                         Margin="0,6,0,0" ToolTip="Cerca nel file così com'è scritto: anche i nomi dei tag e degli attributi"/>
+                        </StackPanel>
+
+                        <TextBlock Foreground="{DynamicResource TestoTenue}" FontSize="12" TextWrapping="Wrap" Margin="0,8,0,0"
+                                   Text="{Binding SuggerimentoRicercaXml, Mode=OneTime}"/>
+                    </StackPanel>
+                </GroupBox>
+
+                <GroupBox Header="Anteprima dei documenti">
+                    <StackPanel>
+                        <StackPanel Orientation="Horizontal">
+                            <TextBlock Text="File di testo (.txt, .csv, .xml): mostra le prime" Style="{StaticResource Etichetta}"/>
+                            <TextBox Text="{Binding RigheAnteprimaTesto, UpdateSourceTrigger=PropertyChanged}" Width="60" Padding="4,3"
+                                     HorizontalContentAlignment="Right" MaxLength="4" AutomationProperties.Name="Righe dell'anteprima dei file di testo"/>
+                            <TextBlock Text="righe" Margin="8,0,0,0" VerticalAlignment="Center"/>
+                        </StackPanel>
+                        <TextBlock Foreground="{DynamicResource TestoTenue}" FontSize="12" TextWrapping="Wrap" Margin="0,4,0,0"
+                                   Text="{Binding SuggerimentoRigheAnteprimaTesto, Mode=OneTime}"/>
+                    </StackPanel>
+                </GroupBox>
+
                 <GroupBox Header="Dati della ditta">
                     <Grid>
                         <Grid.ColumnDefinitions>

@@ -55,6 +55,9 @@ public partial class ImpostazioniViewModel : ObservableObject
         _sogliaRossa = attuali.SogliaRossaGiorni.ToString(CultureInfo.InvariantCulture);
         _cartellaBackup = attuali.CartellaBackupInUso ?? ""; // se non ne ha scelta una, si vede quella predefinita
         _promemoriaBackup = attuali.BackupPromemoriaGiorni.ToString(CultureInfo.InvariantCulture);
+        _righeAnteprimaTesto = attuali.RigheAnteprimaTesto.ToString(CultureInfo.InvariantCulture);
+        _ricercaXmlAttiva = attuali.RicercaXmlAttiva;
+        _modoXml = attuali.ModoXml;
     }
 
     [ObservableProperty] private string _ragioneSociale;
@@ -82,6 +85,33 @@ public partial class ImpostazioniViewModel : ObservableObject
 
     /// <summary>Dopo quanti giorni dall'ultimo backup il programma lo ricorda, come testo.</summary>
     [ObservableProperty] private string _promemoriaBackup;
+
+    /// <summary>Quante righe mostra l'anteprima di un file di testo (.txt, .csv, .xml), come testo: finché l'utente scrive può non essere ancora un numero.</summary>
+    [ObservableProperty] private string _righeAnteprimaTesto;
+
+    /// <summary>Cercare anche dentro i file XML: se spenta, di un XML si cerca solo il nome.</summary>
+    [ObservableProperty] private bool _ricercaXmlAttiva;
+
+    /// <summary>Che cosa si cerca dentro i file XML (solo il testo, oppure tutto il file compresi i tag).</summary>
+    [ObservableProperty]
+    [NotifyPropertyChangedFor(nameof(SoloTestoXml), nameof(TuttoIlFileXml))]
+    private ModoRicercaXml _modoXml;
+
+    // Un pulsante di scelta per ogni modo (ognuno si lega a una proprietà vero/falso).
+    public bool SoloTestoXml { get => ModoXml == ModoRicercaXml.SoloTesto; set { if (value) ModoXml = ModoRicercaXml.SoloTesto; } }
+    public bool TuttoIlFileXml { get => ModoXml == ModoRicercaXml.TuttoIlFile; set { if (value) ModoXml = ModoRicercaXml.TuttoIlFile; } }
+
+    /// <summary>La spiegazione sotto le scelte sulla ricerca nei file XML (perché è spenta di base e cosa succede cambiandola).</summary>
+    public string SuggerimentoRicercaXml =>
+        "Un file XML può essere molto grande (per esempio un file di log): leggerlo per la ricerca pesa sull'archivio, per questo di base "
+        + "non si fa e di un XML si cerca solo il nome. Se li attivi, gli XML si leggono in background. "
+        + "«Solo nel testo» cerca i valori scritti nel file, senza i nomi dei tag. "
+        + "Cambiando queste scelte gli XML già presenti si rileggono (o, se spegni la ricerca, si tolgono dall'indice).";
+
+    /// <summary>La spiegazione sotto il campo delle righe dell'anteprima di testo (dice anche i limiti).</summary>
+    public string SuggerimentoRigheAnteprimaTesto =>
+        $"Un file di testo si vede nel pannello dell'anteprima solo per le prime righe (da {ImpostazioniApp.RigheAnteprimaMinime} a "
+        + $"{ImpostazioniApp.RigheAnteprimaMassime}; in genere ne bastano {ImpostazioniApp.RigheAnteprimaPredefinite}). Il resto si legge aprendo il file.";
 
     /// <summary>Chiaro, scuro o come Windows.</summary>
     [ObservableProperty]
@@ -155,8 +185,10 @@ public partial class ImpostazioniViewModel : ObservableObject
                 return "La soglia rossa deve essere un numero intero di giorni.";
             if (!TryLeggiGiorni(PromemoriaBackup, out var promemoria))
                 return "I giorni del promemoria del backup devono essere un numero intero.";
+            if (!TryLeggiGiorni(RigheAnteprimaTesto, out var righe))
+                return "Le righe dell'anteprima di testo devono essere un numero intero.";
 
-            var problemi = Costruisci(arancione, rossa, promemoria).Valida();
+            var problemi = Costruisci(arancione, rossa, promemoria, righe).Valida();
             return problemi.Count > 0 ? problemi[0] : "";
         }
     }
@@ -178,16 +210,16 @@ public partial class ImpostazioniViewModel : ObservableObject
     public ImpostazioniApp Costruisci()
     {
         if (!TryLeggiGiorni(SogliaArancione, out var arancione) || !TryLeggiGiorni(SogliaRossa, out var rossa)
-            || !TryLeggiGiorni(PromemoriaBackup, out var promemoria))
-            throw new InvalidOperationException("I giorni indicati non sono numeri validi.");
-        return Costruisci(arancione, rossa, promemoria);
+            || !TryLeggiGiorni(PromemoriaBackup, out var promemoria) || !TryLeggiGiorni(RigheAnteprimaTesto, out var righe))
+            throw new InvalidOperationException("I numeri indicati non sono validi.");
+        return Costruisci(arancione, rossa, promemoria, righe);
     }
 
     /// <summary>
     /// Crea le impostazioni nuove: una copia di quelle di partenza con i valori della finestra (testi ripuliti dagli spazi,
     /// cartella vuota = non scelta).
     /// </summary>
-    private ImpostazioniApp Costruisci(int arancione, int rossa, int promemoria)
+    private ImpostazioniApp Costruisci(int arancione, int rossa, int promemoria, int righeAnteprima)
     {
         var risultato = _partenza.Clona();
         risultato.Azienda.RagioneSociale = RagioneSociale.Trim();
@@ -202,6 +234,9 @@ public partial class ImpostazioniViewModel : ObservableObject
         risultato.SogliaRossaGiorni = rossa;
         risultato.CartellaBackup = string.IsNullOrWhiteSpace(CartellaBackup) ? null : CartellaBackup.Trim();
         risultato.BackupPromemoriaGiorni = promemoria;
+        risultato.RigheAnteprimaTesto = righeAnteprima;
+        risultato.RicercaXmlAttiva = RicercaXmlAttiva;
+        risultato.ModoXml = ModoXml;
         risultato.Tema = Tema;
         risultato.Colore = Colore;
         risultato.SfondoColorato = SfondoColorato;

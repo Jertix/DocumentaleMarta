@@ -27,14 +27,17 @@ ogni cartella può avere una scadenza, e il programma avvisa quando si avvicina.
 
 **Cercare**
 - Ricerca che guarda nei nomi dei file, nei titoli e nelle descrizioni delle cartelle, nei nomi delle aree e **dentro i
-  documenti**: PDF, Word, Excel, PowerPoint, **OpenOffice e LibreOffice** (.odt, .ods, .odp…), testo.
+  documenti**: PDF, Word, Excel, PowerPoint, **OpenOffice e LibreOffice** (.odt, .ods, .odp…), testo (.txt, .csv) e, se lo attivi
+  nelle Impostazioni, **XML** (spento di base, perché un XML può essere molto grande: di un XML si cerca allora solo il
+  nome). Attivo, si sceglie se cercare solo nel testo dei file XML o su tutto il file, tag compresi.
 - Le scansioni e le immagini si leggono con il **riconoscimento del testo (OCR) di Windows**, in italiano.
 - **Ricerca avanzata**: tipo di file, area, stato della cartella (aperte, completate, in scadenza, scadute, archiviate),
   intervallo di scadenza.
 
 **Vedere**
 - **Anteprima** nel pannello a destra per PDF, immagini e documenti OpenOffice/LibreOffice; con il doppio clic si apre
-  ingrandita (zoom, scorrimento, pagine).
+  ingrandita (zoom, scorrimento, pagine). Per i file di testo (**.txt**, **.csv** e **.xml**) mostra le prime righe (100 di
+  partenza, da 10 a 1000 nelle Impostazioni); un XML scritto su una riga sola lo mostra con i rientri.
 
 **Proteggere**
 - **Backup** con un clic di tutto l'archivio (documenti e database) in un file ZIP, di default in
@@ -46,7 +49,8 @@ ogni cartella può avere una scadenza, e il programma avvisa quando si avvicina.
   (Acciaio, Fucina, Foresta, Prugna, Grafite o quello di Windows) per pulsanti, spunte e selezioni; **sfondo delle
   finestre colorato** con una leggera tinta di quel colore. Le scelte si vedono subito, senza riavvio, e con «Annulla» il
   programma torna com'era.
-- Nelle Impostazioni anche le soglie degli avvisi, i dati della ditta e il backup.
+- Nelle Impostazioni anche le soglie degli avvisi, la ricerca nei file XML, le righe dell'anteprima dei file di testo, i dati
+  della ditta e il backup.
 
 ## Come si usa
 

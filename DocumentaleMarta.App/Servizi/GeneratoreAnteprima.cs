@@ -3,6 +3,7 @@ using System.IO.Compression;
 using System.Windows.Media;
 using System.Windows.Media.Imaging;
 using DocumentaleMarta.App.ViewModels;
+using DocumentaleMarta.Core.Impostazioni;
 using DocumentaleMarta.Core.Modelli;
 using Windows.Data.Pdf;
 using Windows.Storage.Streams;
@@ -30,10 +31,17 @@ public enum StatoAnteprima
 
 /// <param name="Immagine">La pagina disegnata, già "congelata" (si può usare da qualsiasi thread).</param>
 /// <param name="Pagine">Quante pagine ha il documento (1 per le immagini singole).</param>
-/// <param name="Nota">Una precisazione da mostrare sotto l'immagine (es. che è solo una miniatura).</param>
+/// <param name="Nota">Una precisazione da mostrare sotto l'immagine o il testo (es. che è solo una miniatura, o che il testo è parziale).</param>
+/// <param name="Testo">Per i file di testo: le prime righe, da mostrare al posto dell'immagine.</param>
+/// <param name="TestoACapo">Le righe lunghe vanno a capo (testo semplice) oppure si scorrono di lato (tabelle CSV).</param>
 public record RisultatoAnteprima(
-    StatoAnteprima Stato, ImageSource? Immagine = null, int Pagine = 1, string Messaggio = "", string Nota = "")
+    StatoAnteprima Stato, ImageSource? Immagine = null, int Pagine = 1, string Messaggio = "", string Nota = "",
+    string? Testo = null, bool TestoACapo = true)
 {
+    /// <summary>Un risultato con le prime righe di un file di testo, al posto dell'immagine.</summary>
+    public static RisultatoAnteprima DiTesto(string testo, bool aCapo, string nota = "") =>
+        new(StatoAnteprima.Pronta, Testo: testo, TestoACapo: aCapo, Nota: nota);
+
     /// <summary>
     /// Un risultato che dice «per questo file l'anteprima non c'è» (non è un errore) con il motivo da mostrare.
     /// </summary>
@@ -59,10 +67,15 @@ public interface IGeneratoreAnteprima
 }
 
 /// <summary>
-/// Anteprima di PDF (disegnati con le funzioni integrate di Windows, le stesse della lettura del testo) e di immagini.
+/// Anteprima di PDF (disegnati con le funzioni integrate di Windows, le stesse della lettura del testo), di immagini, di documenti
+/// OpenOffice/LibreOffice (la miniatura) e di file di testo (.txt, .csv, .xml: le prime righe).
 /// I file Office non hanno anteprima: si aprono con il loro programma.
 /// </summary>
-public class GeneratoreAnteprima : IGeneratoreAnteprima
+/// <param name="righeTesto">
+/// Quante righe mostra l'anteprima di un file di testo, chiesto a ogni anteprima (così una modifica alle impostazioni vale
+/// subito); senza, 100.
+/// </param>
+public class GeneratoreAnteprima(Func<int>? righeTesto = null) : IGeneratoreAnteprima
 {
     /// <summary>Larghezza in pixel a cui si disegna una pagina: abbastanza per leggere il testo in un pannello largo, senza sprecare memoria.</summary>
     public const int LarghezzaMassima = 1100;
@@ -76,12 +89,22 @@ public class GeneratoreAnteprima : IGeneratoreAnteprima
     private static readonly HashSet<string> Immagini =
         new(StringComparer.OrdinalIgnoreCase) { ".jpg", ".jpeg", ".png", ".bmp", ".gif", ".tif", ".tiff" };
 
+    private static readonly HashSet<string> FileDiTesto = new(StringComparer.OrdinalIgnoreCase) { ".txt", ".csv", ".xml" };
+
+    /// <summary>I file di testo che non vanno a capo: le colonne dei CSV e i rientri degli XML si leggono solo se la riga resta intera.</summary>
+    private static readonly HashSet<string> TestoSenzaACapo = new(StringComparer.OrdinalIgnoreCase) { ".csv", ".xml" };
+
     /// <summary>
-    /// Vero se per questo tipo di file (PDF, immagini, documenti di OpenOffice/LibreOffice) si può fare l'anteprima.
+    /// Vero se per questo tipo di file (PDF, immagini, documenti di OpenOffice/LibreOffice, testo semplice) si può fare l'anteprima.
     /// </summary>
     public bool Supporta(string estensione) =>
         estensione.Equals(".pdf", StringComparison.OrdinalIgnoreCase) || Immagini.Contains(estensione)
-        || FormatiOpenDocument.Contiene(estensione);
+        || FormatiOpenDocument.Contiene(estensione) || FileDiTesto.Contains(estensione);
+
+    /// <summary>Quante righe mostrare per un file di testo: quelle scelte nelle impostazioni, tenute tra il minimo e il massimo ammessi.</summary>
+    private int RigheDiTesto() =>
+        Math.Clamp(righeTesto?.Invoke() ?? ImpostazioniApp.RigheAnteprimaPredefinite,
+            ImpostazioniApp.RigheAnteprimaMinime, ImpostazioniApp.RigheAnteprimaMassime);
 
     /// <summary>
     /// Prepara l'anteprima di una pagina: sceglie come disegnare il file in base al tipo, controlla che esista e non sia
@@ -105,6 +128,10 @@ public class GeneratoreAnteprima : IGeneratoreAnteprima
             // senza caricare il documento (che può essere grande).
             if (FormatiOpenDocument.Contiene(estensione))
                 return await Task.Run(() => DisegnaMiniaturaOpenDocument(percorsoAssoluto, larghezzaMassima), annullamento);
+
+            // Un file di testo si legge solo all'inizio, quindi anche uno enorme si mostra subito.
+            if (FileDiTesto.Contains(estensione))
+                return await LeggiTestoAsync(percorsoAssoluto, estensione, annullamento);
 
             if (info.Length > DimensioneMassima)
                 return RisultatoAnteprima.NonDisponibile(
@@ -133,12 +160,34 @@ public class GeneratoreAnteprima : IGeneratoreAnteprima
             {
                 ".pdf" => "Non si riesce a mostrare questo PDF: potrebbe essere protetto da password o danneggiato. Prova ad aprirlo con il pulsante «Apri documento» della riga.",
                 _ when FormatiOpenDocument.Contiene(estensione) => "Non si riesce a mostrare questo documento: il file potrebbe essere danneggiato. Prova ad aprirlo con il pulsante «Apri documento» della riga.",
+                _ when FileDiTesto.Contains(estensione) => "Non si riesce a leggere questo file di testo. Prova ad aprirlo con il pulsante «Apri documento» della riga.",
                 _ => "Non si riesce a mostrare questa immagine: il file potrebbe essere danneggiato. Prova ad aprirla con il pulsante «Apri documento» della riga."
             });
         }
     }
 
     public const string NotaMiniatura = "Miniatura della prima pagina, salvata nel documento.";
+
+    /// <summary>La precisazione sotto un testo mostrato solo in parte: dice quante righe si vedono.</summary>
+    public static string NotaTestoParziale(int righe) =>
+        $"Si vedono le prime {righe} righe. Per leggere il resto apri il file con il pulsante «Apri documento» della riga.";
+
+    /// <summary>
+    /// Mostra le prime righe di un file di testo. I file CSV e XML non vanno a capo (le colonne e i rientri resterebbero spezzati): si
+    /// scorrono di lato. Un file vuoto o che non è testo (un binario rinominato .txt) non ha anteprima.
+    /// </summary>
+    private async Task<RisultatoAnteprima> LeggiTestoAsync(string percorso, string estensione, CancellationToken annullamento)
+    {
+        var letto = await LettoreTestoAnteprima.LeggiAsync(percorso, RigheDiTesto(), annullamento, xml: estensione == ".xml");
+        if (letto is null)
+            return RisultatoAnteprima.NonDisponibile(
+                "Questo file non sembra di testo. Aprilo con il suo programma usando il pulsante «Apri documento» della riga.");
+        if (letto.Righe == 0)
+            return RisultatoAnteprima.NonDisponibile("Il file è vuoto.");
+
+        return RisultatoAnteprima.DiTesto(
+            letto.Testo, aCapo: !TestoSenzaACapo.Contains(estensione), nota: letto.Troncato ? NotaTestoParziale(letto.Righe) : "");
+    }
 
     /// <summary>Oltre questa dimensione una "miniatura" non è credibile: si ignora.</summary>
     private const long DimensioneMassimaMiniatura = 20L * 1024 * 1024;

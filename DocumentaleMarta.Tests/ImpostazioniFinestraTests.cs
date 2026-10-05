@@ -23,7 +23,10 @@ public class ImpostazioniCopiaTests
         SogliaRossaGiorni = 10,
         CartellaBackup = @"E:\Backup",
         BackupPromemoriaGiorni = 14,
-        UltimoBackup = new DateTime(2026, 9, 1, 12, 0, 0)
+        UltimoBackup = new DateTime(2026, 9, 1, 12, 0, 0),
+        RigheAnteprimaTesto = 250,
+        RicercaXmlAttiva = true,
+        ModoXml = ModoRicercaXml.TuttoIlFile
     };
 
     [Fact]
@@ -135,6 +138,60 @@ public class ImpostazioniViewModelTests
 
         Assert.Equal("La soglia arancione deve essere maggiore della soglia rossa.", vm.Errore);
         Assert.False(vm.PuoSalvare);
+    }
+
+    [Fact]
+    public void RigheAnteprimaTesto_PartonoDa100_EPassanoAlleImpostazioniCostruite()
+    {
+        var vm = Nuovo();
+        Assert.Equal("100", vm.RigheAnteprimaTesto);
+
+        vm.RigheAnteprimaTesto = " 250 ";
+
+        Assert.True(vm.PuoSalvare);
+        Assert.Equal(250, vm.Costruisci().RigheAnteprimaTesto);
+    }
+
+    [Theory]
+    [InlineData("abc")]
+    [InlineData("")]
+    [InlineData("-5")]
+    [InlineData("50,5")]
+    public void RigheAnteprimaTestoNonNumeriche_Errore(string testo)
+    {
+        var vm = Nuovo();
+
+        vm.RigheAnteprimaTesto = testo;
+
+        Assert.Equal("Le righe dell'anteprima di testo devono essere un numero intero.", vm.Errore);
+        Assert.False(vm.PuoSalvare);
+    }
+
+    [Theory]
+    [InlineData("0")]
+    [InlineData("9")]
+    [InlineData("1001")]
+    [InlineData("5000")]
+    public void RigheAnteprimaTestoFuoriDaiLimiti_Errore(string testo)
+    {
+        var vm = Nuovo();
+
+        vm.RigheAnteprimaTesto = testo;
+
+        Assert.Contains("tra 10 e 1000", vm.Errore);
+        Assert.False(vm.PuoSalvare);
+    }
+
+    [Theory]
+    [InlineData("10")]
+    [InlineData("1000")]
+    public void RigheAnteprimaTestoAgliEstremi_Valide(string testo)
+    {
+        var vm = Nuovo();
+
+        vm.RigheAnteprimaTesto = testo;
+
+        Assert.True(vm.PuoSalvare);
     }
 
     [Fact]

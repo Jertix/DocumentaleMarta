@@ -16,6 +16,16 @@ public class DatiAzienda
         "Realtà specializzata in fabbricazione di strutture metalliche e di parti di strutture metalliche, con base a Genova.";
 }
 
+/// <summary>Che cosa si cerca dentro un file XML (quando la ricerca nei file XML è attiva).</summary>
+public enum ModoRicercaXml
+{
+    /// <summary>Solo il testo: i valori degli elementi, i blocchi CDATA e i valori degli attributi, non i nomi dei tag.</summary>
+    SoloTesto,
+
+    /// <summary>Tutto il file com'è scritto, compresi i nomi dei tag e degli attributi.</summary>
+    TuttoIlFile
+}
+
 /// <summary>
 /// Tutte le impostazioni del programma: dati della ditta, dove sta l'archivio, soglie e riepilogo degli avvisi di scadenza,
 /// cartella e promemoria del backup, tema. Si salvano nel file impostazioni.json.
@@ -47,6 +57,32 @@ public class ImpostazioniApp
 
     public int BackupPromemoriaGiorni { get; set; } = 30;
     public DateTime? UltimoBackup { get; set; }
+
+    /// <summary>Quante righe mostra l'anteprima di un file di testo (.txt, .csv, .xml): le prime, poi si apre il file con il suo programma.</summary>
+    public int RigheAnteprimaTesto { get; set; } = RigheAnteprimaPredefinite;
+
+    /// <summary>
+    /// Cercare anche dentro i file XML. Spenta di base: un XML può essere molto grande (per esempio un file di log) e leggerlo
+    /// pesa sull'archivio; spenta, di un XML si cerca solo il nome.
+    /// </summary>
+    public bool RicercaXmlAttiva { get; set; }
+
+    /// <summary>Che cosa si cerca dentro i file XML, quando la ricerca nei file XML è attiva.</summary>
+    [JsonConverter(typeof(EnumTolleranteConverter<ModoRicercaXml>))]
+    public ModoRicercaXml ModoXml { get; set; } = ModoRicercaXml.SoloTesto;
+
+    /// <summary>Come si leggono ora gli XML per la ricerca; vuoto (null) se la ricerca nei file XML è spenta.</summary>
+    [JsonIgnore]
+    public ModoRicercaXml? ModoXmlInUso => RicercaXmlAttiva ? ModoXml : null;
+
+    /// <summary>Le righe dell'anteprima di testo finché l'utente non sceglie altro.</summary>
+    public const int RigheAnteprimaPredefinite = 100;
+
+    /// <summary>Il minimo di righe che si può chiedere all'anteprima di testo.</summary>
+    public const int RigheAnteprimaMinime = 10;
+
+    /// <summary>Il massimo di righe che si può chiedere all'anteprima di testo (oltre, il pannello diventerebbe lento da scorrere).</summary>
+    public const int RigheAnteprimaMassime = 1000;
 
     /// <summary>Chiaro, scuro o come Windows.</summary>
     [JsonConverter(typeof(EnumTolleranteConverter<TemaApp>))]
@@ -94,6 +130,9 @@ public class ImpostazioniApp
         CartellaBackup = altra.CartellaBackup;
         BackupPromemoriaGiorni = altra.BackupPromemoriaGiorni;
         UltimoBackup = altra.UltimoBackup;
+        RigheAnteprimaTesto = altra.RigheAnteprimaTesto;
+        RicercaXmlAttiva = altra.RicercaXmlAttiva;
+        ModoXml = altra.ModoXml;
         Tema = altra.Tema;
         Colore = altra.Colore;
         SfondoColorato = altra.SfondoColorato;
@@ -116,6 +155,8 @@ public class ImpostazioniApp
             errori.Add("Il promemoria del backup deve essere di almeno 1 giorno.");
         if (ErroreCartellaBackup() is { } erroreBackup)
             errori.Add(erroreBackup);
+        if (RigheAnteprimaTesto is < RigheAnteprimaMinime or > RigheAnteprimaMassime)
+            errori.Add($"Le righe dell'anteprima di testo devono essere tra {RigheAnteprimaMinime} e {RigheAnteprimaMassime}.");
 
         return errori;
     }

@@ -39,6 +39,12 @@ public interface IIndicizzatore
 {
     /// <summary>Mette dei documenti in coda per la lettura del testo.</summary>
     void Accoda(IEnumerable<int> documentiIds);
+
+    /// <summary>
+    /// Rimette in coda tutti i documenti di un tipo (es. ".xml"), anche quelli già letti: serve quando cambia il modo di leggerli
+    /// (o si smette di leggerli) e il testo nell'indice va rifatto.
+    /// </summary>
+    Task RiaccodaPerEstensioneAsync(string estensione);
 }
 
 /// <param name="InCoda">Documenti ancora da leggere, compreso quello in lavorazione.</param>

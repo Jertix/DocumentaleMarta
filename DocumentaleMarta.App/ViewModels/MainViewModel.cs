@@ -21,6 +21,7 @@ namespace DocumentaleMarta.App.ViewModels;
 /// <param name="servizioBackup">Fa il backup dell'archivio; senza, il pulsante "Backup" e il promemoria non compaiono.</param>
 /// <param name="generatoreAnteprima">Disegna l'anteprima dei documenti selezionati; senza, il pannello non compare.</param>
 /// <param name="aspetto">Cambia i colori del programma; senza, la scelta dell'aspetto nelle impostazioni si salva ma non si vede.</param>
+/// <param name="indicizzatore">Rilegge gli XML già presenti quando nelle impostazioni cambia la ricerca nei file XML; senza, si applica solo ai nuovi.</param>
 public partial class MainViewModel(
     IArchivioService archivio,
     IArchivioFileService files,
@@ -34,7 +35,8 @@ public partial class MainViewModel(
     ImpostazioniService? servizioImpostazioni = null,
     IBackupService? servizioBackup = null,
     IGeneratoreAnteprima? generatoreAnteprima = null,
-    IAspettoService? aspetto = null) : ObservableObject
+    IAspettoService? aspetto = null,
+    IIndicizzatore? indicizzatore = null) : ObservableObject
 {
     // Non è readonly: cambiando le soglie nelle impostazioni il servizio viene ricreato con i valori nuovi.
     private AlertService _avvisi = avvisi ?? new AlertService(impostazioni);
@@ -1154,9 +1156,15 @@ public partial class MainViewModel(
                     continue;
                 }
 
+                var xmlPrima = impostazioni.ModoXmlInUso;
                 impostazioni.CopiaDa(nuove);
                 aspetto?.Applica(impostazioni.Aspetto);
                 await EseguiAsync(ApplicaImpostazioniAsync);
+
+                // Cambiata la ricerca nei file XML (accesa, spenta o nel modo di leggerli): gli XML già presenti si rifanno in
+                // background, per leggerli come adesso (o per toglierli dall'indice se non si cercano più).
+                if (xmlPrima != impostazioni.ModoXmlInUso && indicizzatore is not null)
+                    await indicizzatore.RiaccodaPerEstensioneAsync(".xml");
 
                 // Le impostazioni sono salvate e applicate (anche la cartella dei backup appena scelta): ora l'operazione richiesta.
                 switch (azione)

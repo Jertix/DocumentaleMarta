@@ -88,12 +88,17 @@ public class GeneratoreAnteprimaTests : IDisposable
     [InlineData(".odg", true)]
     [InlineData(".otg", true)]
     [InlineData(".ODT", true)]
+    [InlineData(".txt", true)]
+    [InlineData(".TXT", true)]
+    [InlineData(".csv", true)]
+    [InlineData(".xml", true)]
+    [InlineData(".XML", true)]
     [InlineData(".docx", false)]
     [InlineData(".xlsx", false)]
     [InlineData(".doc", false)]
-    [InlineData(".txt", false)]
+    [InlineData(".rtf", false)]
     [InlineData("", false)]
-    public void Supporta_SoloPdfEImmagini(string estensione, bool atteso) =>
+    public void Supporta_PdfImmaginiOpenDocumentETesto(string estensione, bool atteso) =>
         Assert.Equal(atteso, _generatore.Supporta(estensione));
 
     // ---------- Immagini ----------

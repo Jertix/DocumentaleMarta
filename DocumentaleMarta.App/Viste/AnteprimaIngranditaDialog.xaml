@@ -35,6 +35,25 @@
             <Setter Property="VerticalAlignment" Value="Center"/>
             <Setter Property="MaxWidth" Value="520"/>
         </Style>
+
+        <!-- Le prime righe di un file di testo: sola lettura (si può selezionare e copiare); le righe vanno a capo, tranne che in CSV e XML -->
+        <Style x:Key="TestoDocumento" TargetType="TextBox" BasedOn="{StaticResource {x:Type TextBox}}">
+            <Setter Property="IsReadOnly" Value="True"/>
+            <Setter Property="AcceptsReturn" Value="True"/>
+            <Setter Property="FontFamily" Value="Cascadia Mono, Consolas"/>
+            <Setter Property="FontSize" Value="14"/>
+            <Setter Property="Padding" Value="14,10"/>
+            <Setter Property="Background" Value="{DynamicResource SfondoSuperficie}"/>
+            <Setter Property="BorderThickness" Value="0"/>
+            <Setter Property="TextWrapping" Value="NoWrap"/>
+            <Setter Property="HorizontalScrollBarVisibility" Value="Auto"/>
+            <Setter Property="VerticalScrollBarVisibility" Value="Auto"/>
+            <Style.Triggers>
+                <DataTrigger Binding="{Binding TestoACapo}" Value="True">
+                    <Setter Property="TextWrapping" Value="Wrap"/>
+                </DataTrigger>
+            </Style.Triggers>
+        </Style>
     </Window.Resources>
 
     <DockPanel>
@@ -51,7 +70,9 @@
                     <Border Width="1" Background="{DynamicResource Bordo}" Margin="10,2,14,2"/>
                 </StackPanel>
 
-                <StackPanel DockPanel.Dock="Left" Orientation="Horizontal">
+                <!-- Lo zoom serve alle immagini; un testo si legge alla sua grandezza e si scorre -->
+                <StackPanel DockPanel.Dock="Left" Orientation="Horizontal"
+                            Visibility="{Binding HaImmagine, Converter={StaticResource BoolToVis}}">
                     <Button x:Name="PulsanteMeno" Content="&#x2212;" Style="{StaticResource PulsanteBarra}" Click="Meno_Click"
                             ToolTip="Rimpicciolisci (−)" AutomationProperties.Name="Rimpicciolisci"/>
                     <TextBlock x:Name="TestoZoom" Text="Pagina intera" VerticalAlignment="Center" Margin="6,0" MinWidth="82" TextAlignment="Center"/>
@@ -82,6 +103,11 @@
                     </Border>
                 </Grid>
             </ScrollViewer>
+
+            <!-- File di testo: le prime righe, a tutta finestra -->
+            <TextBox Text="{Binding Testo, Mode=OneWay}" Style="{StaticResource TestoDocumento}"
+                     AutomationProperties.Name="Prime righe del file di testo"
+                     Visibility="{Binding HaTesto, Converter={StaticResource BoolToVis}}"/>
 
             <TextBlock Text="Caricamento…" Style="{StaticResource TestoCentrale}"
                        Visibility="{Binding CaricamentoVisibile, Converter={StaticResource BoolToVis}}"/>

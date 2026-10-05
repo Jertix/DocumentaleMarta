@@ -218,9 +218,16 @@ public class ComposizioneTests : IDisposable
         Assert.Same(indicizzazione, servizi.GetRequiredService<IIndicizzatore>());
         Assert.Same(indicizzazione, servizi.GetRequiredService<IMonitorIndicizzazione>());
         var estrattori = servizi.GetServices<IEstrattoreTesto>().ToList();
-        Assert.Equal(5, estrattori.Count);
-        // Ogni formato di OpenOffice e LibreOffice ha un lettore tra quelli collegati.
+        Assert.Equal(6, estrattori.Count);
+        // Ogni formato di OpenOffice e LibreOffice ha un lettore tra quelli collegati, e anche il testo semplice.
         Assert.All(FormatiOpenDocument.Tutti, estensione => Assert.Contains(estrattori, e => e.Supporta(estensione)));
+        Assert.All(new[] { ".txt", ".csv" }, estensione => Assert.Contains(estrattori, e => e.Supporta(estensione)));
+
+        // Gli XML si leggono solo se nelle impostazioni è attiva la ricerca nei file XML (di base è spenta), e subito, senza riavvio.
+        Assert.DoesNotContain(estrattori, e => e.Supporta(".xml"));
+        impostazioni.RicercaXmlAttiva = true;
+        Assert.Contains(estrattori, e => e.Supporta(".xml"));
+        impostazioni.RicercaXmlAttiva = false;
         Assert.NotNull(servizi.GetRequiredService<IRicercaService>());
         Assert.NotNull(servizi.GetRequiredService<IOcr>());
 
