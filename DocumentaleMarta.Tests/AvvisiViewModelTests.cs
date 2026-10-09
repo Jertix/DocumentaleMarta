@@ -435,7 +435,10 @@ public class AvvisiViewModelTests : IDisposable
 
         form.DataScadenza = new DateTime(2027, 1, 1);
         Assert.Equal(StatoAvviso.Nessuno, form.StatoScadenza);
-        Assert.Equal("Scade tra 92 giorni", form.TestoScadenza); // il testo resta, ma grigio
+        Assert.Equal("Scade tra 3 mesi", form.TestoScadenza); // il testo resta, ma grigio
+
+        form.DataScadenza = new DateTime(2027, 1, 5);
+        Assert.Equal("Scade tra 3 mesi e 4 giorni", form.TestoScadenza);
 
         form.DataScadenza = null;
         Assert.Equal("", form.TestoScadenza);

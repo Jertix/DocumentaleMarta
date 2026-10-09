@@ -108,9 +108,47 @@ public class AlertServiceTests
     [InlineData(0, "Scade oggi")]
     [InlineData(1, "Scade domani")]
     [InlineData(2, "Scade tra 2 giorni")]
-    [InlineData(45, "Scade tra 45 giorni")]
+    [InlineData(30, "Scade tra 30 giorni")]    // fino a 30 giorni si dice in giorni
     public void Descrivi_InItaliano(int giorni, string atteso) =>
         Assert.Equal(atteso, Servizio().Descrivi(TraGiorni(giorni)));
+
+    // Oggi è il 1° ottobre 2026: i mesi sono mesi di calendario, non blocchi di 30 giorni.
+    [Theory]
+    [InlineData(31, "Scade tra 1 mese")]                     // 1° novembre
+    [InlineData(32, "Scade tra 1 mese e 1 giorno")]
+    [InlineData(45, "Scade tra 1 mese e 14 giorni")]
+    [InlineData(61, "Scade tra 2 mesi")]                     // 1° dicembre
+    [InlineData(92, "Scade tra 3 mesi")]                     // 1° gennaio 2027
+    [InlineData(96, "Scade tra 3 mesi e 4 giorni")]          // 5 gennaio 2027
+    [InlineData(300, "Scade tra 9 mesi e 27 giorni")]        // 28 luglio 2027
+    [InlineData(365, "Scade tra 1 anno")]                    // 1° ottobre 2027
+    [InlineData(366, "Scade tra 1 anno e 1 giorno")]
+    [InlineData(400, "Scade tra 1 anno, 1 mese e 4 giorni")] // 5 novembre 2027
+    public void Descrivi_OltreITrentaGiorni_DiceMesiEGiorni(int giorni, string atteso) =>
+        Assert.Equal(atteso, Servizio().Descrivi(TraGiorni(giorni)));
+
+    [Theory]
+    [InlineData(-30, "Scaduta da 30 giorni")]
+    [InlineData(-31, "Scaduta da 1 mese e 1 giorno")]        // 31 agosto
+    [InlineData(-45, "Scaduta da 1 mese e 14 giorni")]       // 17 agosto
+    [InlineData(-61, "Scaduta da 2 mesi")]                   // 1° agosto
+    [InlineData(-400, "Scaduta da 1 anno, 1 mese e 4 giorni")] // 27 agosto 2025
+    public void Descrivi_ScadutaDaPiuDiTrentaGiorni_DiceMesiEGiorni(int giorni, string atteso) =>
+        Assert.Equal(atteso, Servizio().Descrivi(TraGiorni(giorni)));
+
+    [Theory]
+    [InlineData("2026-01-31", "2026-03-03", "Scade tra 1 mese e 3 giorni")]  // 31 gennaio + 1 mese = 28 febbraio
+    [InlineData("2026-01-31", "2026-02-28", "Scade tra 28 giorni")]
+    [InlineData("2026-01-30", "2026-03-02", "Scade tra 1 mese e 2 giorni")]
+    [InlineData("2026-12-20", "2027-03-20", "Scade tra 3 mesi")]             // a cavallo dell'anno
+    [InlineData("2028-02-29", "2029-02-28", "Scade tra 1 anno")]             // dal 29 febbraio bisestile
+    [InlineData("2026-10-01", "2028-10-01", "Scade tra 2 anni")]
+    public void Descrivi_FineMeseEAnni_ContaIMesiDiCalendario(string oggi, string scadenza, string atteso)
+    {
+        var servizio = new AlertService(30, 7, true, new TempoFisso(DateTime.Parse(oggi)));
+
+        Assert.Equal(atteso, servizio.Descrivi(DateOnly.Parse(scadenza)));
+    }
 
     [Fact]
     public void Giorni_NegativiSeScaduta() =>

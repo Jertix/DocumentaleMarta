@@ -70,15 +70,58 @@ public class AlertService
         return giorni <= SogliaArancioneGiorni ? StatoAvviso.Arancione : StatoAvviso.Nessuno;
     }
 
-    /// <summary>"Scaduta da 3 giorni", "Scade oggi", "Scade domani", "Scade tra 5 giorni".</summary>
-    public string Descrivi(DateOnly scadenza) => Giorni(scadenza) switch
+    /// <summary>Fino a questi giorni la distanza si dice in giorni; oltre, in mesi e giorni («3 mesi e 4 giorni»).</summary>
+    public const int GiorniDettiInGiorni = 30;
+
+    /// <summary>
+    /// "Scaduta da 3 giorni", "Scade oggi", "Scade domani", "Scade tra 5 giorni". Oltre 30 giorni la distanza si dice in
+    /// mesi (e anni) e giorni: "Scade tra 3 mesi e 4 giorni", "Scaduta da 1 mese e 14 giorni".
+    /// </summary>
+    public string Descrivi(DateOnly scadenza)
     {
-        < -1 and var g => $"Scaduta da {-g} giorni",
-        -1 => "Scaduta ieri",
-        0 => "Scade oggi",
-        1 => "Scade domani",
-        var g => $"Scade tra {g} giorni"
-    };
+        var oggi = Oggi;
+        return (scadenza.DayNumber - oggi.DayNumber) switch
+        {
+            < -1 => $"Scaduta da {Distanza(scadenza, oggi)}",
+            -1 => "Scaduta ieri",
+            0 => "Scade oggi",
+            1 => "Scade domani",
+            _ => $"Scade tra {Distanza(oggi, scadenza)}"
+        };
+    }
+
+    /// <summary>
+    /// La distanza tra due date (<paramref name="da"/> prima di <paramref name="a"/>) a parole: «5 giorni» fino a 30 giorni,
+    /// poi mesi interi di calendario e i giorni che avanzano («3 mesi e 4 giorni», «1 anno, 2 mesi e 3 giorni»). Un mese
+    /// è quello di calendario: dal 10 ottobre al 10 gennaio sono 3 mesi, qualunque sia il numero di giorni.
+    /// </summary>
+    private static string Distanza(DateOnly da, DateOnly a)
+    {
+        var giorni = a.DayNumber - da.DayNumber;
+        if (giorni <= GiorniDettiInGiorni)
+            return Plurale(giorni, "giorno", "giorni");
+
+        // I mesi interi che stanno prima di «a» (un 31 gennaio + 1 mese è il 28 febbraio: il giorno si riporta alla fine del mese).
+        var mesi = (a.Year - da.Year) * 12 + a.Month - da.Month;
+        if (da.AddMonths(mesi) > a)
+            mesi--;
+        var giorniAvanzati = a.DayNumber - da.AddMonths(mesi).DayNumber;
+
+        var parti = new List<string>(3);
+        if (mesi / 12 > 0)
+            parti.Add(Plurale(mesi / 12, "anno", "anni"));
+        if (mesi % 12 > 0)
+            parti.Add(Plurale(mesi % 12, "mese", "mesi"));
+        if (giorniAvanzati > 0)
+            parti.Add(Plurale(giorniAvanzati, "giorno", "giorni"));
+
+        // «A», «A e B», «A, B e C»
+        return parti.Count <= 1 ? string.Concat(parti) : string.Join(", ", parti.Take(parti.Count - 1)) + " e " + parti[^1];
+    }
+
+    /// <summary>«1 giorno», «2 giorni».</summary>
+    private static string Plurale(int numero, string singolare, string plurale) =>
+        $"{numero} {(numero == 1 ? singolare : plurale)}";
 
     /// <summary>Il più grave dei due.</summary>
     public static StatoAvviso Peggiore(StatoAvviso a, StatoAvviso b) => a >= b ? a : b;
