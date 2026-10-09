@@ -1159,6 +1159,12 @@ public partial class MainViewModel(
     public bool ImpostazioniDisponibili => servizioImpostazioni is not null;
 
     /// <summary>
+    /// La striscia in fondo all'albero fa passare ogni tanto un personaggio animato (impostazione «Animazioni»).
+    /// Cambia da sola quando si salvano le impostazioni.
+    /// </summary>
+    public bool AnimazioniAttive => impostazioni.AnimazioniAttive;
+
+    /// <summary>
     /// Apre la finestra delle impostazioni. Se i valori sono validi si salvano nel file e si applicano subito
     /// (soglie, dati della ditta, nome della radice): niente riavvio. Se il salvataggio fallisce la finestra resta aperta.
     /// Se si è premuto "Fai il backup ora" o "Ripristina da un backup…", dopo il salvataggio parte l'operazione.
@@ -1227,6 +1233,7 @@ public partial class MainViewModel(
         OnPropertyChanged(nameof(TestoAzienda));
         OnPropertyChanged(nameof(DescrizioneAzienda));
         OnPropertyChanged(nameof(SuggerimentoStatoRicerca));
+        OnPropertyChanged(nameof(AnimazioniAttive));
         await RicaricaAsync();
     }
 

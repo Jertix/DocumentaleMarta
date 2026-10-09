@@ -1,0 +1,59 @@
+<local:PersonaggioBase x:Class="DocumentaleMarta.App.Viste.PersonaggioCane"
+        xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        xmlns:local="clr-namespace:DocumentaleMarta.App.Viste"
+        Width="48" Height="30" Focusable="False" IsHitTestVisible="False">
+    <local:PersonaggioBase.Resources>
+        <ResourceDictionary>
+            <ResourceDictionary.MergedDictionaries>
+                <ResourceDictionary Source="/DocumentaleMarta.App;component/Viste/StiliPersonaggi.xaml"/>
+            </ResourceDictionary.MergedDictionaries>
+        </ResourceDictionary>
+    </local:PersonaggioBase.Resources>
+
+    <!-- Un cagnolino che corre, di profilo e rivolto a destra: corpo, testa, orecchio, coda e quattro zampe -->
+    <Canvas Width="48" Height="30">
+        <!-- Il corpo intero ondeggia: sale e scende a ogni falcata e si inclina un poco -->
+        <Canvas>
+            <Canvas.RenderTransform>
+                <TransformGroup>
+                    <RotateTransform x:Name="Inclinazione" CenterX="24" CenterY="14"/>
+                    <TranslateTransform x:Name="Rimbalzo"/>
+                </TransformGroup>
+            </Canvas.RenderTransform>
+
+            <!-- Zampe lontane (più chiare, per dare profondità): anteriore e posteriore -->
+            <Path Canvas.Left="28.5" Canvas.Top="17.5" Opacity="0.55"
+                  Data="M0,0 L3.2,0 L2.7,10.8 Q2.7,12 1.6,12 Q0.5,12 0.5,10.8 Z">
+                <Path.RenderTransform><RotateTransform x:Name="ZampaAnterioreLontana" CenterX="1.6" CenterY="0"/></Path.RenderTransform>
+            </Path>
+            <Path Canvas.Left="18.5" Canvas.Top="17.5" Opacity="0.55"
+                  Data="M0,0 L3.2,0 L2.7,10.8 Q2.7,12 1.6,12 Q0.5,12 0.5,10.8 Z">
+                <Path.RenderTransform><RotateTransform x:Name="ZampaPosterioreLontana" CenterX="1.6" CenterY="0"/></Path.RenderTransform>
+            </Path>
+
+            <!-- Coda: scodinzola -->
+            <Path Canvas.Left="3.5" Canvas.Top="2.5" Data="M8,10 C3.5,9.5 0.5,6 0.5,1 L3.3,0.5 C3.5,4.5 6,6.7 9.5,7.5 Z">
+                <Path.RenderTransform><RotateTransform x:Name="Coda" CenterX="8" CenterY="9"/></Path.RenderTransform>
+            </Path>
+
+            <!-- Corpo, collo e testa con il muso -->
+            <Path Data="M11,14.5 C11,10.5 14,9 18,9 L30,9 C34,9 36.5,11 36.5,14.5 C36.5,18 33.5,20 30,20 L17,20 C13.5,20 11,18 11,14.5 Z"/>
+            <Path Data="M31,9.5 L37,3.5 L41,10 L34,16 Z"/>
+            <Ellipse Canvas.Left="33.5" Canvas.Top="2.5" Width="11" Height="10.5"/>
+            <Path Data="M42.5,6 L47.5,7.8 Q48,9.3 46.8,10.5 L42.5,11.5 Z"/>
+            <!-- L'orecchio che penzola -->
+            <Path Data="M34.5,3.5 C32.5,4.5 31.5,9 33,12 C35,11.5 37,8.5 37.2,5 Z"/>
+
+            <!-- Zampe vicine -->
+            <Path Canvas.Left="33" Canvas.Top="17.5"
+                  Data="M0,0 L3.2,0 L2.7,10.8 Q2.7,12 1.6,12 Q0.5,12 0.5,10.8 Z">
+                <Path.RenderTransform><RotateTransform x:Name="ZampaAnterioreVicina" CenterX="1.6" CenterY="0"/></Path.RenderTransform>
+            </Path>
+            <Path Canvas.Left="13.5" Canvas.Top="17.5"
+                  Data="M0,0 L3.2,0 L2.7,10.8 Q2.7,12 1.6,12 Q0.5,12 0.5,10.8 Z">
+                <Path.RenderTransform><RotateTransform x:Name="ZampaPosterioreVicina" CenterX="1.6" CenterY="0"/></Path.RenderTransform>
+            </Path>
+        </Canvas>
+    </Canvas>
+</local:PersonaggioBase>

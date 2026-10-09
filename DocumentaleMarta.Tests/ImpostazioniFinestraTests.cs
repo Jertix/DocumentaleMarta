@@ -26,7 +26,8 @@ public class ImpostazioniCopiaTests
         UltimoBackup = new DateTime(2026, 9, 1, 12, 0, 0),
         RigheAnteprimaTesto = 250,
         RicercaXmlAttiva = true,
-        ModoXml = ModoRicercaXml.TuttoIlFile
+        ModoXml = ModoRicercaXml.TuttoIlFile,
+        AnimazioniAttive = false
     };
 
     [Fact]

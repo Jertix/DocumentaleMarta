@@ -77,6 +77,15 @@
                     </StackPanel>
                 </GroupBox>
 
+                <GroupBox Header="Animazioni">
+                    <StackPanel>
+                        <CheckBox Content="Fai passare ogni tanto un personaggio animato in fondo all'albero" IsChecked="{Binding AnimazioniAttive}"
+                                  ToolTip="Un cagnolino, un omino, un gattino, un uccellino o un operaio attraversano la striscia sotto l'albero"/>
+                        <TextBlock Foreground="{DynamicResource TestoTenue}" FontSize="12" TextWrapping="Wrap" Margin="0,8,0,0"
+                                   Text="{Binding SuggerimentoAnimazioni, Mode=OneTime}"/>
+                    </StackPanel>
+                </GroupBox>
+
                 <GroupBox Header="Avvisi di scadenza">
                     <StackPanel>
                         <CheckBox Content="Attiva gli avvisi di scadenza (icone, colori e nodo «Scadenze»)" IsChecked="{Binding AvvisiAttivi}"/>

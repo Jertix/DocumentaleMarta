@@ -95,6 +95,12 @@ public class ImpostazioniApp
     /// <summary>Le finestre hanno uno sfondo con una leggera tinta del colore principale invece del grigio neutro.</summary>
     public bool SfondoColorato { get; set; }
 
+    /// <summary>
+    /// Ogni tanto passa un personaggio animato (un cagnolino, un omino…) nella striscia in fondo all'albero. Acceso di base;
+    /// è una scelta di comportamento, non di colori, e vale appena si salvano le impostazioni.
+    /// </summary>
+    public bool AnimazioniAttive { get; set; } = true;
+
     /// <summary>Le scelte di aspetto, raccolte in un solo valore (per applicarle in blocco).</summary>
     [JsonIgnore]
     public AspettoApp Aspetto => new(Tema, Colore, SfondoColorato);
@@ -136,6 +142,7 @@ public class ImpostazioniApp
         Tema = altra.Tema;
         Colore = altra.Colore;
         SfondoColorato = altra.SfondoColorato;
+        AnimazioniAttive = altra.AnimazioniAttive;
     }
 
     /// <summary>Restituisce i problemi trovati, vuoto se le impostazioni sono valide.</summary>

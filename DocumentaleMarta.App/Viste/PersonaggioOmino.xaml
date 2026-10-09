@@ -1,0 +1,46 @@
+<local:PersonaggioBase x:Class="DocumentaleMarta.App.Viste.PersonaggioOmino"
+        xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        xmlns:local="clr-namespace:DocumentaleMarta.App.Viste"
+        Width="22" Height="30" Focusable="False" IsHitTestVisible="False">
+    <local:PersonaggioBase.Resources>
+        <ResourceDictionary>
+            <ResourceDictionary.MergedDictionaries>
+                <ResourceDictionary Source="/DocumentaleMarta.App;component/Viste/StiliPersonaggi.xaml"/>
+            </ResourceDictionary.MergedDictionaries>
+        </ResourceDictionary>
+    </local:PersonaggioBase.Resources>
+
+    <!-- Un omino che passeggia, di profilo: testa, busto, due braccia e due gambe che oscillano -->
+    <Canvas Width="22" Height="30">
+        <Canvas>
+            <Canvas.RenderTransform>
+                <TranslateTransform x:Name="Rimbalzo"/>
+            </Canvas.RenderTransform>
+
+            <!-- Braccio e gamba lontani (più chiari) -->
+            <Path Style="{StaticResource Tratto}" StrokeThickness="2.6" Canvas.Left="9.6" Canvas.Top="8.6" Opacity="0.55"
+                  Data="M1.4,1.4 L1.4,9.6">
+                <Path.RenderTransform><RotateTransform x:Name="BraccioLontano" CenterX="1.4" CenterY="1.4"/></Path.RenderTransform>
+            </Path>
+            <Path Style="{StaticResource Tratto}" StrokeThickness="3.2" Canvas.Left="9.4" Canvas.Top="16.9" Opacity="0.55"
+                  Data="M1.6,1.6 L1.6,11.2">
+                <Path.RenderTransform><RotateTransform x:Name="GambaLontana" CenterX="1.6" CenterY="1.6"/></Path.RenderTransform>
+            </Path>
+
+            <!-- Testa e busto -->
+            <Ellipse Canvas.Left="7.6" Canvas.Top="0.4" Width="6.8" Height="6.8"/>
+            <Path Style="{StaticResource Tratto}" StrokeThickness="4.6" Data="M11,9 L11,18"/>
+
+            <!-- Braccio e gamba vicini -->
+            <Path Style="{StaticResource Tratto}" StrokeThickness="2.6" Canvas.Left="9.6" Canvas.Top="8.6"
+                  Data="M1.4,1.4 L1.4,9.6">
+                <Path.RenderTransform><RotateTransform x:Name="BraccioVicino" CenterX="1.4" CenterY="1.4"/></Path.RenderTransform>
+            </Path>
+            <Path Style="{StaticResource Tratto}" StrokeThickness="3.2" Canvas.Left="9.4" Canvas.Top="16.9"
+                  Data="M1.6,1.6 L1.6,11.2">
+                <Path.RenderTransform><RotateTransform x:Name="GambaVicina" CenterX="1.6" CenterY="1.6"/></Path.RenderTransform>
+            </Path>
+        </Canvas>
+    </Canvas>
+</local:PersonaggioBase>

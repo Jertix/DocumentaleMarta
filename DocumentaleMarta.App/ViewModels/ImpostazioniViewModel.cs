@@ -58,6 +58,7 @@ public partial class ImpostazioniViewModel : ObservableObject
         _righeAnteprimaTesto = attuali.RigheAnteprimaTesto.ToString(CultureInfo.InvariantCulture);
         _ricercaXmlAttiva = attuali.RicercaXmlAttiva;
         _modoXml = attuali.ModoXml;
+        _animazioniAttive = attuali.AnimazioniAttive;
     }
 
     [ObservableProperty] private string _ragioneSociale;
@@ -130,6 +131,18 @@ public partial class ImpostazioniViewModel : ObservableObject
     /// <summary>Le finestre hanno uno sfondo con una leggera tinta del colore principale.</summary>
     [ObservableProperty]
     private bool _sfondoColorato;
+
+    /// <summary>
+    /// Ogni tanto passa un personaggio animato nella striscia in fondo all'albero. Vale quando si salva (non è una scelta
+    /// di colori, quindi non c'è l'anteprima immediata).
+    /// </summary>
+    [ObservableProperty]
+    private bool _animazioniAttive;
+
+    /// <summary>La spiegazione sotto la casella delle animazioni.</summary>
+    public string SuggerimentoAnimazioni =>
+        "Ogni 3-6 minuti circa passa qualcuno nella striscia in fondo all'albero, solo a finestra attiva. "
+        + "Con un doppio clic sulla striscia ne passa uno subito. Non compare se in Windows hai spento le animazioni.";
 
     /// <summary>I colori tra cui scegliere, ognuno con il suo pulsante di scelta (un pallino colorato e il nome).</summary>
     public IReadOnlyList<OpzioneColoreViewModel> OpzioniColore { get; }
@@ -240,6 +253,7 @@ public partial class ImpostazioniViewModel : ObservableObject
         risultato.Tema = Tema;
         risultato.Colore = Colore;
         risultato.SfondoColorato = SfondoColorato;
+        risultato.AnimazioniAttive = AnimazioniAttive;
         return risultato;
     }
 

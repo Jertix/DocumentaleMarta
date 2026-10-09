@@ -51,6 +51,9 @@ ogni cartella può avere una scadenza, e il programma avvisa quando si avvicina.
   (Acciaio, Fucina, Foresta, Prugna, Grafite o quello di Windows) per pulsanti, spunte e selezioni; **sfondo delle
   finestre colorato** con una leggera tinta di quel colore. Le scelte si vedono subito, senza riavvio, e con «Annulla» il
   programma torna com'era.
+- In fondo all'albero c'è una **striscia animata**: ogni 3-6 minuti circa passa un cagnolino che corre, un omino che
+  passeggia, un gattino, un uccellino o un operaio col casco (con un doppio clic sulla striscia ne passa uno subito). Si
+  spegne dalle Impostazioni, sezione **Animazioni**; non compare se in Windows le animazioni sono disattivate.
 - Nelle Impostazioni anche le soglie degli avvisi, la ricerca nei file XML, le righe dell'anteprima dei file di testo, i dati
   della ditta e il backup.
 

@@ -1,0 +1,14 @@
+<UserControl x:Class="DocumentaleMarta.App.Viste.StriscaAnimata"
+             xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             Height="44" Focusable="False" IsTabStop="False">
+    <!-- La striscia sotto l'albero: stesso stile del piè di pagina, una linea di terreno e, ogni tanto, qualcuno che passa.
+         Il doppio clic fa passare qualcuno subito. -->
+    <Border Background="{DynamicResource SfondoPannello}" BorderBrush="{DynamicResource Bordo}" BorderThickness="0,1,0,0"
+            ClipToBounds="True" MouseLeftButtonDown="Striscia_MouseLeftButtonDown">
+        <Grid>
+            <Rectangle Height="1" VerticalAlignment="Bottom" Margin="0,0,0,5" Fill="{DynamicResource BordoLeggero}"/>
+            <Canvas x:Name="Scena" IsHitTestVisible="False" ClipToBounds="True"/>
+        </Grid>
+    </Border>
+</UserControl>
