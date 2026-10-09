@@ -114,6 +114,7 @@
                 <RowDefinition Height="Auto"/>
                 <RowDefinition Height="Auto"/>
                 <RowDefinition Height="Auto"/>
+                <RowDefinition Height="Auto"/>
             </Grid.RowDefinitions>
 
             <TextBlock Grid.Row="0" Text="Titolo" Style="{StaticResource Etichetta}"/>
@@ -152,7 +153,18 @@
                 <DatePicker SelectedDate="{Binding DataCompletamento}" IsEnabled="{Binding Completato}" Width="150"/>
             </StackPanel>
 
-            <StackPanel Grid.Row="5" Grid.Column="1" Margin="0,8,0,0">
+            <!-- Le note di completamento si vedono solo con «Completato» spuntato. L'etichetta sta sopra il campo (non nella
+                 colonna delle etichette, che si allargherebbe e farebbe saltare il form). -->
+            <StackPanel Grid.Row="5" Grid.Column="1" Margin="0,12,0,0"
+                        Visibility="{Binding Completato, Converter={StaticResource BoolToVis}}">
+                <TextBlock Text="Note di completamento" Style="{StaticResource Etichetta}" Margin="0,0,0,4"/>
+                <TextBox Text="{Binding NoteCompletamento, UpdateSourceTrigger=LostFocus}"
+                         AcceptsReturn="True" TextWrapping="Wrap" MinLines="3" MaxLines="6"
+                         VerticalScrollBarVisibility="Auto" MaxLength="4000" Padding="4,3"
+                         AutomationProperties.Name="Note di completamento"/>
+            </StackPanel>
+
+            <StackPanel Grid.Row="6" Grid.Column="1" Margin="0,8,0,0">
                 <TextBlock Text="{Binding Errore}" Style="{StaticResource TestoErrore}"/>
                 <TextBlock Text="Le modifiche vengono salvate automaticamente." Foreground="{DynamicResource TestoTenue}" FontSize="12"/>
             </StackPanel>

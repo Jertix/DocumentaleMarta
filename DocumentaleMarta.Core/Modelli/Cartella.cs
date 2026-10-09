@@ -15,6 +15,12 @@ public class Cartella
     public DateOnly? DataCompletamento { get; set; }
 
     /// <summary>
+    /// Le note scritte completando la cartella (com'è andata, cosa resta da fare, a chi si è risposto…). Come la data di
+    /// completamento, c'è solo finché la cartella è completata.
+    /// </summary>
+    public string? NoteCompletamento { get; set; }
+
+    /// <summary>
     /// La cartella completata è stata messa nell'"Archivio completati" dell'albero. È solo un modo di mostrarla:
     /// resta nella sua area e nella sua cartella su disco. Una cartella non completata non è mai archiviata.
     /// </summary>

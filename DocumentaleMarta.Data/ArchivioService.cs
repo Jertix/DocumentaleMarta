@@ -596,7 +596,7 @@ public class ArchivioService(
         new(d.Id, d.NomeFile, d.Estensione, d.Dimensione, d.DataCaricamento, d.PercorsoRelativo);
 
     /// <summary>
-    /// Copia i dati modificabili sulla cartella. Una cartella non completata non ha data di completamento e non è
+    /// Copia i dati modificabili sulla cartella. Una cartella non completata non ha data né note di completamento e non è
     /// archiviata; senza una scadenza la ricorrenza non ha senso e si azzera.
     /// </summary>
     private static void ApplicaDati(Cartella cartella, DatiCartella dati)
@@ -607,6 +607,9 @@ public class ArchivioService(
         cartella.Ricorrenza = dati.DataScadenza is null ? Ricorrenza.Nessuna : dati.Ricorrenza;
         cartella.Completato = dati.Completato;
         cartella.DataCompletamento = dati.Completato ? dati.DataCompletamento : null;
+        cartella.NoteCompletamento = dati.Completato && !string.IsNullOrWhiteSpace(dati.NoteCompletamento)
+            ? dati.NoteCompletamento
+            : null;
 
         // Nell'archivio ci sono solo cartelle completate: riaprendola torna a comparire nella sua area.
         if (!dati.Completato)
@@ -623,7 +626,8 @@ public class ArchivioService(
             .Select(c => new
             {
                 c.Id, c.AreaId, NomeArea = c.Area.Nome, c.PercorsoRelativo,
-                c.Titolo, c.Descrizione, c.DataScadenza, c.Ricorrenza, c.Completato, c.DataCompletamento, c.Archiviata,
+                c.Titolo, c.Descrizione, c.DataScadenza, c.Ricorrenza, c.Completato, c.DataCompletamento, c.NoteCompletamento,
+                c.Archiviata,
                 Documenti = c.Documenti
                     .OrderBy(d => d.DataCaricamento).ThenBy(d => d.Id)
                     .Select(d => new { d.Id, d.NomeFile, d.Estensione, d.Dimensione, d.DataCaricamento, d.PercorsoRelativo })
@@ -635,7 +639,8 @@ public class ArchivioService(
             ? null
             : new CartellaDettaglio(
                 c.Id, c.AreaId, c.NomeArea, c.PercorsoRelativo,
-                new DatiCartella(c.Titolo, c.Descrizione, c.DataScadenza, c.Completato, c.DataCompletamento, c.Ricorrenza),
+                new DatiCartella(
+                    c.Titolo, c.Descrizione, c.DataScadenza, c.Completato, c.DataCompletamento, c.Ricorrenza, c.NoteCompletamento),
                 c.Documenti.Select(d => new DocumentoDettaglio(d.Id, d.NomeFile, d.Estensione, d.Dimensione, d.DataCaricamento, d.PercorsoRelativo)).ToList(),
                 c.Archiviata);
     }

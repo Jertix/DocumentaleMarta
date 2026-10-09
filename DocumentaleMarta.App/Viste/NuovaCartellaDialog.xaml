@@ -12,6 +12,7 @@
         AllowDrop="True" DragOver="Finestra_DragOver" Drop="Finestra_Drop"
         FocusManager.FocusedElement="{Binding ElementName=CasellaTitolo}">
     <Window.Resources>
+        <BooleanToVisibilityConverter x:Key="BoolToVis"/>
         <Style x:Key="Etichetta" TargetType="TextBlock">
             <Setter Property="Foreground" Value="{DynamicResource TestoSecondario}"/>
             <Setter Property="VerticalAlignment" Value="Center"/>
@@ -30,6 +31,7 @@
                 <ColumnDefinition Width="*"/>
             </Grid.ColumnDefinitions>
             <Grid.RowDefinitions>
+                <RowDefinition Height="Auto"/>
                 <RowDefinition Height="Auto"/>
                 <RowDefinition Height="Auto"/>
                 <RowDefinition Height="Auto"/>
@@ -65,6 +67,17 @@
                 <CheckBox IsChecked="{Binding Completato}" VerticalAlignment="Center" Margin="0,0,24,0"/>
                 <TextBlock Text="Data completamento" Style="{StaticResource Etichetta}"/>
                 <DatePicker SelectedDate="{Binding DataCompletamento}" IsEnabled="{Binding Completato}" Width="150"/>
+            </StackPanel>
+
+            <!-- Le note di completamento si vedono solo con «Completato» spuntato. L'etichetta sta sopra il campo (non nella
+                 colonna delle etichette, che si allargherebbe e farebbe saltare il form). -->
+            <StackPanel Grid.Row="5" Grid.Column="1" Margin="0,12,0,0"
+                        Visibility="{Binding Completato, Converter={StaticResource BoolToVis}}">
+                <TextBlock Text="Note di completamento" Style="{StaticResource Etichetta}" Margin="0,0,0,4"/>
+                <TextBox Padding="4,3" MaxLength="4000"
+                         Text="{Binding NoteCompletamento, UpdateSourceTrigger=PropertyChanged}"
+                         AcceptsReturn="True" TextWrapping="Wrap" MinLines="3" MaxLines="5" VerticalScrollBarVisibility="Auto"
+                         AutomationProperties.Name="Note di completamento"/>
             </StackPanel>
         </Grid>
 

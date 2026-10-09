@@ -2,13 +2,17 @@ namespace DocumentaleMarta.Core.Modelli;
 
 /// <summary>I campi di una cartella che l'utente può modificare.</summary>
 /// <param name="Ricorrenza">Ogni quanto si ripete. Senza una scadenza non ha senso e viene ignorata (resta "Nessuna").</param>
+/// <param name="NoteCompletamento">
+/// Le note scritte completando la cartella. Una cartella non completata non ne ha (come per la data di completamento).
+/// </param>
 public record DatiCartella(
     string Titolo,
     string? Descrizione,
     DateOnly? DataScadenza,
     bool Completato,
     DateOnly? DataCompletamento,
-    Ricorrenza Ricorrenza = Ricorrenza.Nessuna);
+    Ricorrenza Ricorrenza = Ricorrenza.Nessuna,
+    string? NoteCompletamento = null);
 
 /// <summary>
 /// Un documento di una cartella, come lo mostra la griglia (nome, tipo, dimensione, data di caricamento e dove si trova

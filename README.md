@@ -25,7 +25,8 @@ ogni cartella può avere una scadenza, e il programma avvisa quando si avvicina.
   un nodo speciale **Scadenze** con l'elenco di tutto ciò che va controllato. All'apertura un riepilogo.
 - **Cartelle che si ripetono** (ogni mese, tre mesi, anno): completando una cartella il programma propone la successiva.
 - Le cartelle **completate** hanno un'icona diversa e si possono mettere nell'**Archivio completati**, un ramo in fondo
-  all'albero (i file restano dove sono).
+  all'albero (i file restano dove sono). Completando una cartella compare un campo per le **note di completamento**.
+- Le scadenze si leggono a parole: «Scade tra 3 mesi e 4 giorni» (in giorni fino a 30).
 
 **Cercare**
 - Ricerca che guarda nei nomi dei file, nei titoli e nelle descrizioni delle cartelle, nei nomi delle aree e **dentro i

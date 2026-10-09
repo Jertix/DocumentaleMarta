@@ -200,7 +200,7 @@ public partial class CartellaFormViewModel : CartellaCampiViewModel
             return;
 
         if (e.PropertyName is nameof(Titolo) or nameof(Descrizione) or nameof(DataScadenza)
-            or nameof(Ricorrenza) or nameof(Completato) or nameof(DataCompletamento))
+            or nameof(Ricorrenza) or nameof(Completato) or nameof(DataCompletamento) or nameof(NoteCompletamento))
             _ultimoSalvataggio = SalvaAsync();
     }
 

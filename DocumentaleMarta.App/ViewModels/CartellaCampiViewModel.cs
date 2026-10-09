@@ -39,6 +39,13 @@ public abstract partial class CartellaCampiViewModel : ObservableObject
     [ObservableProperty]
     private DateTime? _dataCompletamento;
 
+    /// <summary>
+    /// Le note di completamento: il campo si vede solo con «Completato» spuntato. Se si toglie la spunta il testo resta nel
+    /// form (così, rimettendola per sbaglio, non va perso) ma non viene salvato: una cartella non completata non ha note.
+    /// </summary>
+    [ObservableProperty]
+    private string? _noteCompletamento;
+
     /// <summary>La ricorrenza si calcola dalla scadenza: senza, il menu "Si ripete" è spento.</summary>
     public bool HaScadenza => DataScadenza is not null;
 
@@ -75,7 +82,8 @@ public abstract partial class CartellaCampiViewModel : ObservableObject
         ADateOnly(DataScadenza),
         Completato,
         Completato ? ADateOnly(DataCompletamento) : null,
-        DataScadenza is null ? Ricorrenza.Nessuna : Ricorrenza);
+        DataScadenza is null ? Ricorrenza.Nessuna : Ricorrenza,
+        Completato && !string.IsNullOrWhiteSpace(NoteCompletamento) ? NoteCompletamento : null);
 
     /// <summary>
     /// Riempie i campi con i dati già salvati, senza che il cambio conti come una modifica dell'utente (quindi senza far
@@ -92,6 +100,7 @@ public abstract partial class CartellaCampiViewModel : ObservableObject
             Ricorrenza = dati.Ricorrenza;
             Completato = dati.Completato;
             DataCompletamento = ADateTime(dati.DataCompletamento);
+            NoteCompletamento = dati.NoteCompletamento;
         }
         finally
         {
