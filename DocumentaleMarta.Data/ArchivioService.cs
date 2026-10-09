@@ -23,7 +23,7 @@ public class ArchivioService(
         var aree = await db.Aree.AsNoTracking()
             .Select(a => new
             {
-                a.Id, a.Nome, a.PercorsoRelativo, a.Ordine,
+                a.Id, a.Nome, a.PercorsoRelativo, a.Ordine, a.Icona,
                 Cartelle = a.Cartelle.Select(c => new
                 {
                     c.Id, c.Titolo, c.PercorsoRelativo, c.DataCreazione, c.DataScadenza, c.Completato, c.Archiviata,
@@ -43,19 +43,21 @@ public class ArchivioService(
                     .ThenBy(c => c.DataCreazione)
                     .Select(c => new CartellaNodo(
                         c.Id, c.Titolo, c.PercorsoRelativo, c.NumeroDocumenti, c.DataScadenza, c.Completato, c.Archiviata))
-                    .ToList()))
+                    .ToList(),
+                a.Icona))
             .ToList();
     }
 
     // ---------- Aree ----------
 
     /// <summary>
-    /// Crea un'area: controlla il nome, crea la cartella sul disco e la riga nel database (se il database fallisce toglie
-    /// la cartella). Restituisce il suo numero.
+    /// Crea un'area: controlla il nome e l'icona, crea la cartella sul disco e la riga nel database (se il database
+    /// fallisce toglie la cartella). Restituisce il suo numero.
     /// </summary>
-    public async Task<int> CreaAreaAsync(string nome)
+    public async Task<int> CreaAreaAsync(string nome, string? icona = null)
     {
         nome = Valida(nome, ValidazioneNomi.LunghezzaMassimaArea);
+        var codiceIcona = ValidaIcona(icona);
         await using var db = await dbFactory.CreateDbContextAsync();
 
         if (await db.Aree.AnyAsync(a => a.Nome == nome))
@@ -64,7 +66,7 @@ public class ArchivioService(
         var percorso = files.CreaCartella("", nome);
         try
         {
-            var area = new Area { Nome = nome, PercorsoRelativo = percorso };
+            var area = new Area { Nome = nome, PercorsoRelativo = percorso, Icona = codiceIcona };
             db.Aree.Add(area);
             await db.SaveChangesAsync();
             return area.Id;
@@ -114,6 +116,35 @@ public class ArchivioService(
             Ripristina(nuovoPercorso, vecchioPercorso);
             throw;
         }
+    }
+
+    /// <summary>Cambia l'icona di un'area (null per quella predefinita): è solo un dato del database, nessun file si muove.</summary>
+    public async Task ImpostaIconaAreaAsync(int areaId, string? icona)
+    {
+        var codiceIcona = ValidaIcona(icona);
+        await using var db = await dbFactory.CreateDbContextAsync();
+
+        var area = await db.Aree.SingleOrDefaultAsync(a => a.Id == areaId)
+                   ?? throw new ArchivioException("L'area non esiste più.");
+
+        if (area.Icona == codiceIcona)
+            return;
+
+        area.Icona = codiceIcona;
+        await db.SaveChangesAsync();
+    }
+
+    /// <summary>
+    /// Controlla l'icona scelta e restituisce il codice da salvare: null se non c'è o è quella predefinita,
+    /// altrimenti il codice in maiuscolo. Un codice fuori dall'elenco delle icone proposte è un errore.
+    /// </summary>
+    private static string? ValidaIcona(string? icona)
+    {
+        if (string.IsNullOrWhiteSpace(icona))
+            return null;
+        if (!IconeArea.EValida(icona))
+            throw new ArchivioException("L'icona scelta non è tra quelle disponibili.");
+        return IconeArea.DaSalvare(icona);
     }
 
     /// <summary>Elimina un'area con tutte le sue cartelle e i suoi documenti (la cartella va nel Cestino).</summary>

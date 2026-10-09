@@ -166,6 +166,56 @@ public class FintoDialogService : IDialogService
 
     public void MostraAnteprimaIngrandita(AnteprimaViewModel modello) => AnteprimeIngrandite.Add(modello);
 
+    private readonly Queue<Action<AreaDialogViewModel>?> _areaDialog = new();
+
+    /// <summary>
+    /// Prepara cosa farà l'utente nella prossima finestra dell'area (null = Annulla). Se non c'è nulla in coda e la finestra
+    /// chiede il nome, risponde la prossima risposta di testo preparata con <see cref="RispondiTesto"/> (come faceva la
+    /// vecchia finestra con il solo nome); senza risposte l'utente annulla.
+    /// </summary>
+    public void RispondiAreaDialog(Action<AreaDialogViewModel>? compila) => _areaDialog.Enqueue(compila);
+
+    /// <summary>Quante volte è stata aperta la finestra dell'area (nuova area o cambio di icona).</summary>
+    public int AperturaAreaDialog { get; private set; }
+
+    /// <summary>L'ultima finestra dell'area aperta.</summary>
+    public AreaDialogViewModel? UltimaAreaDialog { get; private set; }
+
+    public bool MostraAreaDialog(AreaDialogViewModel modello)
+    {
+        AperturaAreaDialog++;
+        UltimaAreaDialog = modello;
+
+        if (_areaDialog.Count > 0)
+        {
+            var compila = _areaDialog.Dequeue();
+            if (compila is null)
+                return false;
+
+            compila(modello);
+        }
+        else if (modello.ChiedeNome)
+        {
+            var risposta = _risposteTesto.Count > 0 ? _risposteTesto.Dequeue() : null;
+            if (risposta is null)
+                return false; // l'utente annulla
+
+            modello.Nome = risposta;
+        }
+        else
+        {
+            return false;
+        }
+
+        // Come il pulsante "OK": con un nome non valido è disattivato, per il test equivale ad annullare.
+        if (!modello.PuoConfermare)
+        {
+            ErroriValidazione.Add(modello.ErroreNome.Length > 0 ? modello.ErroreNome : "Nome non valido.");
+            return false;
+        }
+        return true;
+    }
+
     public bool MostraNuovaCartella(NuovaCartellaViewModel modello)
     {
         AperturaNuovaCartella++;

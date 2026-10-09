@@ -8,5 +8,8 @@ public class Area
     public string PercorsoRelativo { get; set; } = "";
     public int Ordine { get; set; }
 
+    /// <summary>Codice dell'icona scelta per l'area (vedi <see cref="IconeArea"/>); null per l'icona predefinita.</summary>
+    public string? Icona { get; set; }
+
     public List<Cartella> Cartelle { get; set; } = [];
 }

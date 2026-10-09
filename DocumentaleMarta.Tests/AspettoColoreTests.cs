@@ -769,7 +769,7 @@ public class SfondoNelleFinestreXamlTests
             .Where(f => Regex.IsMatch(f.Testo, @"^\s*<Window\b", RegexOptions.Multiline))
             .ToList();
 
-        Assert.Equal(7, finestre.Count);
+        Assert.Equal(8, finestre.Count);
         Assert.All(finestre, f =>
         {
             var apertura = Regex.Match(f.Testo, @"<Window\b[^>]*>", RegexOptions.Singleline).Value;

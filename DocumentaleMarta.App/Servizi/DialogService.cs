@@ -112,6 +112,10 @@ public class DialogService : IDialogService
     public bool MostraNuovaCartella(NuovaCartellaViewModel modello) =>
         new NuovaCartellaDialog(modello) { Owner = Proprietaria }.ShowDialog() == true;
 
+    /// <summary>Mostra la finestra con il nome (se richiesto) e le icone di un'area; vero se l'utente conferma.</summary>
+    public bool MostraAreaDialog(AreaDialogViewModel modello) =>
+        new AreaDialog(modello) { Owner = Proprietaria }.ShowDialog() == true;
+
     /// <summary>
     /// Mostra la finestra delle Impostazioni; vero se l'utente conferma (Salva o uno dei pulsanti del backup).
     /// </summary>

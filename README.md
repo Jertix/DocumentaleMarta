@@ -12,6 +12,8 @@ ogni cartella può avere una scadenza, e il programma avvisa quando si avvicina.
 **Organizzare**
 - Albero a tre livelli: radice → area → cartella. Ogni area e ogni cartella corrisponde a una cartella vera sul disco,
   quindi l'archivio si legge anche da Esplora file.
+- Ogni area ha la **sua icona**, a scelta tra 45 (conti, banca, personale, automezzi, sicurezza…): si sceglie
+  creando l'area e si cambia quando si vuole con **Cambia icona…** (pulsante nel dettaglio dell'area o tasto destro).
 - I documenti si **allegano per copia**: il file originale non si tocca mai. Si possono anche trascinare da Esplora file
   sul form di una cartella, e spostare da una cartella all'altra trascinandoli sull'albero.
 - Se il file che si sta allegando c'è già nell'archivio (anche con un altro nome) il programma lo dice e chiede cosa fare.
@@ -55,7 +57,7 @@ ogni cartella può avere una scadenza, e il programma avvisa quando si avvicina.
 ## Come si usa
 
 1. Si apre il programma: al primo avvio crea l'archivio in `C:\Documentale` (con il database in `_dati`).
-2. Con il tasto destro sulla radice si crea un'**area**, poi dentro un'area una **cartella**.
+2. Con il tasto destro sulla radice si crea un'**area** (nome e icona), poi dentro un'area una **cartella**.
 3. Nel form della cartella si scrivono titolo, descrizione e scadenza e si allegano i documenti (pulsante **Allega…** o
    trascinandoli).
 4. Il campo in alto cerca ovunque; **Ricerca avanzata** restringe i risultati.

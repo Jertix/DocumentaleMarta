@@ -1,6 +1,7 @@
 using System.Collections.ObjectModel;
 using System.Globalization;
 using CommunityToolkit.Mvvm.ComponentModel;
+using DocumentaleMarta.Core.Modelli;
 using DocumentaleMarta.Core.Servizi;
 
 namespace DocumentaleMarta.App.ViewModels;
@@ -191,20 +192,39 @@ public partial class NodoAlberoViewModel(
     // Glifi di Segoe Fluent Icons / Segoe MDL2 Assets: casa, calendario, libreria, cartella e, per le completate, un cerchio con la spunta.
     public const string IconaRadice = "\uE80F";
     public const string IconaScadenze = "\uE787";
-    public const string IconaArea = "\uE8F1";
+    public const string IconaArea = "\uE8F1"; // quella predefinita delle aree (vedi IconeArea.Predefinita)
     public const string IconaCartella = "\uE8B7";
     public const string IconaCartellaCompletata = "\uE930";
     public const string IconaArchivio = "\uE7B8"; // la scatola d'archivio
 
+    /// <summary>Il glifo mostrato accanto al nome. Per le aree (e i loro gruppi nell'archivio) è l'icona scelta dall'utente.</summary>
     public string Icona => Tipo switch
     {
         TipoNodo.Radice => IconaRadice,
         TipoNodo.Scadenze => IconaScadenze,
-        TipoNodo.Area or TipoNodo.AreaArchivio => IconaArea,
+        TipoNodo.Area or TipoNodo.AreaArchivio => IconeArea.Glifo(_codiceIconaArea),
         TipoNodo.Archivio => IconaArchivio,
         _ when Completato => IconaCartellaCompletata,
         _ => IconaCartella
     };
+
+    private string? _codiceIconaArea;
+
+    /// <summary>
+    /// Il codice dell'icona scelta per l'area (solo per i nodi area); null per quella predefinita. È la sola cosa che
+    /// cambia con «Cambia icona»: non serve rileggere l'albero.
+    /// </summary>
+    public string? CodiceIconaArea => _codiceIconaArea;
+
+    /// <summary>Imposta l'icona scelta per l'area (null per quella predefinita) e aggiorna subito quella mostrata.</summary>
+    public void ImpostaIcona(string? codice)
+    {
+        if (_codiceIconaArea == codice)
+            return;
+
+        _codiceIconaArea = codice;
+        OnPropertyChanged(nameof(Icona));
+    }
 
     /// <summary>Questo nodo e tutti quelli sotto di lui, a qualunque profondità.</summary>
     public IEnumerable<NodoAlberoViewModel> ConDiscendenti()

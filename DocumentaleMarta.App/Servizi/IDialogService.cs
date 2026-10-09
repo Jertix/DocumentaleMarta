@@ -42,6 +42,12 @@ public interface IDialogService
     /// <summary>Mostra la finestra di creazione di una cartella. True se l'utente conferma.</summary>
     bool MostraNuovaCartella(NuovaCartellaViewModel modello);
 
+    /// <summary>
+    /// Mostra la finestra di un'area: il nome (solo per una nuova area) e la scelta dell'icona.
+    /// True se l'utente conferma; i valori scelti stanno nel modello.
+    /// </summary>
+    bool MostraAreaDialog(AreaDialogViewModel modello);
+
     /// <summary>Mostra la finestra delle impostazioni. True se l'utente conferma (e i valori sono validi).</summary>
     bool MostraImpostazioni(ImpostazioniViewModel modello);
 

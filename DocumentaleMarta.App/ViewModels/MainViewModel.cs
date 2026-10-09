@@ -62,10 +62,10 @@ public partial class MainViewModel(
     [NotifyPropertyChangedFor(nameof(HaSelezione), nameof(RadiceSelezionata), nameof(AreaSelezionata),
         nameof(PuoCreareCartella), nameof(PuoModificare), nameof(HaPercorsoFisico), nameof(RiepilogoVisibile),
         nameof(TipoDettaglio), nameof(TitoloDettaglio), nameof(RiepilogoDettaglio), nameof(PercorsoDettaglio),
-        nameof(PuoArchiviare), nameof(PuoRipristinare), nameof(PuoArchiviareCompletate))]
+        nameof(PuoArchiviare), nameof(PuoRipristinare), nameof(PuoArchiviareCompletate), nameof(IconaDettaglio))]
     [NotifyCanExecuteChangedFor(nameof(NuovaCartellaCommand), nameof(RinominaCommand),
         nameof(EliminaCommand), nameof(ApriInEsploraCommand), nameof(ArchiviaCommand), nameof(RipristinaCommand),
-        nameof(ArchiviaCompletateCommand))]
+        nameof(ArchiviaCompletateCommand), nameof(CambiaIconaCommand))]
     private NodoAlberoViewModel? _nodoSelezionato;
 
     // ---------- Cosa c'è nel pannello di destra ----------
@@ -80,7 +80,7 @@ public partial class MainViewModel(
     /// </summary>
     [ObservableProperty]
     [NotifyPropertyChangedFor(nameof(InRicerca), nameof(RiepilogoVisibile), nameof(HaPercorsoFisico),
-        nameof(TipoDettaglio), nameof(TitoloDettaglio), nameof(RiepilogoDettaglio), nameof(PercorsoDettaglio))]
+        nameof(TipoDettaglio), nameof(TitoloDettaglio), nameof(IconaDettaglio), nameof(RiepilogoDettaglio), nameof(PercorsoDettaglio))]
     [NotifyCanExecuteChangedFor(nameof(ApriInEsploraCommand))]
     private ElencoDocumentiViewModel? _elencoDocumenti;
 
@@ -344,6 +344,13 @@ public partial class MainViewModel(
 
     public string TitoloDettaglio => InRicerca ? "Risultati" : NodoSelezionato?.Nome ?? "";
 
+    /// <summary>
+    /// Il simbolo mostrato prima del titolo, per le aree (e i loro gruppi nell'archivio): è l'icona scelta per l'area.
+    /// Vuoto per gli altri nodi e durante una ricerca.
+    /// </summary>
+    public string IconaDettaglio =>
+        !InRicerca && NodoSelezionato is { Tipo: TipoNodo.Area or TipoNodo.AreaArchivio } nodo ? nodo.Icona : "";
+
     public string RiepilogoDettaglio => ElencoDocumenti is { IsRicerca: true } risultati
         ? RiepilogoRicerca(risultati)
         : NodoSelezionato switch
@@ -412,6 +419,7 @@ public partial class MainViewModel(
             foreach (var area in aree)
             {
                 var nodoArea = new NodoAlberoViewModel(TipoNodo.Area, area.Id, area.Nome, area.PercorsoRelativo, radice, Seleziona);
+                nodoArea.ImpostaIcona(area.Icona);
                 NodoAlberoViewModel? gruppoArchivio = null;
 
                 foreach (var cartella in area.Cartelle)
@@ -419,8 +427,12 @@ public partial class MainViewModel(
                     NodoAlberoViewModel genitore;
                     if (cartella.Archiviata)
                     {
-                        gruppoArchivio ??= new NodoAlberoViewModel(
-                            TipoNodo.AreaArchivio, area.Id, area.Nome, area.PercorsoRelativo, nodoArchivio, Seleziona);
+                        if (gruppoArchivio is null)
+                        {
+                            gruppoArchivio = new NodoAlberoViewModel(
+                                TipoNodo.AreaArchivio, area.Id, area.Nome, area.PercorsoRelativo, nodoArchivio, Seleziona);
+                            gruppoArchivio.ImpostaIcona(area.Icona);
+                        }
                         genitore = gruppoArchivio;
                     }
                     else
@@ -921,20 +933,43 @@ public partial class MainViewModel(
 
     // ---------- Comandi ----------
 
-    /// <summary>Chiede il nome di una nuova area e la crea (con la sua cartella su disco), poi la seleziona.</summary>
+    /// <summary>
+    /// Chiede il nome e l'icona di una nuova area e la crea (con la sua cartella su disco), poi la seleziona.
+    /// </summary>
     [RelayCommand]
     private async Task NuovaAreaAsync()
     {
-        var nome = dialog.ChiediTesto(
-            "Nuova area", "Nome della nuova area (ad esempio Fatture o INPS):", "",
-            testo => ErroreNomeArea(testo, escludi: null));
-        if (nome is null)
+        var modello = new AreaDialogViewModel("Nuova area", codiceIconaIniziale: null, testo => ErroreNomeArea(testo, escludi: null));
+        if (!dialog.MostraAreaDialog(modello))
             return;
 
         await EseguiAsync(async () =>
         {
-            var id = await archivio.CreaAreaAsync(nome);
+            var id = await archivio.CreaAreaAsync(modello.NomeConfermato, modello.CodiceIcona);
             await RicaricaAsync(NodoAlberoViewModel.CreaChiave(TipoNodo.Area, id));
+        });
+    }
+
+    /// <summary>
+    /// Mostra la griglia delle icone per l'area selezionata e salva quella scelta. Cambia solo un dato dell'area: nessun
+    /// file né cartella si muove.
+    /// </summary>
+    [RelayCommand(CanExecute = nameof(AreaSelezionata))]
+    private async Task CambiaIconaAsync()
+    {
+        if (NodoSelezionato is not { Tipo: TipoNodo.Area } nodo)
+            return;
+
+        var modello = new AreaDialogViewModel(
+            "Cambia icona", nodo.CodiceIconaArea,
+            messaggioIcona: $"Scegli l'icona per l'area «{nodo.Nome}»:");
+        if (!dialog.MostraAreaDialog(modello) || modello.CodiceIcona == nodo.CodiceIconaArea)
+            return;
+
+        await EseguiAsync(async () =>
+        {
+            await archivio.ImpostaIconaAreaAsync(nodo.Id, modello.CodiceIcona);
+            await RicaricaAsync(nodo.Chiave);
         });
     }
 

@@ -78,6 +78,20 @@
                 </Style.Triggers>
             </Style>
 
+            <!-- L'icona dell'area prima del titolo del dettaglio; non c'è (e non occupa spazio) per gli altri nodi -->
+            <Style x:Key="IconaTitoloDettaglio" TargetType="TextBlock">
+                <Setter Property="FontFamily" Value="{StaticResource FontIcone}"/>
+                <Setter Property="FontSize" Value="26"/>
+                <Setter Property="Foreground" Value="{DynamicResource TestoAccento}"/>
+                <Setter Property="VerticalAlignment" Value="Center"/>
+                <Setter Property="Margin" Value="0,0,12,0"/>
+                <Style.Triggers>
+                    <DataTrigger Binding="{Binding IconaDettaglio}" Value="">
+                        <Setter Property="Visibility" Value="Collapsed"/>
+                    </DataTrigger>
+                </Style.Triggers>
+            </Style>
+
             <!-- Il nome di un nodo; grigio se è una cartella completata (a meno che sia selezionata: lì vale il colore della selezione) -->
             <Style x:Key="TestoNodoAlbero" TargetType="TextBlock">
                 <Setter Property="VerticalAlignment" Value="Center"/>
@@ -260,6 +274,8 @@
                                   Visibility="{Binding AreaSelezionata, Converter={StaticResource BoolToVis}}"/>
                         <MenuItem Header="Rinomina" InputGestureText="F2" Command="{Binding RinominaCommand}"
                                   Visibility="{Binding PuoModificare, Converter={StaticResource BoolToVis}}"/>
+                        <MenuItem Header="Cambia icona…" Command="{Binding CambiaIconaCommand}"
+                                  Visibility="{Binding AreaSelezionata, Converter={StaticResource BoolToVis}}"/>
                         <MenuItem Header="Elimina" InputGestureText="Canc" Command="{Binding EliminaCommand}"
                                   Visibility="{Binding PuoModificare, Converter={StaticResource BoolToVis}}"/>
                         <Separator Visibility="{Binding PuoModificare, Converter={StaticResource BoolToVis}}"/>
@@ -288,12 +304,22 @@
                 <!-- Radice, aree e "Scadenze": intestazione con il riepilogo e sotto la griglia -->
                 <DockPanel Visibility="{Binding RiepilogoVisibile, Converter={StaticResource BoolToVis}}">
                     <DockPanel DockPanel.Dock="Top" Margin="28,22,28,14">
-                        <Button DockPanel.Dock="Right" Content="Apri in Esplora file" Command="{Binding ApriInEsploraCommand}"
-                                Visibility="{Binding HaPercorsoFisico, Converter={StaticResource BoolToVis}}"
-                                VerticalAlignment="Top" Padding="12,4" Margin="16,4,0,0"/>
+                        <StackPanel DockPanel.Dock="Right" Orientation="Horizontal" VerticalAlignment="Top" Margin="16,4,0,0">
+                            <!-- Solo per le aree: apre la griglia delle icone -->
+                            <Button Content="Cambia icona…" Command="{Binding CambiaIconaCommand}" Padding="12,4" Margin="0,0,8,0"
+                                    ToolTip="Sceglie un'altra icona per questa area"
+                                    Visibility="{Binding AreaSelezionata, Converter={StaticResource BoolToVis}}"/>
+                            <Button Content="Apri in Esplora file" Command="{Binding ApriInEsploraCommand}"
+                                    Visibility="{Binding HaPercorsoFisico, Converter={StaticResource BoolToVis}}"
+                                    Padding="12,4"/>
+                        </StackPanel>
                         <StackPanel>
                             <TextBlock Text="{Binding TipoDettaglio}" Foreground="{DynamicResource TestoTenue}" FontSize="13"/>
-                            <TextBlock Text="{Binding TitoloDettaglio}" FontSize="26" FontWeight="SemiBold" TextWrapping="Wrap" Margin="0,2,0,0"/>
+                            <DockPanel Margin="0,2,0,0">
+                                <!-- L'icona dell'area prima del titolo (sparisce per gli altri nodi) -->
+                                <TextBlock DockPanel.Dock="Left" Text="{Binding IconaDettaglio}" Style="{StaticResource IconaTitoloDettaglio}"/>
+                                <TextBlock Text="{Binding TitoloDettaglio}" FontSize="26" FontWeight="SemiBold" TextWrapping="Wrap"/>
+                            </DockPanel>
                             <TextBlock Text="{Binding RiepilogoDettaglio}" Foreground="{DynamicResource TestoSecondario}" Margin="0,8,0,0"/>
                             <TextBlock Text="{Binding PercorsoDettaglio}" Foreground="{DynamicResource TestoTenue}" FontSize="12" TextWrapping="Wrap" Margin="0,2,0,0"/>
                         </StackPanel>

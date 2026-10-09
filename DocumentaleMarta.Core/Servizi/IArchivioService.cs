@@ -11,11 +11,16 @@ public interface IArchivioService
     /// <summary>Legge l'albero: le aree con le loro cartelle.</summary>
     Task<IReadOnlyList<AreaNodo>> CaricaAlberoAsync();
 
-    /// <exception cref="ArchivioException">Nome non valido o già usato da un'altra area.</exception>
-    Task<int> CreaAreaAsync(string nome);
+    /// <summary>Crea un'area con l'icona indicata (null per quella predefinita).</summary>
+    /// <exception cref="ArchivioException">Nome non valido o già usato da un'altra area, oppure icona sconosciuta.</exception>
+    Task<int> CreaAreaAsync(string nome, string? icona = null);
 
-    /// <summary>Rinomina un'area (e la sua cartella sul disco).</summary>
+    /// <summary>Rinomina un'area (e la sua cartella sul disco). L'icona resta quella che era.</summary>
     Task RinominaAreaAsync(int areaId, string nuovoNome);
+
+    /// <summary>Cambia l'icona di un'area (null per tornare a quella predefinita). Non tocca file e cartelle.</summary>
+    /// <exception cref="ArchivioException">L'area non esiste più o l'icona non è tra quelle proposte.</exception>
+    Task ImpostaIconaAreaAsync(int areaId, string? icona);
 
     /// <summary>Elimina l'area con tutte le sue cartelle e documenti. I file vanno nel Cestino.</summary>
     Task EliminaAreaAsync(int areaId);

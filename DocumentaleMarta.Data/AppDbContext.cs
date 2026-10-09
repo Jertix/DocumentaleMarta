@@ -19,6 +19,7 @@ public class AppDbContext(DbContextOptions<AppDbContext> options) : DbContext(op
         modelBuilder.Entity<Area>(e =>
         {
             e.Property(a => a.Nome).HasMaxLength(100).UseCollation("NOCASE");
+            e.Property(a => a.Icona).HasMaxLength(8);
             e.HasIndex(a => a.Nome).IsUnique();
             e.HasIndex(a => a.PercorsoRelativo).IsUnique();
         });
