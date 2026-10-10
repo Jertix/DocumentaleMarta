@@ -3,6 +3,26 @@
 Le versioni, dalla più recente. Ogni sezione `## <versione>` diventa il testo della release su GitHub
 (vedi `tools\pubblica.ps1`).
 
+## 1.3.0 — 10 ottobre 2026
+
+### Nuovo
+- **«Ogni 2 mesi»** tra le scelte di «Si ripete».
+- **Copiare i documenti nella cartella successiva**: completando una cartella che si ripete, dopo la proposta della
+  nuova cartella una seconda domanda chiede se copiare anche i documenti (la risposta preselezionata è «No»).
+  I documenti che non si trovano più sul disco si saltano, e la domanda lo dice.
+
+### Cambiato
+- Avvisi di scadenza predefiniti: **arancione a 8 giorni, rosso a 4** (prima 30 e 7).
+
+### Corretto
+- Premendo «Archivia» subito dopo aver spuntato «Completato», l'archiviazione ora aspetta che il salvataggio (e la
+  proposta della cartella successiva) sia finito.
+
+### Per chi aggiorna
+- Nessun aggiornamento del database: l'archivio, i documenti e i backup restano come sono.
+- Le soglie di avviso già salvate nelle Impostazioni non cambiano; i nuovi valori 8 e 4 valgono per una nuova
+  installazione. Per usarli basta cambiarli una volta dalle Impostazioni.
+
 ## 1.2.0 — 10 ottobre 2026
 
 ### Nuovo

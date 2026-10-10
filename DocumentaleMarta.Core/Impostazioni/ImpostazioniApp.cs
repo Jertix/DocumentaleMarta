@@ -41,10 +41,10 @@ public class ImpostazioniApp
     public bool RiepilogoAvvio { get; set; } = true;
 
     /// <summary>Arancione se la scadenza è entro questi giorni.</summary>
-    public int SogliaArancioneGiorni { get; set; } = 30;
+    public int SogliaArancioneGiorni { get; set; } = 8;
 
     /// <summary>Rosso se la scadenza è entro questi giorni (le scadenze già passate sono sempre rosse).</summary>
-    public int SogliaRossaGiorni { get; set; } = 7;
+    public int SogliaRossaGiorni { get; set; } = 4;
 
     /// <summary>La cartella dei backup che l'utente ha scelto; vuota finché non ne sceglie una (vedi <see cref="CartellaBackupInUso"/>).</summary>
     public string? CartellaBackup { get; set; }

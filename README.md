@@ -23,7 +23,8 @@ ogni cartella può avere una scadenza, e il programma avvisa quando si avvicina.
 - Ogni cartella può avere una scadenza. Avvisi a due livelli, con soglie che si scelgono nelle Impostazioni:
   **arancione** (si avvicina) e **rosso** (vicina o già passata), con icone nell'albero, righe colorate nelle griglie e
   un nodo speciale **Scadenze** con l'elenco di tutto ciò che va controllato. All'apertura un riepilogo.
-- **Cartelle che si ripetono** (ogni mese, tre mesi, anno): completando una cartella il programma propone la successiva.
+- **Cartelle che si ripetono** (ogni mese, due mesi, tre mesi, anno): completando una cartella il programma propone la
+  successiva e chiede se copiarci anche i documenti.
 - Le cartelle **completate** hanno un'icona diversa e si possono mettere nell'**Archivio completati**, un ramo in fondo
   all'albero (i file restano dove sono). Completando una cartella compare un campo per le **note di completamento**.
 - Le scadenze si leggono a parole: «Scade tra 3 mesi e 4 giorni» (in giorni fino a 30).

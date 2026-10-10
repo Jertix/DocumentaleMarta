@@ -11,6 +11,7 @@ public record RicorrenzaOpzione(Ricorrenza Valore, string Testo)
     [
         new(Ricorrenza.Nessuna, "Mai"),
         new(Ricorrenza.Mensile, "Ogni mese"),
+        new(Ricorrenza.Bimestrale, "Ogni 2 mesi"),
         new(Ricorrenza.Trimestrale, "Ogni 3 mesi"),
         new(Ricorrenza.Annuale, "Ogni anno")
     ];

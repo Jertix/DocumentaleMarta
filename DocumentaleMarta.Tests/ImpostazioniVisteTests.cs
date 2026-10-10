@@ -51,8 +51,8 @@ public class ImpostazioniVisteTests
             // I campi principali ci sono e mostrano i valori di partenza.
             var caselle = Tutti<TextBox>(contenuto).Select(t => t.Text).ToList();
             Assert.Contains("METAL PROJET DI TEDDE PAOLO E SORRENTINO LUCA SNC", caselle);
-            Assert.Contains("30", caselle);
-            Assert.Contains("7", caselle);
+            Assert.Contains("8", caselle);
+            Assert.Contains("4", caselle);
             Assert.Contains("Tutti i documenti", caselle);
             Assert.Contains(caselle, t => t.Contains("impostazioni.json") || t.Contains(@"C:\Documentale"));
         });

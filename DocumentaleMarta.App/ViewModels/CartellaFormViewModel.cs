@@ -201,23 +201,21 @@ public partial class CartellaFormViewModel : CartellaCampiViewModel
 
         if (e.PropertyName is nameof(Titolo) or nameof(Descrizione) or nameof(DataScadenza)
             or nameof(Ricorrenza) or nameof(Completato) or nameof(DataCompletamento) or nameof(NoteCompletamento))
-            _ultimoSalvataggio = SalvaAsync();
+        {
+            // Più modifiche ravvicinate (es. "Completato" e la sua data) non lanciano salvataggi in parallelo: chi arriva
+            // durante un salvataggio chiede solo di ripeterlo a fine lavoro, e chi aspetta continua ad aspettare quello.
+            if (_salvataggioInCorso)
+                _salvataggioRichiesto = true;
+            else
+                _ultimoSalvataggio = SalvaAsync();
+        }
     }
 
     /// <summary>
-    /// Salva senza mai lanciare due salvataggi insieme: se arriva una modifica mentre si sta salvando, a fine lavoro si
-    /// salva ancora.
+    /// Salva, e salva ancora finché durante il lavoro arrivano altre modifiche (mai due salvataggi insieme).
     /// </summary>
     private async Task SalvaAsync()
     {
-        // Più modifiche ravvicinate (es. "Completato" e la sua data) non lanciano salvataggi in parallelo:
-        // chi arriva durante un salvataggio chiede solo di ripeterlo a fine lavoro.
-        if (_salvataggioInCorso)
-        {
-            _salvataggioRichiesto = true;
-            return;
-        }
-
         _salvataggioInCorso = true;
         try
         {
@@ -330,8 +328,9 @@ public partial class CartellaFormViewModel : CartellaCampiViewModel
     public event Action? CartellaSuccessivaCreata;
 
     /// <summary>
-    /// Una cartella che si ripete (ogni mese, 3 mesi, anno) è stata completata: propone di creare la successiva,
-    /// con lo stesso titolo e la scadenza spostata in avanti. I documenti non si copiano. Si può rifiutare.
+    /// Una cartella che si ripete (ogni mese, 2 o 3 mesi, anno) è stata completata: propone di creare la successiva,
+    /// con lo stesso titolo e la scadenza spostata in avanti. Si può rifiutare. Se la cartella ha documenti, una seconda
+    /// domanda (con «No» preselezionato) chiede se copiare anche quelli.
     /// </summary>
     private async Task ProponiCartellaSuccessivaAsync(DatiCartella completata)
     {
@@ -341,19 +340,41 @@ public partial class CartellaFormViewModel : CartellaCampiViewModel
             return;
         _scadenzaGiaProposta = scadenza;
 
+        // Un documento il cui file è sparito dal disco non si può copiare.
+        var documenti = Documenti.Where(d => !d.FileMancante).ToList();
+        var mancanti = Documenti.Count - documenti.Count;
+
         var prossima = CalcoloRicorrenza.Prossima(scadenza, completata.Ricorrenza);
         var messaggio = $"La cartella «{completata.Titolo}» si ripete {CalcoloRicorrenza.Descrizione(completata.Ricorrenza)}.\n\n"
                         + $"Vuoi creare la prossima, con scadenza {prossima:dd/MM/yyyy}?\n\n"
-                        + "Si copiano titolo, descrizione e ripetizione; i documenti no.";
+                        + (documenti.Count > 0
+                            ? "Si copiano titolo, descrizione e ripetizione; per i documenti te lo chiedo subito dopo."
+                            : "Si copiano titolo, descrizione e ripetizione; i documenti no.");
         if (!_dialog.Chiedi("Cartella ricorrente", messaggio))
             return;
+
+        IReadOnlyList<string> daCopiare = [];
+        if (documenti.Count > 0)
+        {
+            var domanda = (documenti.Count == 1
+                              ? "Vuoi copiare nella nuova cartella anche il documento?"
+                              : $"Vuoi copiare nella nuova cartella anche i {documenti.Count} documenti?")
+                          + mancanti switch
+                          {
+                              0 => "",
+                              1 => "\n\nUn documento non si trova più sul disco e non verrà copiato.",
+                              _ => $"\n\n{mancanti} documenti non si trovano più sul disco e non verranno copiati."
+                          };
+            if (_dialog.Chiedi("Cartella ricorrente", domanda, predefinitoSi: false))
+                daCopiare = documenti.Select(d => _files.PercorsoAssoluto(d.PercorsoRelativo)).ToList();
+        }
 
         try
         {
             await _archivio.CreaCartellaConDatiAsync(
                 _areaId,
                 new DatiCartella(completata.Titolo, completata.Descrizione, prossima, false, null, completata.Ricorrenza),
-                []);
+                daCopiare);
             CartellaSuccessivaCreata?.Invoke();
         }
         catch (ArchivioException ex)

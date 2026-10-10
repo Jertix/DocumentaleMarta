@@ -17,8 +17,8 @@ public class ImpostazioniServiceTests
         Assert.Equal("01790610990", impostazioni.Azienda.CodiceFiscale);
         Assert.Equal(@"C:\Documentale", impostazioni.PercorsoRadice);
         Assert.Equal("Tutti i documenti", impostazioni.NomeRadice);
-        Assert.Equal(30, impostazioni.SogliaArancioneGiorni);
-        Assert.Equal(7, impostazioni.SogliaRossaGiorni);
+        Assert.Equal(8, impostazioni.SogliaArancioneGiorni);
+        Assert.Equal(4, impostazioni.SogliaRossaGiorni);
         Assert.Empty(impostazioni.Valida());
     }
 

@@ -10,6 +10,8 @@ public class CalcoloRicorrenzaTests
     [Theory]
     [InlineData(Ricorrenza.Mensile, "2026-10-16", "2026-11-16")]
     [InlineData(Ricorrenza.Mensile, "2026-12-16", "2027-01-16")]
+    [InlineData(Ricorrenza.Bimestrale, "2026-10-16", "2026-12-16")]
+    [InlineData(Ricorrenza.Bimestrale, "2026-12-31", "2027-02-28")]
     [InlineData(Ricorrenza.Trimestrale, "2026-10-16", "2027-01-16")]
     [InlineData(Ricorrenza.Trimestrale, "2026-11-30", "2027-02-28")]
     [InlineData(Ricorrenza.Annuale, "2026-10-16", "2027-10-16")]
@@ -34,6 +36,7 @@ public class CalcoloRicorrenzaTests
     [Theory]
     [InlineData(Ricorrenza.Nessuna, "")]
     [InlineData(Ricorrenza.Mensile, "ogni mese")]
+    [InlineData(Ricorrenza.Bimestrale, "ogni 2 mesi")]
     [InlineData(Ricorrenza.Trimestrale, "ogni 3 mesi")]
     [InlineData(Ricorrenza.Annuale, "ogni anno")]
     public void LaDescrizione_ESempreInItaliano(Ricorrenza ricorrenza, string atteso) =>
@@ -129,7 +132,7 @@ public class RicorrenzaViewModelTests : IDisposable
         Assert.Equal(Ricorrenza.Trimestrale, form.Ricorrenza);
         Assert.True(form.SiRipete);
         Assert.True(form.HaScadenza);
-        Assert.Equal(["Mai", "Ogni mese", "Ogni 3 mesi", "Ogni anno"], form.OpzioniRicorrenza.Select(o => o.Testo));
+        Assert.Equal(["Mai", "Ogni mese", "Ogni 2 mesi", "Ogni 3 mesi", "Ogni anno"], form.OpzioniRicorrenza.Select(o => o.Testo));
     }
 
     [Fact]
@@ -192,14 +195,17 @@ public class RicorrenzaViewModelTests : IDisposable
         var form = Form(originale);
         var create = 0;
         form.CartellaSuccessivaCreata += () => create++;
+        _a.Dialog.RispondiDomande(true, false); // sì alla cartella, no ai documenti
 
         form.Completato = true;
         await form.AttendiSalvataggioAsync();
 
-        var domanda = Assert.Single(_a.Dialog.Domande);
+        Assert.Equal(2, _a.Dialog.Domande.Count);
+        var domanda = _a.Dialog.Domande[0];
         Assert.Contains("«F24»", domanda);
         Assert.Contains("ogni mese", domanda);
         Assert.Contains("16/11/2026", domanda);
+        Assert.Contains("documento", _a.Dialog.Domande[1]);
 
         var cartelle = await CartelleAsync();
         Assert.Equal(2, cartelle.Count);
@@ -218,6 +224,83 @@ public class RicorrenzaViewModelTests : IDisposable
         var vecchia = (await _a.Servizio.CaricaCartellaAsync(originale.Id))!;
         Assert.True(vecchia.Dati.Completato);
         Assert.Single(vecchia.Documenti);
+    }
+
+    [Fact]
+    public async Task LaDomandaSuiDocumenti_HaIlNoPreselezionato_ELaPrimaIlSi()
+    {
+        var form = Form(await CreaAsync(Ricorrenza.Mensile, file: ["modello.pdf", "ricevuta.pdf"]));
+        _a.Dialog.RispondiDomande(true, false);
+
+        form.Completato = true;
+        await form.AttendiSalvataggioAsync();
+
+        Assert.Equal([true, false], _a.Dialog.DomandePredefinitoSi);
+        Assert.Contains("chiedo subito dopo", _a.Dialog.Domande[0]);
+        Assert.Contains("i 2 documenti", _a.Dialog.Domande[1]);
+    }
+
+    [Fact]
+    public async Task RispondendoSiAllaSecondaDomanda_SiCopianoAncheIDocumenti()
+    {
+        var originale = await CreaAsync(Ricorrenza.Mensile, file: ["modello.pdf", "ricevuta.pdf"]);
+        var form = Form(originale);
+        _a.Dialog.RispondiDomande(true, true);
+
+        form.Completato = true;
+        await form.AttendiSalvataggioAsync();
+
+        var nuova = (await _a.Servizio.CaricaCartellaAsync((await CartelleAsync()).Single(c => c.Id != originale.Id).Id))!;
+        Assert.Equal(["modello.pdf", "ricevuta.pdf"], nuova.Documenti.Select(d => d.NomeFile).Order());
+        Assert.All(nuova.Documenti, d =>
+        {
+            Assert.StartsWith(nuova.PercorsoRelativo, d.PercorsoRelativo);
+            Assert.True(_a.Files.Esiste(d.PercorsoRelativo));
+        });
+        Assert.Equal(2, (await _a.Servizio.CaricaCartellaAsync(originale.Id))!.Documenti.Count); // l'originale li conserva
+    }
+
+    [Fact]
+    public async Task UnaCartellaSenzaDocumenti_NonChiedeDiCopiarli()
+    {
+        var form = Form(await CreaAsync(Ricorrenza.Mensile));
+
+        form.Completato = true;
+        await form.AttendiSalvataggioAsync();
+
+        var domanda = Assert.Single(_a.Dialog.Domande);
+        Assert.Contains("i documenti no", domanda);
+        Assert.Equal(2, (await CartelleAsync()).Count);
+    }
+
+    [Fact]
+    public async Task RifiutandoLaCartella_NonSiChiedeDeiDocumenti()
+    {
+        var form = Form(await CreaAsync(Ricorrenza.Mensile, file: ["modello.pdf"]));
+        _a.Dialog.RispostaDomanda = false;
+
+        form.Completato = true;
+        await form.AttendiSalvataggioAsync();
+
+        Assert.Single(_a.Dialog.Domande);
+        Assert.Single(await CartelleAsync());
+    }
+
+    [Fact]
+    public async Task UnDocumentoSparitoDalDisco_NonSiCopia_ELoSiDice()
+    {
+        var originale = await CreaAsync(Ricorrenza.Mensile, file: ["modello.pdf", "sparito.pdf"]);
+        File.Delete(_a.Files.PercorsoAssoluto(originale.Documenti.Single(d => d.NomeFile == "sparito.pdf").PercorsoRelativo));
+        var form = Form(originale);
+        _a.Dialog.RispondiDomande(true, true);
+
+        form.Completato = true;
+        await form.AttendiSalvataggioAsync();
+
+        Assert.Contains("anche il documento?", _a.Dialog.Domande[1]);
+        Assert.Contains("Un documento non si trova più", _a.Dialog.Domande[1]);
+        var nuova = (await _a.Servizio.CaricaCartellaAsync((await CartelleAsync()).Single(c => c.Id != originale.Id).Id))!;
+        Assert.Equal("modello.pdf", Assert.Single(nuova.Documenti).NomeFile);
     }
 
     [Theory]

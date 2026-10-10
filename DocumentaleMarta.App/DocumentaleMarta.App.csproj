@@ -27,7 +27,7 @@
     <!-- Dati che Windows mostra nelle proprietà del file e che la finestra "Informazioni" legge -->
     <Product>Documentale</Product>
     <Company>METAL PROJET di Tedde Paolo e Sorrentino Luca snc</Company>
-    <Version>1.2.0</Version>
+    <Version>1.3.0</Version>
   </PropertyGroup>
 
   <ItemGroup>

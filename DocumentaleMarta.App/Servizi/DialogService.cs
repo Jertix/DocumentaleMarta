@@ -39,10 +39,12 @@ public class DialogService : IDialogService
         Mostra(messaggio, titolo, MessageBoxButton.YesNo, MessageBoxImage.Warning, MessageBoxResult.No) == MessageBoxResult.Yes;
 
     /// <summary>
-    /// Domanda sì/no su una proposta (senza il segno di avvertimento): la risposta preselezionata è «Sì».
+    /// Domanda sì/no su una proposta (senza il segno di avvertimento): la risposta preselezionata è «Sì», o «No» se
+    /// <paramref name="predefinitoSi"/> è falso.
     /// </summary>
-    public bool Chiedi(string titolo, string messaggio) =>
-        Mostra(messaggio, titolo, MessageBoxButton.YesNo, MessageBoxImage.Question, MessageBoxResult.Yes) == MessageBoxResult.Yes;
+    public bool Chiedi(string titolo, string messaggio, bool predefinitoSi = true) =>
+        Mostra(messaggio, titolo, MessageBoxButton.YesNo, MessageBoxImage.Question,
+            predefinitoSi ? MessageBoxResult.Yes : MessageBoxResult.No) == MessageBoxResult.Yes;
 
     /// <summary>Mostra un messaggio d'errore con il solo pulsante OK.</summary>
     public void MostraErrore(string messaggio) =>

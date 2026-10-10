@@ -112,7 +112,7 @@ public class Fase8VisteTests
             VisteTests.Disegna(contenuto, 600, 560, "nuova-cartella-senza-scadenza");
 
             var menu = Tutti<ComboBox>(contenuto).Single();
-            Assert.Equal(["Mai", "Ogni mese", "Ogni 3 mesi", "Ogni anno"], menu.Items.OfType<RicorrenzaOpzione>().Select(o => o.Testo));
+            Assert.Equal(["Mai", "Ogni mese", "Ogni 2 mesi", "Ogni 3 mesi", "Ogni anno"], menu.Items.OfType<RicorrenzaOpzione>().Select(o => o.Testo));
             Assert.False(menu.IsEnabled); // senza scadenza non si può ripetere
 
             modello.DataScadenza = new DateTime(2026, 10, 16);

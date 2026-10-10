@@ -137,7 +137,10 @@ public class CartelleCompletateNellAlberoTests : IDisposable
 
     public CartelleCompletateNellAlberoTests()
     {
-        var impostazioni = new ImpostazioniApp { PercorsoRadice = _a.Radice, RiepilogoAvvio = false };
+        var impostazioni = new ImpostazioniApp
+        {
+            PercorsoRadice = _a.Radice, RiepilogoAvvio = false, SogliaArancioneGiorni = 30, SogliaRossaGiorni = 7
+        };
         _vm = new MainViewModel(_a.Servizio, _a.Files, _a.Dialog, _a.Shell, impostazioni,
             new AlertService(impostazioni, new TempoFisso(new DateTime(2026, 10, 1, 9, 0, 0))));
     }

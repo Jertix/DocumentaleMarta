@@ -15,8 +15,11 @@ public interface IDialogService
     /// <summary>Domanda sì/no per azioni distruttive. La risposta predefinita è No.</summary>
     bool Conferma(string titolo, string messaggio);
 
-    /// <summary>Domanda sì/no su una proposta (non su un'azione distruttiva): la risposta predefinita è Sì.</summary>
-    bool Chiedi(string titolo, string messaggio);
+    /// <summary>
+    /// Domanda sì/no su una proposta (non su un'azione distruttiva): la risposta predefinita è Sì, oppure No con
+    /// <paramref name="predefinitoSi"/> falso.
+    /// </summary>
+    bool Chiedi(string titolo, string messaggio, bool predefinitoSi = true);
 
     /// <summary>Mostra un messaggio d'errore con il solo pulsante OK.</summary>
     void MostraErrore(string messaggio);

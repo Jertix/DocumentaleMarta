@@ -89,8 +89,8 @@ public class ImpostazioniViewModelTests
         Assert.Equal("Tutti i documenti", vm.NomeRadice);
         Assert.True(vm.AvvisiAttivi);
         Assert.True(vm.RiepilogoAvvio);
-        Assert.Equal("30", vm.SogliaArancione);
-        Assert.Equal("7", vm.SogliaRossa);
+        Assert.Equal("8", vm.SogliaArancione);
+        Assert.Equal("4", vm.SogliaRossa);
         Assert.Equal(@"C:\Documentale", vm.PercorsoRadice);
         Assert.Equal(@"C:\x\impostazioni.json", vm.PercorsoFile);
         Assert.Equal("", vm.Errore);
@@ -272,7 +272,7 @@ public class ImpostazioniViewModelTests
         vm.Costruisci();
 
         Assert.Equal("METAL PROJET DI TEDDE PAOLO E SORRENTINO LUCA SNC", originale.Azienda.RagioneSociale);
-        Assert.Equal(30, originale.SogliaArancioneGiorni);
+        Assert.Equal(8, originale.SogliaArancioneGiorni);
     }
 
     [Fact]
@@ -325,7 +325,10 @@ public class ImpostazioniApplicateTests : IDisposable
     private ImpostazioniApplicateTests(string? percorsoFile)
     {
         _servizio = new ImpostazioniService(percorsoFile ?? _a.Tmp.Combina("impostazioni", "impostazioni.json"));
-        _impostazioni = new ImpostazioniApp { PercorsoRadice = _a.Radice, RiepilogoAvvio = false };
+        _impostazioni = new ImpostazioniApp
+        {
+            PercorsoRadice = _a.Radice, RiepilogoAvvio = false, SogliaArancioneGiorni = 30, SogliaRossaGiorni = 7
+        };
         _vm = NuovoViewModel(_servizio);
         _vm.PropertyChanged += (_, e) => _proprietaCambiate.Add(e.PropertyName);
     }

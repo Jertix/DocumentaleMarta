@@ -19,6 +19,9 @@ public class FintoDialogService : IDialogService
     /// <summary>Risposta alle domande su una proposta (<see cref="Chiedi"/>); il messaggio finisce in <see cref="Domande"/>.</summary>
     public bool RispostaDomanda { get; set; } = true;
     public List<string> Domande { get; } = [];
+
+    /// <summary>Per ogni domanda in <see cref="Domande"/>, se la risposta preselezionata era «Sì».</summary>
+    public List<bool> DomandePredefinitoSi { get; } = [];
     public List<string> Errori { get; } = [];
     public List<string> Conferme { get; } = [];
     public List<string> MessaggiChiesti { get; } = [];
@@ -91,9 +94,10 @@ public class FintoDialogService : IDialogService
             _risposteDomande.Enqueue(risposta);
     }
 
-    public bool Chiedi(string titolo, string messaggio)
+    public bool Chiedi(string titolo, string messaggio, bool predefinitoSi = true)
     {
         Domande.Add(messaggio);
+        DomandePredefinitoSi.Add(predefinitoSi);
         return _risposteDomande.Count > 0 ? _risposteDomande.Dequeue() : RispostaDomanda;
     }
 

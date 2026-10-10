@@ -16,7 +16,7 @@ public class AvvisiViewModelTests : IDisposable
 
     public AvvisiViewModelTests()
     {
-        _impostazioni = new ImpostazioniApp { PercorsoRadice = _a.Radice };
+        _impostazioni = new ImpostazioniApp { PercorsoRadice = _a.Radice, SogliaArancioneGiorni = 30, SogliaRossaGiorni = 7 };
         _avvisi = new AlertService(_impostazioni, _tempo);
         _vm = new MainViewModel(_a.Servizio, _a.Files, _a.Dialog, _a.Shell, _impostazioni, _avvisi);
     }

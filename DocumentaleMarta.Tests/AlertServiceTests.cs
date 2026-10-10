@@ -184,12 +184,12 @@ public class AlertServiceTests
     }
 
     [Fact]
-    public void ConLeImpostazioniDiDefault_SonoTrentaESetteGiorni()
+    public void ConLeImpostazioniDiDefault_SonoOttoEQuattroGiorni()
     {
         var servizio = new AlertService(new ImpostazioniApp());
 
-        Assert.Equal(30, servizio.SogliaArancioneGiorni);
-        Assert.Equal(7, servizio.SogliaRossaGiorni);
+        Assert.Equal(8, servizio.SogliaArancioneGiorni);
+        Assert.Equal(4, servizio.SogliaRossaGiorni);
         Assert.True(servizio.Attivo);
     }
 }
